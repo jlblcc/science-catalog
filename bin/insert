@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+
+let command = require('commander'),
+    fs = require('fs'),
+    db = require('../db'),
+    MdJson = require('../db/models/MdJson'),
+    handleError = (err) => {
+        console.error(err);
+        process.exit(1);
+    };
+
+command.version('0.0.0')
+    .option('-f, --file <file>','Insert mdJson')
+    .parse(process.argv);
+
+if(!command.file) {
+    command.help();
+}
+
+db()
+  .then(() => {
+      fs.readFile(command.file,'utf8',(err,data) => {
+          if(err) {
+              return handleError(err);
+          }
+          let json = JSON.parse(data),
+            schema = json.schema;
+          json._schema = schema;
+          delete json.schema;
+          (new MdJson(json)).save()
+            .then(mdj => {
+                console.log(`inserted ${mdj._id}`);
+                process.exit(0);
+            })
+            .catch(handleError);
+            /*
+          db.collection('MdJson').insertOne(mdJson,(err,result) => {
+            if(err) {
+                return handleError(err);
+            }
+            console.log(`inserted ${result.insertedId}`);
+            process.exit(0);
+          });*/
+
+      });
+  })
+  .catch(handleError);
