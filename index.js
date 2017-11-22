@@ -11,7 +11,11 @@ app.get('/',(req,res) => {
 
 let project = new Resource({
     rel: '/api/project',
-    model: require('./db/models/Project')
+    model: require('./db/models/Project'),
+    // query arg defaults
+    $top: 5,
+    $orderby: 'title',
+    $orderbyPaged: 'title'
 });
 
 project.initRouter(app);

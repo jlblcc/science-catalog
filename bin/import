@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
 let command = require('commander'),
-    fs = require('fs'),
     db = require('../db'),
-    Project = require('../db/models/Project'),
-    ObjectId = require('mongodb').ObjectId,
+    sync = require('../lib/sync'),
     request = require('request-promise-native'),
     chalk = require('chalk'),
     handleError = (err) => {
@@ -14,10 +12,9 @@ let command = require('commander'),
     chunkSize = 5; // five at a time
 
 command.version('0.0.0')
-    .option('-r --root <root>','The sciencebase folder id to import items from.')
+    .option('-r --root <root>','The sciencebase folder id to import items from (LCC id from LC Map).')
     .parse(process.argv);
 
-command.browseType = command.browseType||'Project';
 if(!command.root) {
     command.help();
 }
@@ -43,59 +40,22 @@ function importOnePage(response) {
             }
         },
         items = response.items;
-        toInsert = items.map(i => {
-            return {
-                _id: i.id,
-                title: i.title,
-                mdJson: i.files ? i.files.reduce((found,f) => {
-                        return found||(f.name === 'md_metadata.json' ? f.url : undefined);
-                    },undefined) : undefined
-            }
-        }).filter(i => {
-            if(!i.mdJson) {
-                console.warn(chalk.red(`\tWARNING: item with title "${i.title}" does not have attached mdJson`));
-            }
-            return i.mdJson
-        });
-    counts.total += items.length;
-    counts.found += toInsert.length;
-    if(toInsert.length) {
-        // fetch and fill in mdJson
-        Promise.all(toInsert.map(i => {
-            return new Promise((resolve,reject) => {
-                request(i.mdJson).then(mdj => resolve(JSON.parse(mdj))).catch(handleError);
-            });
-        }))
-        .then(jsons => {
-            // insert into the db
-            Promise.all(jsons.map((o,i) => {
-                let insert = toInsert[i];
-                insert.mdJson = o;
-                insert._id = new ObjectId(insert._id);
-                console.log(`\timporting "${insert.title}"`);
-                // create new, requires they don't already exist in the db
-                //return (new Project(toInsert[i])).save();
-                // upsert, for repeat crawls
-                return new Project((resolve,reject) => {
-                    Project.findOneAndUpdate({
-                        _id: insert._id
-                    },insert,{upsert:true},(err,o) => {
-                        if(err){
-                            handleError(err);
-                        }
-                        resolve(o);
-                    });
-                });
-            }))
-            .then(inserted => {
-                counts.imported += inserted.length;
-                next();
-            }).catch(handleError);
-        })
-        .catch(handleError); // can't happen but...
-    } else {
-        next();
-    }
+        inserts = items.map(i => sync.importSbProject(i)).filter(promise => !!promise);
+
+        counts.total += items.length;
+        counts.found += inserts.length;
+
+        if(inserts.length) {
+            // wait for them to complete
+            Promise.all(inserts)
+                .then(inserted => {
+                    counts.imported += inserted.length;
+                    next();
+                })
+                .catch(handleError);
+        } else {
+            next();
+        }
 }
 
 function bootstrap() {
