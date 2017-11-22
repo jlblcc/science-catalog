@@ -20,12 +20,13 @@ if(!command.root) {
 }
 
 let counts = {
-    start: (new Date()).getTime(),
-    page: 0,
-    total: 0,
-    found: 0,
-    imported: 0
-};
+        start: (new Date()).getTime(),
+        page: 0,
+        total: 0,
+        found: 0,
+        imported: 0
+    },
+    lcc = undefined;
 
 function importOnePage(response) {
     console.log(`-- processing page # ${counts.page++}`);
@@ -40,7 +41,7 @@ function importOnePage(response) {
             }
         },
         items = response.items;
-        inserts = items.map(i => sync.importSbProject(i)).filter(promise => !!promise);
+        inserts = items.map(i => sync.importSbProject(lcc,i)).filter(promise => !!promise);
 
         counts.total += items.length;
         counts.found += inserts.length;
@@ -59,20 +60,25 @@ function importOnePage(response) {
 }
 
 function bootstrap() {
-    request({
-            url: `https://www.sciencebase.gov/catalog/items`,
-            qs: {
-                fields: 'title,files',
-                filter0: `browseCategory=Project`,
-                filter1: 'tags=LCC Network Science Catalog',
-                filter2: `ancestors=${command.root}`,
-                sort: 'lastUpdated',
-                order: 'desc',
-                format: 'json',
-                max: chunkSize
-            }
-        })
-        .then(importOnePage)
-        .catch(handleError);
+    sync.importSbLcc(command.root)
+        .then(o => {
+            lcc = o;
+            request({
+                    url: `https://www.sciencebase.gov/catalog/items`,
+                    qs: {
+                        fields: 'title,files',
+                        filter0: `browseCategory=Project`,
+                        filter1: 'tags=LCC Network Science Catalog',
+                        filter2: `ancestors=${command.root}`,
+                        sort: 'lastUpdated',
+                        order: 'desc',
+                        format: 'json',
+                        max: chunkSize
+                    }
+                })
+                .then(importOnePage)
+                .catch(handleError);
+        }).catch(handleError);
+
 }
 db().then(bootstrap).catch(handleError);
