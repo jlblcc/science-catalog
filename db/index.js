@@ -2,6 +2,7 @@ let debug = require('debug')('db'),
     mongoose = require('mongoose');
 
 mongoose.Promise = Promise;
+
 module.exports = function() {
    return new Promise((resolve,reject) => {
        if(mongoose.connection.readyState) {
