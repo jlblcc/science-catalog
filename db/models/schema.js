@@ -6,4 +6,4 @@ module.exports = function() {
         title: {type: String, required: true},
         mdJson: mongoose.Schema.Types.Mixed,
     }/*,{strict: false}*/);
-}
+};
