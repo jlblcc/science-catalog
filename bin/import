@@ -2,91 +2,30 @@
 
 let command = require('commander'),
     db = require('../db'),
-    sync = require('../lib/sync'),
-    request = require('request-promise-native'),
-    chalk = require('chalk'),
+    LccSync = require('../lib/LccSync'),
     handleError = (err) => {
         console.error(err);
         process.exit(1);
-    },
-    chunkSize = 5; // five at a time
+    };
+
+process.on('uncaughtException', handleError);
 
 command.version('0.0.0')
     .option('-r --root <root>','The sciencebase folder id to import items from (LCC id from LC Map).')
+    .option('-q --quiet','Turn off any console logging')
     .parse(process.argv);
 
 if(!command.root) {
     command.help();
 }
 
-let counts = {
-        startMillis: (new Date()).getTime(),
-        pages: 0,
-        total: 0,
-        found: 0,
-        ignored: 0,
-        created: 0,
-        updated: 0,
-        unchanged: 0
-    },
-    lcc = undefined;
-
-function importOnePage(response) {
-    console.log(`-- processing page # ${counts.pages++}`);
-    response = JSON.parse(response);
-    let next = () => {
-            if(response.nextlink && response.nextlink.url) {
-                request(response.nextlink.url).then(importOnePage).catch(handleError);
-            } else {
-                counts.endMillis = (new Date()).getTime();
-                counts.timeSeconds = (counts.endMillis - counts.startMillis)/1000;
-
-                console.log(chalk.green(`\nComplete\n`));//\n   total: ${counts.total}\n   found: ${counts.found}\n created: ${counts.created}\n updated: ${counts.updated}\nunchanged: ${counts.unchanged}\n    time: ${time} seconds\n`));
-                console.log(counts);
-                process.exit(0);
-            }
-        },
-        items = response.items;
-        let promises = items.map(i => sync.importSbProject(lcc,i));
-        counts.ignored += promises.filter(promise => !promise).length; // resolves to null if no mdJson
-        inserts = promises.filter(promise => !!promise);
-
-        counts.total += items.length;
-        counts.found += inserts.length;
-
-        if(inserts.length) {
-            // wait for them to complete
-            Promise.all(inserts)
-                .then(inserted => {
-                    inserted.forEach(i => counts[i.$state]++);
-                    next();
-                })
-                .catch(handleError);
-        } else {
-            next();
-        }
-}
-
-function bootstrap() {
-    sync.importSbLcc(command.root)
-        .then(o => {
-            lcc = o;
-            request({
-                    url: `https://www.sciencebase.gov/catalog/items`,
-                    qs: {
-                        fields: 'title,files',
-                        filter0: `browseCategory=Project`,
-                        filter1: 'tags=LCC Network Science Catalog',
-                        filter2: `ancestors=${command.root}`,
-                        sort: 'lastUpdated',
-                        order: 'desc',
-                        format: 'json',
-                        max: chunkSize
-                    }
-                })
-                .then(importOnePage)
-                .catch(handleError);
-        }).catch(handleError);
-
-}
-db().then(bootstrap).catch(handleError);
+db().then(() => {
+    (new LccSync(command.root))
+        .quiet(command.quiet)
+        .sync()
+        .then(counts => {
+            console.log(counts);
+            process.exit(0);
+        })
+        .catch(handleError);
+}).catch(handleError);
