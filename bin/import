@@ -20,28 +20,36 @@ if(!command.root) {
 }
 
 let counts = {
-        start: (new Date()).getTime(),
-        page: 0,
+        startMillis: (new Date()).getTime(),
+        pages: 0,
         total: 0,
         found: 0,
-        imported: 0
+        ignored: 0,
+        created: 0,
+        updated: 0,
+        unchanged: 0
     },
     lcc = undefined;
 
 function importOnePage(response) {
-    console.log(`-- processing page # ${counts.page++}`);
+    console.log(`-- processing page # ${counts.pages++}`);
     response = JSON.parse(response);
     let next = () => {
             if(response.nextlink && response.nextlink.url) {
                 request(response.nextlink.url).then(importOnePage).catch(handleError);
             } else {
-                let time = ((new Date()).getTime() - counts.start)/1000;
-                console.log(chalk.green(`\n\nComplete: total: ${counts.total}, found: ${counts.found}, imports: ${counts.imported} time: ${time} seconds`));
+                counts.endMillis = (new Date()).getTime();
+                counts.timeSeconds = (counts.endMillis - counts.startMillis)/1000;
+
+                console.log(chalk.green(`\nComplete\n`));//\n   total: ${counts.total}\n   found: ${counts.found}\n created: ${counts.created}\n updated: ${counts.updated}\nunchanged: ${counts.unchanged}\n    time: ${time} seconds\n`));
+                console.log(counts);
                 process.exit(0);
             }
         },
         items = response.items;
-        inserts = items.map(i => sync.importSbProject(lcc,i)).filter(promise => !!promise);
+        let promises = items.map(i => sync.importSbProject(lcc,i));
+        counts.ignored += promises.filter(promise => !promise).length; // resolves to null if no mdJson
+        inserts = promises.filter(promise => !!promise);
 
         counts.total += items.length;
         counts.found += inserts.length;
@@ -50,7 +58,7 @@ function importOnePage(response) {
             // wait for them to complete
             Promise.all(inserts)
                 .then(inserted => {
-                    counts.imported += inserted.length;
+                    inserted.forEach(i => counts[i.$state]++);
                     next();
                 })
                 .catch(handleError);
