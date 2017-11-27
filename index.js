@@ -9,9 +9,68 @@ app.get('/',(req,res) => {
     res.send('science catalog api');
 });
 
-function fundingReport(resource,queryGen) {
+function fundingReport(fundedResource,queryGenerator) {
     return function(req,res) {
-
+        (queryGenerator ? queryGenerator(req) : Promise.resolve()).then((query) => {
+            // functions run IN mongo so can't use constants, etc.
+            // TODO consider whether the aggregation framework might
+            // not be better...
+            fundedResource.getModel().mapReduce({
+                query: query,
+                map: function() {
+                    let funding = this.mdJson.metadata.funding;
+                    if(funding) {
+                        funding.forEach(f => {
+                            f.allocation.forEach(a => {
+                                emit(a.sourceId||'?', {
+                                    count: 1,
+                                    values: [a.amount],
+                                    total: a.amount
+                                });
+                            });
+                        });
+                    }
+                },
+                reduce: function(key,values) {
+                    let nums = values.map(v => v.total);
+                    return {
+                        count: values.length,
+                        values: nums,
+                        total: Array.sum(nums)
+                    };
+                }
+            },(err,sums) => {
+                if(err) {
+                    return Resource.sendError(res,500,'Error reducing funding',err);
+                }
+                let contactIds = sums.map(o => o._id).filter(id => id !== '?');
+                fundedResource.getModel().find(Object.assign({},(query||{}),{'mdJson.contact.contactId': {$in: contactIds}}),'mdJson.contact',(err,objs) => {
+                    if(err) {
+                        return Resource.sendError(res,500,'Joining contacts',err);
+                    }
+                    let contacts = {};
+                    objs.forEach(o => {
+                        o.mdJson.contact.forEach(c => {
+                            let idx = contactIds.indexOf(c.contactId);
+                            if(idx !== -1) {
+                                contacts[c.contactId] = c;
+                                contactIds.splice(idx,1); // first one wins
+                            }
+                        });
+                    });
+                    res.send(sums.map(s => {
+                        let c = contacts[s._id];
+                        return {
+                            donor: c ? c.name||s._id : s._id,
+                            type: c ? c.contactType : undefined,
+                            total: s.value
+                        };
+                    }));
+                });
+            });
+        }).catch(err => {
+            Resource.sendError(res,500,'Error generating query.',err);
+        });
     };
 }
 
@@ -35,56 +94,9 @@ let project = new Resource({
             lcc.singleResponse(req,res,lcc_obj);
         });
     });
-})
-.staticLink('funding_report',function(req,res) {
-    // functions run IN mongo so can't use constants, etc.
-    // TODO consider whether the aggregation framework might
-    // not be better...
-    project.getModel().mapReduce({
-        map: function() {
-            let funding = this.mdJson.metadata.funding;
-            if(funding) {
-                funding.forEach(f => {
-                    f.allocation.forEach(a => {
-                        emit(a.sourceId||'?', a.amount);
-                    });
-                });
-            }
-        },
-        reduce: function(key,values) {
-            return Array.sum(values);
-        }
-    },(err,sums) => {
-        if(err) {
-            return Resource.sendError(res,500,'Error reducing funding',err);
-        }
-        let contactIds = sums.map(o => o._id).filter(id => id !== '?');
-        project.getModel().find({'mdJson.contact.contactId': {$in: contactIds}},'mdJson.contact',(err,objs) => {
-            if(err) {
-                return Resource.sendError(res,500,'Joining contacts',err);
-            }
-            let contacts = {};
-            objs.forEach(o => {
-                o.mdJson.contact.forEach(c => {
-                    let idx = contactIds.indexOf(c.contactId);
-                    if(idx !== -1) {
-                        contacts[c.contactId] = c;
-                        contactIds.splice(idx,1); // first one wins
-                    }
-                });
-            });
-            //res.send(sums);
-            res.send(sums.map(s => {
-                let c = contacts[s._id];
-                return {
-                    donor: c ? c.name||s._id : s._id,
-                    type: c ? c.contactType : undefined,
-                    total: s.value
-                };
-            }));
-        });
-    });
 });
+
+project.staticLink('funding_report',fundingReport(project));
 
 let lcc = new Resource({
     rel: '/api/lcc',
@@ -94,6 +106,17 @@ let lcc = new Resource({
     otherSide: project,
     key: '_lcc'
 });
+
+lcc.instanceLink('funding_report',fundingReport(project,(req) => {
+    return new Promise((resolve,reject) => {
+        lcc.getModel().findById(req._resourceId).exec((err,obj) => {
+            if(err) {
+                return reject(err);
+            }
+            resolve({_lcc: obj._id});
+        });
+    });
+}));
 
 
 project.initRouter(app);
