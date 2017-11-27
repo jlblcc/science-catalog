@@ -16,7 +16,8 @@ let project = new Resource({
     // query arg defaults
     $top: 5,
     $orderby: 'title',
-    $orderbyPaged: 'title'
+    $orderbyPaged: 'title',
+    count: true
 })
 .instanceLink('lcc',function(req,res) {
     this.getModel().findById(req._resourceId).exec((err,obj) => {
@@ -36,7 +37,8 @@ project.staticLink('funding_report',fundingReport(project));
 
 let lcc = new Resource({
     rel: '/api/lcc',
-    model: require('./db/models/Lcc')
+    model: require('./db/models/Lcc'),
+    count: true
 })
 .instanceLink('projects',{
     otherSide: project,
