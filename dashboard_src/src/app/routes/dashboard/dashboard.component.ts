@@ -3,6 +3,7 @@ import {Component} from '@angular/core';
     template: `
     <div class="dashboard-container">
         <lcc-table></lcc-table>
+        <project-funding-report></project-funding-report>
         <project-status-report></project-status-report>
     </div>
     `

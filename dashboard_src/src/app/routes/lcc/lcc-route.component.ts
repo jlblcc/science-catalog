@@ -5,7 +5,10 @@ import { CatalogService, LCC } from '../../providers';
 
 @Component({
     template: `<h1 *ngIf="lcc">{{lcc.title}}</h1>
-    <project-status-report [lccId]="lccId"></project-status-report>
+    <div class="dashboard-container">
+        <project-funding-report [lccId]="lccId"></project-funding-report>
+        <project-status-report [lccId]="lccId"></project-status-report>
+    </div>
     `
 })
 export class LccRouteComponent {

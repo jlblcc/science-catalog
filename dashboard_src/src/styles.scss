@@ -34,8 +34,19 @@ $app-theme: mat-light-theme($primary-palette, $accent-palette, $warn-palette);
 @import 'app/nav_components/sidebar/sidebar-theme.scss';
 @import 'app/nav_components/navbar/navbar-theme.scss';
 
+@mixin global-app-theme($theme) {
+    $primary: map-get($theme,primary);
+    $accent: map-get($theme,accent);
+    $warn: map-get($theme,warn);
+
+    a,a:visited {
+        color: mat-color($primary,darker);
+    }
+}
+
 @mixin apply-app-theme($theme) {
     // run app mixins here
+    @include global-app-theme($theme);
     @include style-preview-theme($theme);
     @include sidebar-theme($theme);
     @include navbar-theme($theme);
