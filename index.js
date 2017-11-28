@@ -1,9 +1,11 @@
 let express = require('express')
     Resource = require('odata-resource'),
+    ObjectId = require('mongodb').ObjectId,
     app = express(),
     db = require('./db')
     fundingReport = require('./lib/fundingReport'),
-    keywordReport = require('./lib/keywordReport');
+    keywordReport = require('./lib/keywordReport'),
+    statusReport = require('./lib/statusReport');
 
 app.use(require('body-parser').json());
 
@@ -43,6 +45,7 @@ Object.keys(keywordReport.VOCABULARIES).forEach(vocab_key => {
     project.staticLink(vocab_key,keywordReport.report(project,keywordReport.vocabularyQueryGenerator(vocab_key)));
 });
 project.staticLink('funding_report',fundingReport(project));
+project.staticLink('status_report',statusReport(project));
 
 let lcc = new Resource({
     rel: '/api/lcc',
@@ -80,14 +83,14 @@ lcc.find = function(req,res) {
     });
 };
 
-lcc.instanceLink('funding_report',fundingReport(project,(req) => {
+lcc.instanceLink('project_funding_report',fundingReport(project,(req) => {
     return new Promise((resolve,reject) => {
-        lcc.getModel().findById(req._resourceId).exec((err,obj) => {
-            if(err) {
-                return reject(err);
-            }
-            resolve({_lcc: obj._id});
-        });
+        resolve({_lcc: new ObjectId(req._resourceId)});
+    });
+}));
+lcc.instanceLink('project_status_report',statusReport(project,(req) => {
+    return new Promise((resolve,reject) => {
+        resolve({_lcc: new ObjectId(req._resourceId)});
     });
 }));
 
