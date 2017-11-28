@@ -1,0 +1,33 @@
+<nav class="menu side">
+
+    <div class="title-band">Science Catalog</div>
+
+    <a [routerLink]="menu.route.path" class="menu-section"><i class="fa fa-fw fa-{{menu.icon}}" aria-hidden="true"></i> {{menu.title}}</a>
+    <ul class="l1">
+        <li *ngFor="let l1 of menu.children">
+            <a [ngClass]="{
+                    'menu-section': true,
+                    'clickable': true,
+                    'expanded': l1.expanded
+                }"
+                (click)="l1.expanded = !l1.expanded">{{l1.title}}</a>
+            <ul class="l2 expandable" *ngIf="l1.children">
+                <li *ngFor="let l2 of l1.children">
+                    <a [ngClass]="{
+                            'menu-section': true,
+                            'clickable': true,
+                            'expanded': l2.expanded
+                        }"
+                        (click)="l2.expanded = !l2.expanded">{{l2.title}}</a>
+                    <ul class="l3 expandable">
+                        <li *ngFor="let l3 of l2.children">
+                            <a [routerLink]="l3.route.path" [ngClass]="{
+                                'active': active && active.route.path === l3.route.path
+                            }"><i class="fa fa-fw fa-{{l3.icon}}" aria-hidden="true"></i> {{l3.title}}</a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</nav>

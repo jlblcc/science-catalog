@@ -1,0 +1,34 @@
+@import '~@angular/material/theming';
+
+@mixin style-preview-theme($theme) {
+    $primary: map-get($theme,primary);
+    $accent: map-get($theme,accent);
+    $warn: map-get($theme,warn);
+
+    @mixin style-preview-palette($palette,$label) {
+        .swatch {
+            $swatches: 'default' 'lighter' 'darker' 50 100 200 300 400 500 600 700 800 900;
+            // 'A100' 'A200' 'A300' 'A400' 'A700';
+            @each $swatch in $swatches {
+                &.s_#{$swatch} {
+                    background-color: mat-color($palette,$swatch);
+                    &:before {
+                        content: '#{mat-color($palette,$swatch)}';
+                    }
+                }
+            }
+        }
+    }
+
+    style-palette {
+        &.primary {
+            @include style-preview-palette($primary,'Primary');
+        }
+        &.accent {
+            @include style-preview-palette($accent,'Accent');
+        }
+        &.warn {
+            @include style-preview-palette($warn,'Warn');
+        }
+    }
+}

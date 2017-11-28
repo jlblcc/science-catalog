@@ -1,2 +1,4 @@
 node_modules
 files
+# at least for now ignore the compiled app
+/app

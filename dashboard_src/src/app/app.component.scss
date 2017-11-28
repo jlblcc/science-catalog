@@ -1,0 +1,18 @@
+:host,
+mat-sidenav-container,
+mat-sidenav {
+    height: 100%;
+}
+mat-sidenav {
+    width: 300px;
+}
+
+$navbar-height: 64px;
+$dashboard-content-margin: 20px;
+$navbar-plus-margins: $navbar-height + (2 * $dashboard-content-margin);
+.dashboard-content {
+    margin: $dashboard-content-margin;
+    //border: 1px solid red;
+    height: calc(100% - #{$navbar-plus-margins});
+    overflow-y: auto;
+}
