@@ -10,6 +10,7 @@ lccs=(
 "4f6a2afce4b0e7aaea01dbc8=GN"
 "4f6a3d64e4b0e7aaea01dbfb=NP"
 "50367466e4b06c3b908a67dd=GB"
+"4f4e4773e4b07f02db47e248=D"
 )
 
 for lcc in "${lccs[@]}"
