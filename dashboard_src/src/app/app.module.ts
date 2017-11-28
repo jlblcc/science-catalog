@@ -15,6 +15,7 @@ import { StylePreviewModule } from './style_preview';
 import { NavComponentsModule } from './nav_components';
 
 import { DashboardComponentsModule } from './routes/dashboard';
+import { LccRouteComponentModule } from './routes/lcc';
 
 @NgModule({
   declarations: [
@@ -31,7 +32,8 @@ import { DashboardComponentsModule } from './routes/dashboard';
     StylePreviewModule,
     NavComponentsModule,
     // route modules
-    DashboardComponentsModule
+    DashboardComponentsModule,
+    LccRouteComponentModule
   ],
   providers: [],
   bootstrap: [AppComponent]

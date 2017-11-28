@@ -13,7 +13,9 @@ import {CatalogService,LCCListDataSource} from '../../providers';
             <mat-table #table [dataSource]="lccs" matSort>
               <ng-container matColumnDef="title">
                 <mat-header-cell *matHeaderCellDef mat-sort-header> Title </mat-header-cell>
-                <mat-cell *matCellDef="let lcc"> {{lcc.title}} </mat-cell>
+                <mat-cell *matCellDef="let lcc">
+                <a [routerLink]="'/lcc/'+lcc._id">{{lcc.title}}</a>
+                </mat-cell>
               </ng-container>
 
               <ng-container matColumnDef="_id">

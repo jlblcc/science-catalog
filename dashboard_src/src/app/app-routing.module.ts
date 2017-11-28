@@ -4,6 +4,7 @@ import { Route, Routes, RouterModule } from '@angular/router';
 import { StylePreviewComponent } from './style_preview';
 
 import { DashboardComponent } from './routes/dashboard';
+import { LccRouteComponent } from './routes/lcc';
 
 export class MenuItem {
     title: string;
@@ -97,6 +98,10 @@ const routes: Routes = [{
     component: DashboardComponent
 },
 DASHBOARD_ROUTE,
+{
+    path: 'lcc/:lccId',
+    component: LccRouteComponent
+},
 STYLES_ROUTE];
 
 @NgModule({

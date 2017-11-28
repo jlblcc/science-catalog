@@ -4,12 +4,29 @@ import {DataSource} from '@angular/cdk/collections';
 import {Observable} from 'rxjs/Observable';
 
 import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/toPromise';
 
 const API_ROOT = '/api/';
 
 @Injectable()
 export class CatalogService {
+    fetchedLccs = {};
+
     constructor(private http:HttpClient) {}
+
+    lcc(lccId:string):Promise<LCC> {
+        return this.fetchedLccs[lccId] ?
+            Promise.resolve(this.fetchedLccs[lccId]) :
+            new Promise((resolve,reject) => {
+                this.http.get(`${API_ROOT}lcc/${lccId}`)
+                    .toPromise()
+                    .then((lcc:LCC) => {
+                        resolve(this.fetchedLccs[lccId] = lcc);
+
+                    })
+                    .catch(reject);
+            });
+    }
 
     lccs():Observable<LCC[]> {
         return this.http.get<LCCListResponse>(`${API_ROOT}lcc`).map(response => response.list.map(lcc => {
