@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {DataSource} from '@angular/cdk/collections';
 import {Observable} from 'rxjs/Observable';
-import 'rxjs/add/observable/of';
 
 import 'rxjs/add/operator/map';
 
@@ -21,6 +20,22 @@ export class CatalogService {
 
     lccsDataSource():LCCListDataSource {
         return new LCCListDataSource(this);
+    }
+
+    private projectReport(report:string,lccid?:string):Observable<any> {
+        // building URLs feels like bad form...
+        let url = lccid ?
+            `${API_ROOT}lcc/${lccid}/${report}` :
+            `${API_ROOT}project/${report}`;
+        return this.http.get(url);
+    }
+
+    projectStatusReport(lccid?:string):Observable<any> {
+        return this.projectReport(lccid ?  'project_status_report' : 'status_report',lccid);
+    }
+
+    projectFundingReport(lccid?:string):Observable<any> {
+        return this.projectReport(lccid ?  'project_funding_report' : 'funding_report',lccid);
     }
 }
 

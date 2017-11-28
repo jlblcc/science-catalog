@@ -43,3 +43,15 @@ $app-theme: mat-light-theme($primary-palette, $accent-palette, $warn-palette);
 
 @include angular-material-theme($app-theme);
 @include apply-app-theme($app-theme);
+
+.dashboard-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    align-content: flex-start;
+    >* {
+        margin: 0px 10px 10px 0px;
+    }
+}
