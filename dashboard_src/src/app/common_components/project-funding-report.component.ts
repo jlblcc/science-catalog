@@ -40,6 +40,9 @@ import { CatalogService, LCC } from '../providers';
     </mat-card>
     `,
     styles:[`
+        :host {
+            flex-basis: 100%;
+        }
         ul {
             list-style: none;
             padding: 0px;

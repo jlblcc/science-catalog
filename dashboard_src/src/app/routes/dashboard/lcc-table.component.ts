@@ -39,7 +39,12 @@ import {CatalogService,LCCListDataSource} from '../../providers';
               <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
             </mat-table>
         </mat-card-content>
-    </mat-card>`
+    </mat-card>`,
+    styles: [`
+        :host {
+            flex-basis: 100%;
+        }
+    `]
 })
 export class LccTableComponent {
     displayedColumns = ['title','_id','projectCount','lastSync'];
