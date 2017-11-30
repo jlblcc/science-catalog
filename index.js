@@ -10,10 +10,6 @@ let express = require('express')
 app.use(require('body-parser').json());
 
 app.use(express.static('app'));
-/*
-app.get('/',(req,res) => {
-    res.send('science catalog api');
-});*/
 
 let project = new Resource({
     rel: '/api/project',

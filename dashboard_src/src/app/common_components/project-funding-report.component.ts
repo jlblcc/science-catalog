@@ -28,6 +28,11 @@ import { CatalogService, LCC } from '../providers';
                 <mat-cell *matCellDef="let row"> {{row.allocations}}</mat-cell>
               </ng-container>
 
+              <ng-container matColumnDef="recipients">
+                <mat-header-cell *matHeaderCellDef mat-sort-header> Recipients </mat-header-cell>
+                <mat-cell *matCellDef="let row"> {{row.recipients}}</mat-cell>
+              </ng-container>
+
               <ng-container matColumnDef="total">
                 <mat-header-cell *matHeaderCellDef mat-sort-header> Total </mat-header-cell>
                 <mat-cell *matCellDef="let row"> {{row.total | currency}}</mat-cell>
@@ -64,7 +69,7 @@ export class ProjectFundingReportComponent {
     totalFunding:number;
     dataSource:FundingReportDataSource;
 
-    displayedColumns = ['name','allocations','total'];
+    displayedColumns = ['name','allocations','recipients','total'];
 
     constructor(private catalog:CatalogService) {}
 
@@ -77,6 +82,15 @@ export class ProjectFundingReportComponent {
                     return {
                         name: row.contact.name,
                         allocations: row.allocations.length,
+                        recipients: row.allocations.reduce(function(list,a) {
+                            if(a.recipient) {
+                                var id = a.recipient.id||'?';
+                                if(list.indexOf(id) === -1) {
+                                    list.push(id);
+                                }
+                            }
+                            return list;
+                        },[]).length,
                         total: row.total
                     };
                 });
