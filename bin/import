@@ -13,6 +13,7 @@ process.on('uncaughtException', handleError);
 command.version('0.0.0')
     .option('-r --root <root>','The sciencebase folder id to import items from (LCC id from LC Map).')
     .option('-q --quiet','Turn off any console logging')
+    .option('--force','Force updates regardless of whether mdJson has changed')
     .option('--randMod','Turn on random mdJson modification for testing udpates.')
     .parse(process.argv);
 
@@ -23,6 +24,7 @@ if(!command.root) {
 db().then(() => {
     (new LccSync(command.root))
         .quiet(command.quiet)
+        .force(command.force)
         .randMod(command.randMod)
         .sync()
         .then(counts => {

@@ -9,5 +9,6 @@ module.exports = function() {
         created: {type: Date, required: true},
         modified: {type: Date, required: true},
         mdJson: mongoose.Schema.Types.Mixed,
+        simplified: mongoose.Schema.Types.Mixed
     }/*,{strict: false}*/);
 };

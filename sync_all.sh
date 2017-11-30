@@ -18,5 +18,5 @@ do
     sbid=`echo $lcc | sed "s/=.*$//g"`
     title=`echo $lcc | sed "s/.*=//g"`
     echo $title
-    ./bin/import --root $sbid
+    ./bin/import --root $sbid --force
 done

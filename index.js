@@ -40,9 +40,15 @@ let project = new Resource({
 
 project.staticLink('vocabularies',keywordReport.vocabularyReport(project));
 project.staticLink('keyword_types',keywordReport.keywordTypeReport(project));
+/*
 project.staticLink('keywords',keywordReport.report(project));
 Object.keys(keywordReport.VOCABULARIES).forEach(vocab_key => {
     project.staticLink(vocab_key,keywordReport.report(project,keywordReport.vocabularyQueryGenerator(vocab_key)));
+});
+*/
+project.staticLink('keywords',keywordReport.simpleReport(project));
+Object.keys(keywordReport.SIMPLE_VOCABULARIES).forEach(vocab_key => {
+    project.staticLink(vocab_key,keywordReport.simpleReport(project,keywordReport.SIMPLE_VOCABULARIES[vocab_key]));
 });
 project.staticLink('funding_report',fundingReport(project));
 project.staticLink('status_report',statusReport(project));
