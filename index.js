@@ -11,9 +11,9 @@ app.use(require('body-parser').json());
 
 app.use(express.static('app'));
 
-let project = new Resource({
-    rel: '/api/project',
-    model: require('./db/models/Project'),
+let item = new Resource({
+    rel: '/api/item',
+    model: require('./db/models/Item'),
     // query arg defaults
     $top: 5,
     $orderby: 'title',
@@ -34,31 +34,47 @@ let project = new Resource({
     });
 });
 
-project.staticLink('vocabularies',keywordReport.vocabularyReport(project));
-project.staticLink('keyword_types',keywordReport.keywordTypeReport(project));
+item.staticLink('vocabularies',keywordReport.vocabularyReport(item));
+item.staticLink('keyword_types',keywordReport.keywordTypeReport(item));
+item.staticLink('contact_types',function(req,res) {
+    this.getModel().distinct('mdJson.contact.contactType',function(err,types){
+        if(err) {
+            return Resource.sendError(res,500,'error getting contact types',err);
+        }
+        res.send(types);
+    });
+})
 /*
-project.staticLink('keywords',keywordReport.report(project));
+item.staticLink('keywords',keywordReport.report(item));
 Object.keys(keywordReport.VOCABULARIES).forEach(vocab_key => {
-    project.staticLink(vocab_key,keywordReport.report(project,keywordReport.vocabularyQueryGenerator(vocab_key)));
+    item.staticLink(vocab_key,keywordReport.report(item,keywordReport.vocabularyQueryGenerator(vocab_key)));
 });
 */
-project.staticLink('keywords',keywordReport.simpleReport(project));
+item.staticLink('keywords',keywordReport.simpleReport(item));
 Object.keys(keywordReport.SIMPLE_VOCABULARIES).forEach(vocab_key => {
-    project.staticLink(vocab_key,keywordReport.simpleReport(project,keywordReport.SIMPLE_VOCABULARIES[vocab_key]));
+    item.staticLink(vocab_key,keywordReport.simpleReport(item,keywordReport.SIMPLE_VOCABULARIES[vocab_key]));
 });
-project.staticLink('funding_report',fundingReport(project));
-project.staticLink('status_report',statusReport(project));
+item.staticLink('funding_report',fundingReport(item));
+item.staticLink('status_report',statusReport(item));
+item.staticLink('resource_types',function(req,res){
+    this.getModel().distinct('mdJson.metadata.resourceInfo.resourceType.type',function(err,types){
+        if(err){
+            return Resource.sendError(res,500,'error getting types',err);
+        }
+        res.send(types);
+    });
+});
 
 let lcc = new Resource({
     rel: '/api/lcc',
     model: require('./db/models/Lcc'),
     count: true
 })
-.instanceLink('projects',{
-    otherSide: project,
+.instanceLink('items',{
+    otherSide: item,
     key: '_lcc'
 });
-// replace find to add project counts
+// replace find to add item counts
 // only works for find, not any of the item based responses.
 lcc.find = function(req,res) {
     var self = this,
@@ -68,7 +84,7 @@ lcc.find = function(req,res) {
         if(err){
             Resource.sendError(res,500,'find failed',err);
         } else {
-            project.getModel().aggregate([
+            item.getModel().aggregate([
                 {$match: { _lcc: {$in: objs.map(o => o._id)}}},
                 {$group: { _id: "$_lcc", count: {$sum : 1}}}
             ],function(err,result){
@@ -77,7 +93,7 @@ lcc.find = function(req,res) {
                     return map;
                 },{});
                 self._findListResponse(req,res,objs.map(o => {
-                    o.projectCount = counts[o._id];
+                    o.itemCount = counts[o._id];
                     return o;
                 }));
             })
@@ -85,19 +101,19 @@ lcc.find = function(req,res) {
     });
 };
 
-lcc.instanceLink('project_funding_report',fundingReport(project,(req) => {
+lcc.instanceLink('item_funding_report',fundingReport(item,(req) => {
     return new Promise((resolve,reject) => {
         resolve({_lcc: new ObjectId(req._resourceId)});
     });
 }));
-lcc.instanceLink('project_status_report',statusReport(project,(req) => {
+lcc.instanceLink('item_status_report',statusReport(item,(req) => {
     return new Promise((resolve,reject) => {
         resolve({_lcc: new ObjectId(req._resourceId)});
     });
 }));
 
 
-project.initRouter(app);
+item.initRouter(app);
 lcc.initRouter(app);
 
 db().then(() => {

@@ -43,16 +43,16 @@ export class CatalogService {
         // building URLs feels like bad form...
         let url = lccid ?
             `${API_ROOT}lcc/${lccid}/${report}` :
-            `${API_ROOT}project/${report}`;
+            `${API_ROOT}item/${report}`;
         return this.http.get(url);
     }
 
     projectStatusReport(lccid?:string):Observable<any> {
-        return this.projectReport(lccid ?  'project_status_report' : 'status_report',lccid);
+        return this.projectReport(lccid ?  'item_status_report' : 'status_report',lccid);
     }
 
     projectFundingReport(lccid?:string):Observable<any> {
-        return this.projectReport(lccid ?  'project_funding_report' : 'funding_report',lccid);
+        return this.projectReport(lccid ?  'item_funding_report' : 'funding_report',lccid);
     }
 }
 
