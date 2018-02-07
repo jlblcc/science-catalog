@@ -7,6 +7,11 @@ let mongoose = require('mongoose'),
         time: {type: Date, required: true},
         message: {type: String, required: true},
         code: {type: String, required: false},
+    },{
+        capped: {
+            size:(500*1024*1024) // 500Mb to start, not sure what's reasonable
+            //max: <doc count>, autoIndexId: true
+        }
     }),
     SyncPipelineProcessorLog = mongoose.model('SyncPipelineProcessorLog',schema);
 

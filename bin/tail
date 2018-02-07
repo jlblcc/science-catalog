@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+
+let command = require('commander'),
+    db = require('../db'),
+    log = require('../lib/log'),
+    chalk = require('chalk'),
+    handleError = (err) => {
+        console.error(err);
+        process.exit(1);
+    };
+
+process.on('uncaughtException', handleError);
+
+command.version('0.0.0')
+    .option('-c --criteria <criteria>','Parseable JSON criteria.')
+    .parse(process.argv);
+
+let criteria = command.criteria ? JSON.parse(command.criteria) : undefined;
+const COLORS = {
+    info: 'green',
+    error: 'red',
+    warn: 'yellow',
+    debug: 'blue'
+};
+let timeFmt = (date) => {
+    let s = JSON.stringify(date);
+    return s.substring(1,s.length-1);
+}
+
+db().then(() => {
+    log.tail(criteria).on('message',(m) => {
+            let color = COLORS[m.type];
+            console[m.type](chalk[color](`[${m.type}][${m.processorId}]`)+`:${timeFmt(m.time)}:${m.message}`);
+        }).start();
+}).catch(handleError);

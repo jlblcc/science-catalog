@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+
+// just for testing purposes
+
+let command = require('commander'),
+    db = require('../db'),
+    log = require('../lib/log'),
+    handleError = (err) => {
+        console.error(err);
+        process.exit(1);
+    };
+
+process.on('uncaughtException', handleError);
+
+command.version('0.0.0')
+    .option('-p --pid <pid>','The processor id to log with.')
+    .option('-m --message <message>','The message to log.')
+    .option('-t --type <type>','The log message function to call (default info).')
+    .parse(process.argv);
+
+if(!command.pid || !command.message) {
+    command.help();
+}
+
+db().then(() => {
+    let logger = log.newLogger(command.pid),
+        type = command.type||'info';
+    logger[type](command.message).then(() => process.exit(0));
+}).catch(handleError);

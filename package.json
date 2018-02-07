@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "watch": "nodemon --ignore app --ignore dashboard_src index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "jsdoc": "jsdoc -d doc -r index.js db lib"
   },
   "author": "paul@djcase.com",
   "license": "MIT",
