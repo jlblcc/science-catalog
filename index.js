@@ -34,7 +34,7 @@ let item = new Resource({
     });
 });
 
-item.staticLink('vocabularies',keywordReport.vocabularyReport(item));
+item.staticLink('keyword_thesauruses',keywordReport.vocabularyReport(item));
 item.staticLink('keyword_types',keywordReport.keywordTypeReport(item));
 item.staticLink('contact_types',function(req,res) {
     this.getModel().distinct('mdJson.contact.contactType',function(err,types){
