@@ -4,3 +4,4 @@ files
 /app
 # during dev ignore documentation
 /doc
+dist
