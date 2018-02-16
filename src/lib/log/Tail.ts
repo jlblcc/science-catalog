@@ -1,4 +1,5 @@
-import { SyncPipelineProcessorLog } from '../../db/models';
+import { SyncPipelineProcessorLog, SyncPipelineProcessorLogMessage } from '../../db/models';
+import { QueryCursor } from 'mongoose';
 import { EventEmitter } from 'events';
 
 /**
@@ -13,6 +14,7 @@ import { EventEmitter } from 'events';
  * arrived before the tail was started.
  */
 export class Tail extends EventEmitter {
+    private cursor:QueryCursor<any>;
     private criteria:any;
 
     /**
@@ -31,9 +33,21 @@ export class Tail extends EventEmitter {
      * @returns `this`
      */
     start():Tail {
-        SyncPipelineProcessorLog.find(this.criteria)
+        this.cursor = SyncPipelineProcessorLog.find(this.criteria)
             .tailable().cursor()
             .on('data',(message) => this.emit('message',message));
+        return this;
+    }
+
+    /**
+     * Stops the tail.
+     *
+     * @returns `this`
+     */
+    stop():Tail {
+        if(this.cursor) {
+            this.cursor.close();
+        }
         return this;
     }
 }

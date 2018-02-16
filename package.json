@@ -14,6 +14,8 @@
   "license": "MIT",
   "dependencies": {
     "@types/mocha": "^2.2.48",
+    "@types/mongodb": "^3.0.5",
+    "@types/mongoose": "^5.0.2",
     "@types/node": "^9.4.6",
     "body-parser": "^1.18.2",
     "chalk": "^2.3.0",

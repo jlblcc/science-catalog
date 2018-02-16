@@ -4,7 +4,7 @@ import * as dbg from 'debug';
 const debug = dbg('db');
 
 // use standard es6 promises
-mongoose.Promise = Promise;
+(<any>mongoose).Promise = Promise;
 
 /**
  * Establishes the database connection.
