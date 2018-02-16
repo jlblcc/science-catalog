@@ -56,7 +56,8 @@ export abstract class SyncPipelineProcessor extends EventEmitter {
             processorId: this.processorId
         },{
             processorId: this.processorId,
-            lastStart: new Date()
+            lastStart: new Date(),
+            lastComplete: null
         },UPSERT_OPTIONS,(err,o) => {
             if(err) {
                 return this.emit('error',err);
@@ -66,7 +67,12 @@ export abstract class SyncPipelineProcessor extends EventEmitter {
                 if(err) {
                     return this.emit('error',err); // TODO not right type
                 }
-                this.emit('complete',simplifySyncPipelineEntryDocument(o));
+                let simple = simplifySyncPipelineEntryDocument(o);
+                if(o.results && o.results.error) {
+                    this.emit('error',simple);
+                } else {
+                    this.emit('complete',simple);
+                }
             };
             this.run()
                 .then(output => {

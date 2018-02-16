@@ -3,6 +3,10 @@ import { SyncPipelineProcessorEntryIfc } from '../../db/models';
 import * as child_process from 'child_process';
 import * as path from 'path';
 
+import * as dbg from 'debug';
+
+const debug = dbg('SyncPipelineManager');
+
 /**
  * Defines a single step in the sync pipeline.
  */
@@ -12,25 +16,44 @@ export interface SyncPipelineStep {
     config?: any;
 }
 
+/**
+ * Class responsible for managing the execution of the sync pipeline.  An instance
+ * of this class simply loads and runs steps and passes along the results.
+ */
 export class SyncPipelineManager {
+    /**
+     * Construct a new SyncPipelineManager.
+     *
+     * @param pipeline The list of steps to be run.
+     * @param fork Whether the steps should be run each in their own process.
+     */
     constructor(private pipeline:SyncPipelineStep[],private fork:boolean = false) {}
 
+    /**
+     * The resulting promise will be resolved or rejected with a SyncPipelineProcessorEntryIfc[].
+     * If resolved then all steps succeeded.  If rejected then the array will contain all
+     * successful steps and the last element will be an error.  Its results object will contain
+     * an `error` key containing the message and stack trace of what went wrong.
+     */
     run():Promise<SyncPipelineProcessorEntryIfc[]> {
         return new Promise((resolve,reject) => {
-            this.pipeline.reverse(); // using pop
+            let steps = this.pipeline
+                .slice(0) // don't be destructive
+                .reverse() // using pop
             let results:SyncPipelineProcessorEntryIfc[] = [],
                 next = () => {
-                    if(!this.pipeline.length) {
+                    if(!steps.length) {
                         return resolve(results);
                     }
                     // run the next step
-                    this.loadStep(this.pipeline.pop())
+                    this.loadStep(steps.pop())
                         .on('complete',output => {
                             results.push(output);
                             next();
                         })
                         .on('error',err => {
-                            reject(err);
+                            results.push(err);
+                            reject(results);
                         }).start();
                 };
             next();
@@ -60,17 +83,16 @@ class StepRunnerMonitor extends SyncPipelineProcessor {
      * Override start and alter the behavior to run the step in a separate process.
      */
     start():void {
+        debug(`forking ${__dirname}${path.sep}SyncPipelineStepRunner.js with`,this.step);
         const child = child_process.fork(`${__dirname}${path.sep}SyncPipelineStepRunner.js`,[JSON.stringify(this.step)]);
         // just pass along the child messages
         child.on('message',message => {
-            if(message.key === 'complete') {
-                // need to reconstitute dates from JSON transmitted via IPC
-                if(message.data.lastStart) {
-                    message.data.lastStart = new Date(message.data.lastStart);
-                }
-                if(message.data.lastComplete) {
-                    message.data.lastComplete = new Date(message.data.lastComplete);
-                }
+            // need to reconstitute dates from JSON transmitted via IPC
+            if(message.data.lastStart) {
+                message.data.lastStart = new Date(message.data.lastStart);
+            }
+            if(message.data.lastComplete) {
+                message.data.lastComplete = new Date(message.data.lastComplete);
             }
             this.emit(message.key,message.data)
         });

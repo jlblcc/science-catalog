@@ -1,4 +1,4 @@
-import { SyncPipelineProcessorLog, SyncPipelineProcessorLogMessage } from '../../db/models';
+import { SyncPipelineProcessorLog } from '../../db/models';
 import { QueryCursor } from 'mongoose';
 import { EventEmitter } from 'events';
 

@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+
+let command = require('commander'),
+    db = require('../dist/db').db,
+    path = require('path'),
+    SyncPipelineManager = require('../dist/lib/sync/SyncPipelineManager').SyncPipelineManager,
+    handleError = (err) => {
+        console.error(err);
+        process.exit(1);
+    };
+
+process.on('uncaughtException', handleError);
+
+command.version('1.0.0')
+    .option('-p --pipeline <file>','The pipeline configuration')
+    .option('-f --fork','Whether to run the pipeline in process or in separate processes.')
+    .parse(process.argv);
+
+if(!command.pipeline) {
+    command.help();
+}
+let steps = require(path.join(process.cwd(),command.pipeline));
+
+db().then(() => {
+    (new SyncPipelineManager(steps,command.fork)).run()
+        .then(results => {
+            console.log();
+            console.log(JSON.stringify(results,null,2));
+            console.log('done');
+            process.exit(0);
+        }).catch(handleError);
+}).catch(handleError);
