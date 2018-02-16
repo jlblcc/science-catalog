@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 let command = require('commander'),
-    db = require('../db'),
-    log = require('../lib/log'),
+    db = require('../dist/db').db,
+    Tail = require('../dist/lib/log').Tail,
     chalk = require('chalk'),
+    moment = require('moment'),
     handleError = (err) => {
         console.error(err);
         process.exit(1);
@@ -20,16 +21,12 @@ const COLORS = {
     info: 'green',
     error: 'red',
     warn: 'yellow',
-    debug: 'blue'
+    debug: 'magenta'
 };
-let timeFmt = (date) => {
-    let s = JSON.stringify(date);
-    return s.substring(1,s.length-1);
-}
 
 db().then(() => {
-    log.tail(criteria).on('message',(m) => {
+    (new Tail(criteria)).on('message',(m) => {
             let color = COLORS[m.type];
-            console[m.type](chalk[color](`[${m.type}][${m.processorId}]`)+`:${timeFmt(m.time)}:${m.message}`);
+            console[m.type](chalk[color](`[${m.type}][${m.processorId}]`)+`:${moment(m.time).format("MM/DD/YY HH:mm:ss")}:${m.message}`);
         }).start();
 }).catch(handleError);

@@ -3,8 +3,8 @@
 // just for testing purposes
 
 let command = require('commander'),
-    db = require('../db'),
-    log = require('../lib/log'),
+    db = require('../dist/db').db,
+    Logger = require('../dist/lib/log').Logger,
     handleError = (err) => {
         console.error(err);
         process.exit(1);
@@ -23,7 +23,7 @@ if(!command.pid || !command.message) {
 }
 
 db().then(() => {
-    let logger = log.newLogger(command.pid),
+    let logger = new Logger(command.pid),
         type = command.type||'info';
     logger[type](command.message).then(() => process.exit(0));
 }).catch(handleError);
