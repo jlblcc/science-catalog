@@ -12,8 +12,6 @@ const UPSERT_OPTIONS = {
     new: true
 };
 
-
-
 /**
  * For a given sync keeps track of item counts for a single lcc.
  */
@@ -118,7 +116,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                                 this.log.debug(`Pausing ${pause/1000} seconds between LCC syncs.`);
                             }
                             setTimeout(() => this.lccSync(lcc).then(next).catch(reject),pause);
-
                         }).catch(reject);
                 };
             next();
