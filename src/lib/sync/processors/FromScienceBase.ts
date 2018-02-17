@@ -89,8 +89,6 @@ export enum FromScienceBaseLogCodes {
  *
  * @todo Support sync of `product` as well as `project`
  * @todo Handle deleted items from sciencebase
- * @todo verify created/modified are managed properly by mongoose (and remove commented out code).
- * @todo fix missing update of LCC `lastSync`
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     run():Promise<SyncPipelineProcessorResults<ItemCounts[]>> {
@@ -263,21 +261,15 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         }
                     }
                     let sha1 = crypto.createHash('sha1'),
-                        catalog_item,
-                        mdJson = JSON.parse(json),
-                        now = new Date();
+                        mdJson = JSON.parse(json);
                     sha1.update(json);
-                    catalog_item = {
+                    let catalog_item = {
                         _id: new ObjectId(item.id),
                         _lcc: lcc._id,
                         title: item.title,
                         scType: ScType.PROJECT,
-                        /* TODO verify created/modified are managed properly by mongoose
-                        created: now,
-                        modified: now,*/
                         hash: sha1.digest('hex'),
                         mdJson: mdJson,
-                        //simplified: this._simplify(mdJson)
                     };
 
                     Item.findById(catalog_item._id,(err,existing) => {
@@ -285,11 +277,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                             return reject(err);
                         }
                         if(this.config.force || !existing || existing.hash !== catalog_item.hash) {
-                            /** TODO verify created/modified are managed properly by mongoose
-                            if(existing) { // update
-                                // retain the original create stamp
-                                catalog_item.created = existing.created;
-                            } // else create */
                             Item.findOneAndUpdate({
                                 _id: catalog_item._id
                             },catalog_item,UPSERT_OPTIONS,(err,o) => {
