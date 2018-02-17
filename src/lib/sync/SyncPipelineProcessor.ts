@@ -69,8 +69,7 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
             processorId: this.processorId
         },{
             processorId: this.processorId,
-            lastStart: new Date(),
-            lastComplete: null
+            lastStart: new Date()
         },UPSERT_OPTIONS,(err,o) => {
             if(err) {
                 return this.emit('error',err);
