@@ -5,4 +5,4 @@ files
 # during dev ignore documentation
 /doc
 dist
-pipeline.json
+pipeline*.json
