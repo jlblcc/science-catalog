@@ -1,3 +1,6 @@
+/**
+ * Basic tests fo the SyncPipelineManager executing pipelines
+ */
 import { db } from '../../db';
 import { SyncPipelineProcessorEntryIfc } from '../../db/models';
 import { SyncPipelineManager, SyncPipelineStep } from './SyncPipelineManager';

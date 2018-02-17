@@ -1,17 +1,38 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
+import { ObjectId } from 'mongodb';
+
+export enum ScType {
+   PROJECT = 'project',
+   PRODUCT = 'product'
+};
 
 /**
- * Item schema.
- *
- * - `_lcc`: Reference to the corresponding Lcc.
- * - scType: Science-catalog type.  Either `project` or `product`.
- * - title: The item title.
- * - hash: A SHA-1 hash of the contents of `mdJson` to determine when the source has changed.
- * - created : The create timestamp.
- * - modified: The modified timestamp.
- * - mdJson: The mdJson document.
- * - simplified: The simplified version of the mdJson document.
+ * Exposes the Item schema.
  */
+export interface ItemIfc {
+    /** Reference to the corresponding Lcc */
+    _lcc: ObjectId | string;
+    /** The type of item */
+    scType: ScType;
+    /** The item's title */
+    title: string;
+    /** The SHA-1 hash of the contents of `mdJson` to determine when the source has changed */
+    hash: string;
+    /** The create timestamp */
+    created: Date;
+    /** The modified timestamp */
+    modified: Date;
+    /** The `mdJson` document */
+    mdJson: any;
+    /** The simplified version of the `mdJson` document */
+    simplified?: any;
+}
+
+/**
+ * Unions ItemIfc with Mongoose Document.
+ */
+export interface ItemDoc extends ItemIfc, Document {}
+
 const schema = new Schema({
         _lcc: {type: Schema.Types.ObjectId, ref: 'Lcc', required: true},
         scType: {type: String, required: true, enum:['project','product']},
@@ -29,6 +50,6 @@ const schema = new Schema({
     });
 
 /**
- * The Item model
+ * Item model.
  */
-export const Item = model('Item',schema,'Item');
+export const Item = model<ItemDoc>('Item',schema,'Item');

@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { Logger } from '../log';
 import { SyncPipelineProcessorEntry,
          SyncPipelineProcessorEntryIfc,
-         SyncPipelineProcessorEntryDocumentIfc,
+         SyncPipelineProcessorEntryDoc,
          simplifySyncPipelineEntryDocument } from '../../db/models';
 
 const UPSERT_OPTIONS = {
@@ -21,6 +21,14 @@ export interface SyncPipelineProcessorResults {
 }
 
 /**
+ * Base interface for a concrete SyncPipelineProcessor implementation.
+ *
+ * This forces a processor implementation to accurately document all of its
+ * configuration options (if it has any).
+ */
+export interface SyncPipelineProcessorConfig {}
+
+/**
  * The base class for a SyncPipelineProcessor implementation.
  *
  * Emits the following events.
@@ -33,18 +41,21 @@ export interface SyncPipelineProcessorResults {
  *
  * @todo what's the best complete payload?
  */
-export abstract class SyncPipelineProcessor extends EventEmitter {
+export abstract class SyncPipelineProcessor<T extends SyncPipelineProcessorConfig> extends EventEmitter {
     protected log:Logger;
-    protected procEntry:SyncPipelineProcessorEntryDocumentIfc;
+    protected procEntry:SyncPipelineProcessorEntryDoc;
+    protected results:SyncPipelineProcessorResults = {};
+    protected config:T;
 
     /**
      * Constructs the new processor.
      *
      * @param processorId The processorId.
      */
-    constructor(public processorId:string,protected config:any){
+    constructor(public processorId:string,config:any){
         super();
         this.log = new Logger(processorId);
+        this.config = config as T;
     }
 
     /**
@@ -62,8 +73,8 @@ export abstract class SyncPipelineProcessor extends EventEmitter {
             if(err) {
                 return this.emit('error',err);
             }
-            this.procEntry = o as SyncPipelineProcessorEntryDocumentIfc;
-            const onSave = (err,o:SyncPipelineProcessorEntryDocumentIfc) => {
+            this.procEntry = o as SyncPipelineProcessorEntryDoc;
+            const onSave = (err,o:SyncPipelineProcessorEntryDoc) => {
                 if(err) {
                     return this.emit('error',err); // TODO not right type
                 }
@@ -94,5 +105,9 @@ export abstract class SyncPipelineProcessor extends EventEmitter {
         });
     }
 
+    /**
+     * Execute the logic for this processor.  Implementations must not
+     * emit any events and must reject with an Error (or throw one).
+     */
     protected abstract run():Promise<SyncPipelineProcessorResults>;
 }

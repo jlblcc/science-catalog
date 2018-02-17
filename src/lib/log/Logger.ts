@@ -11,6 +11,8 @@ export interface LogAdditions {
      _item?: ObjectId | string;
      /** An opaque string that can be used during log analysis. */
      code?: string;
+     /** Arbitrary data to be attached. */
+     data?: any;
 }
 
 /**

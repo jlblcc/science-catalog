@@ -1,3 +1,6 @@
+/**
+ * Gets the API server running...
+ */
 import {db} from './db';
 import app from './Server';
 

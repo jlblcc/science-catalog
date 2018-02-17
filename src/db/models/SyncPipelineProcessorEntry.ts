@@ -1,5 +1,8 @@
 import { Schema, model, Document } from 'mongoose';
 
+/**
+ * Exposes the SyncPipelineProcessorEntry schema
+ */
 export interface SyncPipelineProcessorEntryIfc {
     processorId: string;
     lastStart: Date;
@@ -8,8 +11,10 @@ export interface SyncPipelineProcessorEntryIfc {
     data?: any;
 }
 
-export interface SyncPipelineProcessorEntryDocumentIfc extends SyncPipelineProcessorEntryIfc,Document {
-}
+/**
+ * Unions SyncPipelineProcessorEntryIfc with Mongoose Document.
+ */
+export interface SyncPipelineProcessorEntryDoc extends SyncPipelineProcessorEntryIfc,Document {}
 
 /**
  * Given a full fledged mongoose document returns a plain object.
@@ -20,7 +25,7 @@ export interface SyncPipelineProcessorEntryDocumentIfc extends SyncPipelineProce
  * This lives here to keep the translation close to its source for maintenance
  * reasons.
  */
-export function simplifySyncPipelineEntryDocument(o:SyncPipelineProcessorEntryDocumentIfc):SyncPipelineProcessorEntryIfc {
+export function simplifySyncPipelineEntryDocument(o:SyncPipelineProcessorEntryDoc):SyncPipelineProcessorEntryIfc {
     return {
         processorId: o.processorId,
         lastStart: o.lastStart,
@@ -38,4 +43,17 @@ const schema = new Schema({
     data: Schema.Types.Mixed
 });
 
+/**
+ * SyncPipelineProcessorEntry model
+ *
+ * #### Schema
+ *
+ * - processorId: The id of the processor.
+ * - lastStart: The last time the processor began a run.
+ * - lastComplete: The last time the processor completed a run.
+ * - results: The results of the last run.
+ * - data: Any auxiliary data from the last run.
+ *
+ * @todo consider whether both results and data are necessary and/or how they might be strongly typed.
+ */
 export const SyncPipelineProcessorEntry = model('SyncPipelineProcessorEntry',schema,'SyncPipelineProcessorEntry');

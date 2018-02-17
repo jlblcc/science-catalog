@@ -1,4 +1,4 @@
-import { SyncPipelineProcessor, SyncPipelineProcessorResults } from './SyncPipelineProcessor';
+import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from './SyncPipelineProcessor';
 import { SyncPipelineProcessorEntryIfc } from '../../db/models';
 import * as child_process from 'child_process';
 import * as path from 'path';
@@ -60,7 +60,15 @@ export class SyncPipelineManager {
         });
     }
 
-    private loadStep(step:SyncPipelineStep):SyncPipelineProcessor {
+    /**
+     * Loads an individual step's SyncPipelineProcessor.  If this manager
+     * was instantiated with the fork flag set to true then the processor that
+     * returns will run in a forked child process, not in this one.
+     *
+     * @param step The step to instantiate.
+     * @returns The processor.
+     */
+    private loadStep(step:SyncPipelineStep):SyncPipelineProcessor<SyncPipelineProcessorConfig> {
         if(this.fork) {
             return new StepRunnerMonitor(step);
         }
@@ -74,7 +82,14 @@ export class SyncPipelineManager {
  * A SyncPipelineProcessor that runs the underlying step in a separate
  * process.
  */
-class StepRunnerMonitor extends SyncPipelineProcessor {
+class StepRunnerMonitor extends SyncPipelineProcessor<SyncPipelineProcessorConfig> {
+    /**
+     * Instantiate a new StepRunnerMonitor to execute a pipeline step in
+     * its own process.  Externally this instance will behave identically
+     * to the underlying step it runs when invoking `start`.
+     *
+     * @param step The step to run in a child process on start.
+     */
     constructor(private step:SyncPipelineStep) {
         super(step.processorId,step.config);
     }
@@ -98,5 +113,6 @@ class StepRunnerMonitor extends SyncPipelineProcessor {
         });
     }
 
+    /** Not used in this implementation */
     protected run():Promise<SyncPipelineProcessorResults> { return null;}
 }
