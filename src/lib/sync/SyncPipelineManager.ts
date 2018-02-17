@@ -68,7 +68,7 @@ export class SyncPipelineManager {
      * @param step The step to instantiate.
      * @returns The processor.
      */
-    private loadStep(step:SyncPipelineStep):SyncPipelineProcessor<SyncPipelineProcessorConfig> {
+    private loadStep(step:SyncPipelineStep):SyncPipelineProcessor<SyncPipelineProcessorConfig,any> {
         if(this.fork) {
             return new StepRunnerMonitor(step);
         }
@@ -82,7 +82,7 @@ export class SyncPipelineManager {
  * A SyncPipelineProcessor that runs the underlying step in a separate
  * process.
  */
-class StepRunnerMonitor extends SyncPipelineProcessor<SyncPipelineProcessorConfig> {
+class StepRunnerMonitor extends SyncPipelineProcessor<SyncPipelineProcessorConfig,any> {
     /**
      * Instantiate a new StepRunnerMonitor to execute a pipeline step in
      * its own process.  Externally this instance will behave identically
@@ -114,5 +114,5 @@ class StepRunnerMonitor extends SyncPipelineProcessor<SyncPipelineProcessorConfi
     }
 
     /** Not used in this implementation */
-    protected run():Promise<SyncPipelineProcessorResults> { return null;}
+    protected run():Promise<SyncPipelineProcessorResults<any>> { return null;}
 }

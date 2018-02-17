@@ -1,5 +1,5 @@
 import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
-import { Lcc, LccDoc, Item, ItemDoc } from '../../../db/models';
+import { Lcc, LccDoc, Item, ItemDoc, ScType } from '../../../db/models';
 import { LogAdditions } from '../../log';
 import { QueryCursor } from 'mongoose';
 import { ObjectId } from 'mongodb';
@@ -74,8 +74,20 @@ export enum FromScienceBaseLogCodes {
     ITEM_ERROR = 'item_error'
 };
 
-export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig> {
-    run():Promise<SyncPipelineProcessorResults> {
+/**
+ * Handles synchronization of sciencebase items for LCCs.
+ *
+ * This processor looks up LCCs defined in the `Lcc` collection and then sync's
+ * ScienceBase items for them.
+ *
+ * It produces on output `ItemCount[]`.
+ *
+ * @todo Support sync of `product` as well as `project`
+ * @todo Handle deleted items from sciencebase
+ * @todo verify created/modified are managed properly by mongoose (and remove commented out code).
+ */
+export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
+    run():Promise<SyncPipelineProcessorResults<ItemCounts[]>> {
         this.results.results = [];
         return new Promise((resolve,_reject) => {
             let reject = (err) => _reject(err),
@@ -232,6 +244,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         _id: new ObjectId(item.id),
                         _lcc: lcc._id,
                         title: item.title,
+                        scType: ScType.PROJECT,
                         /* TODO verify created/modified are managed properly by mongoose
                         created: now,
                         modified: now,*/

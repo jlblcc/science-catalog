@@ -1,17 +1,47 @@
 import { Schema, Document, model } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
-/*
-export interface SyncPipelineProcessorLogMessage extends Document {
-    _lcc?: ObjectId;
-    _item?: ObjectId;
-    type: string;
-    processorId: string;
-    time: Date;
+/**
+ * Schema for how errors are logged.
+ */
+export interface LogError {
     message: string;
-    code?: string;
+    stack?: string;
 }
-*/
+
+export enum LogMessageType {
+    INFO = 'info',
+    ERROR = 'error',
+    WARN = 'warn',
+    DEBUG = 'debug'
+};
+
+/**
+ * Exposes the SyncPipelineProcessorLog schema.
+ */
+export interface SyncPipelineProcessorLogIfc {
+    /** The lcc id the message corresponds to */
+    _lcc?: ObjectId | string;
+    /** The item the message corresponds to */
+    _item?: ObjectId | string;
+    /** The type of log message */
+    type: LogMessageType;
+    /** The SyncPipelineProcessor id the message belongs to */
+    processorId: string;
+    /** When the message was logged */
+    time: Date;
+    /** The human readable log message */
+    message: string;
+    /** A SyncPipelineProcessor specific code (processors should document an enum) */
+    code?: string;
+    /** Associated data (if any) */
+    data?: LogError | any;
+}
+
+/**
+ * Unions SyncPipelineProcessorLogIfc with Mongoose Document.
+ */
+export interface SyncPipelineProcessorLogDoc extends SyncPipelineProcessorLogIfc, Document {}
 
 const schema = new Schema({
     _lcc: {type: Schema.Types.ObjectId, ref: 'Lcc', required: false},
@@ -35,15 +65,5 @@ const schema = new Schema({
  * old messages will disappear.  Being capped has the advantage of allowing other
  * processes to dynamically watch for updates to this collection and receive them
  * ala `tail`.
- *
- * ### schema
- *
- * - _lcc: Id of the Lcc the message corresponds to (optional).
- * - _item: Id of the Item the message corresponds to (optional).
- * - type: The type of log message (one of `info`, `error`, `warn` or `debug`).
- * - processorId: The string id of the processor that saved the message.
- * - time: The instant the message was saved.
- * - message: The string log message.
- * - code: An opaque processor specific code (optional).
  */
-export const SyncPipelineProcessorLog = model('SyncPipelineProcessorLog',schema,'SyncPipelineProcessorLog');
+export const SyncPipelineProcessorLog = model<SyncPipelineProcessorLogDoc>('SyncPipelineProcessorLog',schema,'SyncPipelineProcessorLog');

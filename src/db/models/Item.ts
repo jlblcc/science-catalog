@@ -1,6 +1,9 @@
 import { Schema, model, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
+/**
+ * Science catalog item types.
+ */
 export enum ScType {
    PROJECT = 'project',
    PRODUCT = 'product'

@@ -27,7 +27,7 @@ describe('SyncPipelineManager',() => {
             processorId: 'simple',
             module: './processors/TestProcessor',
             config: {
-                data: 'simple one step'
+                results: 'simple one step'
             }
         }];
         return (new SyncPipelineManager(steps)).run()
@@ -38,8 +38,8 @@ describe('SyncPipelineManager',() => {
                 expect(result.processorId).to.equal(steps[0].processorId);
                 expect(result.lastStart).to.be.instanceof(Date);
                 expect(result.lastComplete).to.be.instanceof(Date);
-                expect(result.data).to.equal(steps[0].config.data);
-                expect(result.results).to.equal(undefined);
+                expect(result.error).to.equal(null);
+                expect(result.results).to.equal(steps[0].config.results);
             }).catch(rethrow);
     });
 
@@ -48,7 +48,7 @@ describe('SyncPipelineManager',() => {
             processorId: 'simple',
             module: './processors/TestProcessor',
             config: {
-                data: 'simple one step'
+                results: 'simple one step'
             }
         },{
             processorId: 'simple2',
@@ -65,14 +65,14 @@ describe('SyncPipelineManager',() => {
                 expect(result.processorId).to.equal(steps[0].processorId);
                 expect(result.lastStart).to.be.instanceof(Date);
                 expect(result.lastComplete).to.be.instanceof(Date);
-                expect(result.data).to.equal(steps[0].config.data);
-                expect(result.results).to.equal(undefined);
+                expect(result.error).to.equal(null);
+                expect(result.results).to.equal(steps[0].config.results);
                 result = results[1];
                 expect(result).to.be.instanceof(Object);
                 expect(result.processorId).to.equal(steps[1].processorId);
                 expect(result.lastStart).to.be.instanceof(Date);
                 expect(result.lastComplete).to.be.instanceof(Date);
-                expect(result.data).to.equal(undefined);
+                expect(result.error).to.equal(null);
                 expect(result.results).to.equal(steps[1].config.results);
             }).catch(rethrow);
     });
@@ -82,7 +82,6 @@ describe('SyncPipelineManager',() => {
             processorId: 'simple',
             module: './processors/TestProcessor',
             config: {
-                data: 'simple one step',
                 results: 'simple result'
             }
         }];
@@ -94,7 +93,7 @@ describe('SyncPipelineManager',() => {
                 expect(result.processorId).to.equal(steps[0].processorId);
                 expect(result.lastStart).to.be.instanceof(Date);
                 expect(result.lastComplete).to.be.instanceof(Date);
-                expect(result.data).to.equal(steps[0].config.data);
+                expect(result.error).to.equal(null);
                 expect(result.results).to.equal(steps[0].config.results);
             }).catch(rethrow);
     });
@@ -118,9 +117,8 @@ describe('SyncPipelineManager',() => {
                 expect(result.processorId).to.equal(steps[0].processorId);
                 expect(result.lastStart).to.be.instanceof(Date);
                 expect(result.lastComplete).to.be.instanceof(Date);
-                expect(result.data).to.equal(null);
-                expect(result.results).to.be.instanceof(Object);
-                let error = result.results.error;
+                expect(result.results).to.equal(null);
+                let error = result.error;
                 expect(error).to.be.instanceof(Object);
                 expect(error.message).to.equal(steps[0].config.error);
                 expect(typeof(error.stack)).to.equal('string');
@@ -158,16 +156,15 @@ describe('SyncPipelineManager',() => {
                 expect(result.processorId).to.equal(steps[0].processorId);
                 expect(result.lastStart).to.be.instanceof(Date);
                 expect(result.lastComplete).to.be.instanceof(Date);
-                expect(result.data).to.equal(undefined);
+                expect(result.error).to.equal(null);
                 expect(result.results).to.equal(steps[0].config.results);
                 result = results[1];
                 expect(result).to.be.instanceof(Object);
                 expect(result.processorId).to.equal(steps[1].processorId);
                 expect(result.lastStart).to.be.instanceof(Date);
                 expect(result.lastComplete).to.be.instanceof(Date);
-                expect(result.data).to.equal(null);
-                expect(result.results).to.be.instanceof(Object);
-                let error = result.results.error;
+                expect(result.results).to.equal(null);
+                let error = result.error;
                 expect(error).to.be.instanceof(Object);
                 expect(error.message).to.equal(steps[1].config.error);
                 expect(typeof(error.stack)).to.equal('string');

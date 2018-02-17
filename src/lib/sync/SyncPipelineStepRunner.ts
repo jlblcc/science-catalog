@@ -29,7 +29,7 @@ let step = JSON.parse(process.argv[2]) as SyncPipelineStep,
     ProcessorClass = require(step.module).default;
 
 db().then(() => {
-        let processor = new ProcessorClass(step.processorId,step.config) as SyncPipelineProcessor<SyncPipelineProcessorConfig>;
+        let processor = new ProcessorClass(step.processorId,step.config) as SyncPipelineProcessor<SyncPipelineProcessorConfig,any>;
         processor.on('error',err => {
                 process.send({
                     key: 'error',

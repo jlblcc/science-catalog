@@ -12,15 +12,13 @@ export interface TestProcessorConfig extends SyncPipelineProcessorConfig {
     wait?: number;
     /** Results the processor should resolve with */
     results?:any;
-    /** Data the processor should resolve with */
-    data?:any;
 }
 /**
  * This is a very simple processor that is used just to test the basic
  * functionality of the pipeline manager.
  */
-export default class TestProcessor extends SyncPipelineProcessor<TestProcessorConfig> {
-    run():Promise<SyncPipelineProcessorResults> {
+export default class TestProcessor extends SyncPipelineProcessor<TestProcessorConfig,string> {
+    run():Promise<SyncPipelineProcessorResults<string>> {
         return new Promise((resolve,reject) => {
             let done = () => {
                 if(this.config.error) {
@@ -33,7 +31,6 @@ export default class TestProcessor extends SyncPipelineProcessor<TestProcessorCo
                 }
                 let output = {
                     results: this.config.results,
-                    data: this.config.data
                 };
                 this.log.info(`resolving with ${JSON.stringify(output)}`)
                 resolve(output);

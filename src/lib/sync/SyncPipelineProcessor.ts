@@ -3,7 +3,8 @@ import { Logger } from '../log';
 import { SyncPipelineProcessorEntry,
          SyncPipelineProcessorEntryIfc,
          SyncPipelineProcessorEntryDoc,
-         simplifySyncPipelineEntryDocument } from '../../db/models';
+         simplifySyncPipelineEntryDocument,
+         LogError } from '../../db/models';
 
 const UPSERT_OPTIONS = {
     upsert: true,
@@ -15,9 +16,9 @@ const UPSERT_OPTIONS = {
  *
  * @todo refine, can't at the moment recall what the plans were for results but it should be strongly typed.
  */
-export interface SyncPipelineProcessorResults {
-    results?: any;
-    data?: any;
+export interface SyncPipelineProcessorResults<R> {
+    results?: R;
+    error?: LogError;
 }
 
 /**
@@ -39,13 +40,14 @@ export interface SyncPipelineProcessorConfig {}
  * emit either any events.  If the run promise needs to be rejected it __must__
  * be with an instance of `Error`.
  *
- * @todo what's the best complete payload?
+ * The `C` generic type defines the configuration the processor accepts.
+ * The `R` generic type defines what the processor produces for the results property on a succesful run.
  */
-export abstract class SyncPipelineProcessor<T extends SyncPipelineProcessorConfig> extends EventEmitter {
+export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfig,R> extends EventEmitter {
     protected log:Logger;
     protected procEntry:SyncPipelineProcessorEntryDoc;
-    protected results:SyncPipelineProcessorResults = {};
-    protected config:T;
+    protected results:SyncPipelineProcessorResults<R> = {};
+    protected config:C;
 
     /**
      * Constructs the new processor.
@@ -55,7 +57,7 @@ export abstract class SyncPipelineProcessor<T extends SyncPipelineProcessorConfi
     constructor(public processorId:string,config:any){
         super();
         this.log = new Logger(processorId);
-        this.config = config as T;
+        this.config = config as C;
     }
 
     /**
@@ -79,7 +81,7 @@ export abstract class SyncPipelineProcessor<T extends SyncPipelineProcessorConfi
                     return this.emit('error',err); // TODO not right type
                 }
                 let simple = simplifySyncPipelineEntryDocument(o);
-                if(o.results && o.results.error) {
+                if(o.error) {
                     this.emit('error',simple);
                 } else {
                     this.emit('complete',simple);
@@ -88,17 +90,15 @@ export abstract class SyncPipelineProcessor<T extends SyncPipelineProcessorConfi
             this.run()
                 .then(output => {
                     this.procEntry.lastComplete = new Date();
+                    this.procEntry.error = null;
                     this.procEntry.results = output.results;
-                    this.procEntry.data = output.data;
                     this.procEntry.save(onSave);
                 }).catch((err:Error) => {
                     this.procEntry.lastComplete = new Date();
-                    this.procEntry.data = null;
-                    this.procEntry.results = {
-                        error: {
+                    this.procEntry.results = null;
+                    this.procEntry.error = {
                             message: err.message,
                             stack: err.stack
-                        }
                     };
                     this.procEntry.save(onSave);
                 });
@@ -109,5 +109,5 @@ export abstract class SyncPipelineProcessor<T extends SyncPipelineProcessorConfi
      * Execute the logic for this processor.  Implementations must not
      * emit any events and must reject with an Error (or throw one).
      */
-    protected abstract run():Promise<SyncPipelineProcessorResults>;
+    protected abstract run():Promise<SyncPipelineProcessorResults<R>>;
 }
