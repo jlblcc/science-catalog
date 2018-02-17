@@ -90,28 +90,37 @@ export enum FromScienceBaseLogCodes {
  * @todo Support sync of `product` as well as `project`
  * @todo Handle deleted items from sciencebase
  * @todo verify created/modified are managed properly by mongoose (and remove commented out code).
+ * @todo fix missing update of LCC `lastSync`
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     run():Promise<SyncPipelineProcessorResults<ItemCounts[]>> {
         this.results.results = [];
         return new Promise((resolve,_reject) => {
             let reject = (err) => _reject(err),
+                firstLcc = true,
                 cursor:QueryCursor<LccDoc> = Lcc.find({}).cursor(),
-                next = () => {
+                next = (counts?:ItemCounts) => {
+                    if(counts) {
+                        this.results.results.push(counts);
+                    }
                     cursor.next()
                         .then((lcc:LccDoc) => {
                             if(!lcc) {
                                 return resolve(this.results);
                             }
-                            this.lccSync(lcc)
-                                .then((counts:ItemCounts) => {
-                                    this.results.results.push(counts);
-                                    // pause between LCCs to give ScienceBase some breathing room.
-                                    // if LCCs are sync'ed too quickly then SB will eventually
-                                    // complain with a 429 "Too Many Requests" response.
-                                    setTimeout(() => next(),(this.config.pauseBetweenLcc||DEFAULT_PAUSE_BETWEEN_LCC));
-                                })
-                                .catch(reject)
+                            // pause between LCCs to give ScienceBase some breathing room.
+                            // if LCCs are sync'ed too quickly then SB will eventually
+                            // complain with a 429 "Too Many Requests" response.
+                            // use pause before sync, not after so the processor
+                            // can exit immediately upon completing the last LCC
+                            // otherwise there is dead space at the end.
+                            let pause = firstLcc ? 0 : (this.config.pauseBetweenLcc||DEFAULT_PAUSE_BETWEEN_LCC);
+                            firstLcc = false;
+                            if(pause) {
+                                this.log.debug(`Pausing ${pause/1000} seconds between LCC syncs.`);
+                            }
+                            setTimeout(() => this.lccSync(lcc).then(next).catch(reject),pause);
+
                         }).catch(reject);
                 };
             next();
@@ -124,19 +133,33 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 _lcc: lcc._id
             };
             this.log.info(`Starting LCC [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.LCC_STARTED});
-            let resolve = (counts:ItemCounts) => {
-                    this.log.info(`Complected LCC [${lcc._id}] "${lcc.title}" in ${counts.total} seconds.`,{...logAdditions,
+            let complete = () => {
+                    lcc.lastSync = new Date();
+                    return lcc.save();
+                },
+                resolve = (counts:ItemCounts) => {
+                    this.log.info(`[${FromScienceBaseLogCodes.LCC_COMPLETED}][${lcc._id}] "${lcc.title}" in ${counts.total} seconds.`,{...logAdditions,
                         code: FromScienceBaseLogCodes.LCC_COMPLETED,
                         data:counts
                     });
-                    _resolve(counts);
+                    complete()
+                    .then(() => _resolve(counts))
+                    .catch((err) => {
+                        console.error(err);
+                        _resolve(counts);
+                    });
                 },
                 reject = (err) => {
-                    this.log.error(`Error LCC [${lcc._id}] "${lcc.title}"`,{...logAdditions,
+                    this.log.error(`[${FromScienceBaseLogCodes.LCC_ERROR}][${lcc._id}] "${lcc.title}"`,{...logAdditions,
                         code: FromScienceBaseLogCodes.LCC_ERROR,
                         data:err
                     });
-                    _reject(err);
+                    complete()
+                    .then(() => _reject(err))
+                    .catch((e) => {
+                        console.error(e);
+                        _reject(err);
+                    });
                 },
                 counts = new ItemCounts(lcc),
                 importOnePage = (response) => {

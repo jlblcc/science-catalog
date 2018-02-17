@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+
+let command = require('commander'),
+    db = require('../dist/db').db,
+    Lcc = require('../dist/db/models/Lcc').Lcc,
+    Item = require('../dist/db/models/Item').Item,
+    request = require('request-promise-native'),
+    ObjectId = require('mongodb').ObjectId,
+    handleError = (err) => {
+        console.error(err);
+        process.exit(1);
+    };
+
+process.on('uncaughtException', handleError);
+
+command.version('1.0.0')
+    .option('--lcc <id>', 'The lcc to add or remove.')
+    .option('--action <action>', 'What to do with the LCC (add, remove or list. default add)', /^(add|remove|list)$/i, 'add')
+    .option('--lccs','Display a list of LCCs and their known ids from ScienceBase')
+    .parse(process.argv);
+
+if(command.lccs) {
+    // this list is incomplete and just for convenience
+    const LCCS = { "568576fce4b0e7594ee73efa" : "LCC Network",
+      "519e280ce4b0ac3d2125b827" : "Gulf Coast Prairie Landscape Conservation Cooperative",
+      "513f899ce4b0dcc733969431" : "Eastern Tallgrass Prairie and Big Rivers Landscape Conservation Cooperative",
+      "4fa196c3e4b0acd7432ffe28" : "Plains and Prairie Potholes Landscape Conservation Cooperative",
+      "4f4e476be4b07f02db47e143" : "North Atlantic Landscape Conservation Cooperative",
+      "52cd70e5e4b0c3f95144ebe1" : "Pacific Islands Landscape Conservation Cooperative",
+      "4f6a2afce4b0e7aaea01dbc8" : "Great Northern Landscape Conservation Cooperative",
+      "4f6a3d64e4b0e7aaea01dbfb" : "North Pacific Landscape Conservation Cooperative",
+      "50367466e4b06c3b908a67dd" : "Great Basin Landscape Conservation Cooperative",
+      "4f4e4773e4b07f02db47e248" : "Desert Landscape Conservation Cooperative",
+      "4f58e667e4b07cde2c0df6ec" : "South Atlantic Landscape Conservation Cooperative" };
+    Object.keys(LCCS).forEach(key => console.log(`${key} ${LCCS[key]}`));
+    process.exit(0);
+}
+
+if(command.action !== 'list' && !command.lcc) {
+    command.help();
+}
+
+function add(id) {
+    return new Promise((resolve) => {
+        request({
+            url: `https://www.sciencebase.gov/catalog/item/${id}`,
+            qs: {
+                format: 'json',
+                fields: 'title'
+            }
+        })
+        .then(json => {
+            let data = JSON.parse(json),
+                lcc = {
+                    _id: new ObjectId(data.id),
+                    title: data.title,
+                };
+            Lcc.findOneAndUpdate({ _id: lcc._id},lcc,{upsert: true, new: true},(err,o) => {
+                if(err) {
+                    handleError(err);
+                }
+                resolve(o);
+            });
+        })
+        .catch(handleError);
+    });
+}
+
+function remove(id) {
+    return new Promise((resolve) => {
+        // using find and then remve (rather than findOneAndRemove) so schema
+        // hooks are executed (to clean up Items).
+        Lcc.findById(id,(err,lcc) => {
+            if(err) {
+                handleError(err);
+            }
+            if(!lcc) {
+                return resolve(null);
+            }
+            lcc.remove((err,lcc) => {
+                if(err) {
+                    handleError(err);
+                }
+                resolve(lcc);
+            });
+        });
+    });
+}
+
+db().then(() => {
+    let promises,logMsg;
+    switch(command.action) {
+        case 'add':
+            logMsg = 'added';
+            promises = command.lcc.split(',').map(id => add(id));
+            break;
+        case 'remove':
+            logMsg = 'removed';
+            promises = command.lcc.split(',').map(id => remove(id));
+            break;
+        case 'list':
+            Lcc.find({},(err,lccs) => {
+                if(err) {
+                    handleError(err);
+                }
+                lccs.forEach(lcc => console.log(`[${lcc._id}] "${lcc.title}"`+(lcc.lastSync ? ` lastSync:${lcc.lastSync}` : '')));
+                process.exit(0);
+            });
+            break;
+    }
+    if(promises) {
+        Promise.all(promises)
+            .then((results) => {
+                results.filter(lcc => !!lcc)
+                    .forEach(lcc => console.log(`${logMsg} [${lcc._id}] "${lcc.title}"`));
+                process.exit(0);
+            }).catch(handleError);
+    }
+}).catch(handleError);
