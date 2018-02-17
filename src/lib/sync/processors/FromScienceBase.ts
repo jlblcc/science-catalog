@@ -46,6 +46,7 @@ export class ItemCounts {
 };
 
 const DEFAULT_ITEM_PAGE_SIZE = 5;
+const DEFAULT_PAUSE_BETWEEN_LCC = 30000;
 
 /**
  * FromScienceBase configuration options.
@@ -53,6 +54,10 @@ const DEFAULT_ITEM_PAGE_SIZE = 5;
 export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
     /** How many items to fetch from sciencebase at a time when syncing projects/products (default 5) */
     pageSize?:number;
+    /** How long to pause (milliseconds) beween syncing LCCs (default 30000).  This option exists to avoid
+        putting too much sustained pressure on ScienceBase.  If too many requests arrive too close together
+        the ScienceBase API will return a 429 which terminates the sync process. */
+    pauseBetweenLcc?:number;
     /** Whether items should be forcibly updated with the most recent mdJson even if no change is detected */
     force?:boolean;
     /** FOR TESTING ONLY: Used for testing to randomly modify incoming items so their has changes */
@@ -92,20 +97,19 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         return new Promise((resolve,_reject) => {
             let reject = (err) => _reject(err),
                 cursor:QueryCursor<LccDoc> = Lcc.find({}).cursor(),
-                next = (counts?:ItemCounts) => {
-                    if(counts) {
-                        this.results.results.push(counts);
-                    }
+                next = () => {
                     cursor.next()
                         .then((lcc:LccDoc) => {
                             if(!lcc) {
                                 return resolve(this.results);
                             }
                             this.lccSync(lcc)
-                                .then(() => {
-                                    // ScienceBase can over many LCC syncs complain
-                                    // with a 420 Too Many Requests
-                                    setTimeout(() => next(),5000);
+                                .then((counts:ItemCounts) => {
+                                    this.results.results.push(counts);
+                                    // pause between LCCs to give ScienceBase some breathing room.
+                                    // if LCCs are sync'ed too quickly then SB will eventually
+                                    // complain with a 429 "Too Many Requests" response.
+                                    setTimeout(() => next(),(this.config.pauseBetweenLcc||DEFAULT_PAUSE_BETWEEN_LCC));
                                 })
                                 .catch(reject)
                         }).catch(reject);
