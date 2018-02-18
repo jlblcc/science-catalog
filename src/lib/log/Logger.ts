@@ -27,8 +27,9 @@ export class Logger {
      * connected to the database.
      *
      * @param processorId The `processorId` to set on all messages logged.
+     * @param processorClass The class of the processor logging messages.
      */
-    constructor(public processorId:string) {
+    constructor(public processorId:string,public processorClass?:string) {
     }
 
     private _log(type:string,message:string,additional?:LogAdditions):Promise<void> {
@@ -36,6 +37,7 @@ export class Logger {
             let insert = Object.assign({},additional||{},{
                     type: type,
                     processorId: this.processorId,
+                    processorClass: this.processorClass,
                     message:message,
                     time: new Date()
                 }),

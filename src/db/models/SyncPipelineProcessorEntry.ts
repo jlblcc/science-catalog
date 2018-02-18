@@ -7,6 +7,8 @@ import { LogError } from './SyncPipelineProcessorLog';
 export interface SyncPipelineProcessorEntryIfc {
     /** The processorId */
     processorId: string;
+    /** The processor class */
+    processorClass: string;
     /** The last time the processor started a run */
     lastStart: Date;
     /** The last time the processor completed a run */
@@ -34,6 +36,7 @@ export interface SyncPipelineProcessorEntryDoc extends SyncPipelineProcessorEntr
 export function simplifySyncPipelineEntryDocument(o:SyncPipelineProcessorEntryDoc):SyncPipelineProcessorEntryIfc {
     return {
         processorId: o.processorId,
+        processorClass: o.processorClass,
         lastStart: o.lastStart,
         lastComplete: o.lastComplete,
         results: o.results,
@@ -43,6 +46,7 @@ export function simplifySyncPipelineEntryDocument(o:SyncPipelineProcessorEntryDo
 
 const schema = new Schema({
     processorId: {type: String, required: true},
+    processorClass: {type: String, required: true},
     lastStart: {type: Date, required: true},
     lastComplete: {type: Date, required: false},
     results: Schema.Types.Mixed,

@@ -45,6 +45,7 @@ export interface SyncPipelineProcessorConfig {}
  */
 export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfig,R> extends EventEmitter {
     protected log:Logger;
+    protected processorClass:string;
     protected procEntry:SyncPipelineProcessorEntryDoc;
     protected results:SyncPipelineProcessorResults<R> = {};
     protected config:C;
@@ -56,7 +57,8 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
      */
     constructor(public processorId:string,config:any){
         super();
-        this.log = new Logger(processorId);
+        this.processorClass = this.constructor.name;
+        this.log = new Logger(processorId,this.processorClass);
         this.config = config as C;
     }
 
@@ -69,6 +71,7 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
             processorId: this.processorId
         },{
             processorId: this.processorId,
+            processorClass: this.processorClass,
             lastStart: new Date()
         },UPSERT_OPTIONS,(err,o) => {
             if(err) {

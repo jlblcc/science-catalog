@@ -27,6 +27,6 @@ const COLORS = {
 db().then(() => {
     (new Tail(criteria)).on('message',(m) => {
             let color = COLORS[m.type];
-            console[m.type](chalk[color](`[${m.type}][${m.processorId}]`)+`:${moment(m.time).format("MM/DD/YY HH:mm:ss")}:${m.message}`);
+            console[m.type](chalk[color](`[${m.type}][${m.processorClass}/${m.processorId}]`)+`:${moment(m.time).format("MM/DD/YY HH:mm:ss")}:${m.message}`);
         }).start();
 }).catch(handleError);

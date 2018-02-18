@@ -28,6 +28,8 @@ export interface SyncPipelineProcessorLogIfc {
     type: LogMessageType;
     /** The SyncPipelineProcessor id the message belongs to */
     processorId: string;
+    /** The class name of the processor that issued the log message */
+    processorClass?: string;
     /** When the message was logged */
     time: Date;
     /** The human readable log message */
@@ -48,6 +50,7 @@ const schema = new Schema({
     _item: {type: Schema.Types.ObjectId, ref: 'Item', required: false},
     type: {type: String, required: true, enum:['info','error','warn','debug']},
     processorId: {type: String, required: true},
+    processorClass: {type: String, required: false},
     time: {type: Date, required: true},
     message: {type: String, required: true},
     code: {type: String, required: false},
