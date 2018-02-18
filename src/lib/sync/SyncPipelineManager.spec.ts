@@ -2,7 +2,7 @@
  * Basic tests fo the SyncPipelineManager executing pipelines
  */
 import { db } from '../../db';
-import { SyncPipelineProcessorEntryIfc } from '../../db/models';
+import { SyncPipelineProcessorEntry, SyncPipelineProcessorEntryIfc } from '../../db/models';
 import { SyncPipelineManager, SyncPipelineStep } from './SyncPipelineManager';
 import * as mongoose from 'mongoose';
 import { expect } from 'chai';
@@ -12,15 +12,11 @@ const rethrow = err => {
     throw err; };
 
 describe('SyncPipelineManager',() => {
-    // all tests require
-    before((done) => {
-        db().then(() => done()).catch(rethrow);
-    });
+    // all tests require a connection
+    before(() => db());
 
-    after(done => {
-        mongoose.disconnect();
-        done();
-    });
+    after(() => SyncPipelineProcessorEntry.remove({processorClass:'TestProcessor'})
+                    .then(() => mongoose.disconnect()));
 
     it('simple pipeline (in-process)',() => {
         let steps:SyncPipelineStep[] = [{
