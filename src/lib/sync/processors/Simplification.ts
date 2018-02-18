@@ -24,23 +24,31 @@ export enum SimplificationCodes {
     SIMPLIFIED = 'simplified'
 }
 
+/**
+* Translates the processor output into a report string.
+*
+* @param results The output of the Simplification SyncPipelineProcessor.
+* @returns A string representation.
+ */
+export function simplificationReport(output:SimplificationOutput) {
+    return `simplified ${output.total} items`;
+}
+
 export default class Simplification extends SyncPipelineProcessor<SimplificationConfig,SimplificationOutput> {
     run():Promise<SyncPipelineProcessorResults<SimplificationOutput>> {
         return new Promise((resolve,reject) => {
             this.results.results = new SimplificationOutput();
-            console.log('procEntry',this.procEntry);
             let criteria = this.procEntry.lastComplete ?
                 {$or:[{
                     // changed since last sync
                     modified: {$gt: this.procEntry.lastComplete}
                 },{
                     // or don't have simplified documents
-                    // ths shouldn't be necessary sine mongoose should
+                    // ths shouldn't be necessary since mongoose should
                     // set modified to created so new documents should
                     // be picked up above
                     simplified: {$exists: false }
                 }]} : {}; // first run do all
-            console.log('criteria',criteria);
             let cursor:QueryCursor<ItemDoc> = Item
                     .find(criteria).cursor(),
                 next = () => {

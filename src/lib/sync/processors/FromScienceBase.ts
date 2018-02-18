@@ -16,18 +16,33 @@ const UPSERT_OPTIONS = {
  * For a given sync keeps track of item counts for a single lcc.
  */
 export class ItemCounts {
+    /** The LCC id */
     _id:string;
+    /** The LCC title */
     title:string;
+    /** The number of pages of items processed from sciencebase */
     pages = 0;
+    /** The toltal number of items considered */
     total = 0;
+    /** The number of items ignored (e.g. no mdJson) */
     ignored = 0;
+    /** The number of items created in the science catalog */
     created = 0;
+    /** The number of items updated in the science catalog */
     updated = 0;
+    /** The number of items deleted from the science catalog */
     deleted = 0;
+    /** The number of items that remain undchanged in the science catalog */
     unchanged = 0;
+    /** The number of items randModed for testing purposes (to force updates) */
+    randModed?:number;
+    /** Whether the execution resulted in an error (See SyncPipelineProcessorLog for error) */
     error:boolean;
+    /** When the LCC sync started */
     startMillis;
+    /** When the LCC sync completed */
     endMillis;
+    /** How long the sync took in seconds */
     timeSeconds;
 
     constructor(lcc:LccDoc) {
@@ -78,6 +93,22 @@ export enum FromScienceBaseLogCodes {
 };
 
 /**
+ * Translates the processor output into a report string.
+ *
+ * @param results The output of the FromScienceBase SyncPipelineProcessor.
+ * @returns A string representation.
+ */
+export function fromScienceBaseReport(results:ItemCounts[]):string {
+    return (results||[]).reduce((report:string,counts:ItemCounts) => {
+        let lccSync = `[${counts._id}] "${counts.title}"`
+        Object.keys(counts)
+            .filter(k => k !== '_id' && k !== 'title')
+            .forEach(k => lccSync += `\n  ${k} = ${counts[k]}`);
+        return report+lccSync+"\n\n";
+    },'');
+}
+
+/**
  * Handles synchronization of sciencebase items for LCCs.
  *
  * This processor looks up LCCs defined in the `Lcc` collection and then sync's
@@ -87,6 +118,8 @@ export enum FromScienceBaseLogCodes {
  *
  * @todo Support sync of `product` as well as `project`
  * @todo Handle deleted items from sciencebase
+ * @todo Why are the numbers for `randModded` and `updated` not the same when `randMod` is enabled?
+ * @todo Test `If-Modified-Since` request for `mdJson` document.
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     run():Promise<SyncPipelineProcessorResults<ItemCounts[]>> {
@@ -254,6 +287,12 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                                 nowMillis = (new Date()).getTime();
                             item.title = tmp.metadata.resourceInfo.citation.title = `${title} (${nowMillis})`;
                             this.log.debug(`TESTING[${item.id}]: title modified to ${title}`,logAdditions);
+                            if(typeof(counts.randModed) === 'number') {
+                                counts.randModed++;
+                            } else {
+                                counts.randModed = 1;
+                            }
+
                             json = JSON.stringify(tmp);
                         }
                     }
