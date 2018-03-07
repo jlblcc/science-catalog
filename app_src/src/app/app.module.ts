@@ -5,7 +5,7 @@ import { HttpClientModule } from '@angular/common/http';
 
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MaterialModule } from './material';
-import { ControlsModule } from './controls';
+import { SearchModule } from './search';
 
 import { AppComponent } from './app.component';
 
@@ -21,7 +21,7 @@ import { AppComponent } from './app.component';
     MaterialModule,
     HttpClientModule,
 
-    ControlsModule
+    SearchModule
   ],
   exports: [
     MaterialModule,

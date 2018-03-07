@@ -20,17 +20,29 @@ const READONLY = {
 };
 
 class ItemResource extends Resource<ItemDoc> {
-    // override find and add parameter for $text (keyword) search
-    find(req:Request,res:Response) {
+    private _findQuery(req:Request) {
         let query = this.initQuery(this.getModel().find(),req);
         if(req.query.$text) {
             query.and([{$text: {$search: req.query.$text}}]);
         }
-        query.exec((err,items) => {
+        return query;
+    }
+    // override find and add parameter for $text (keyword) search
+    find(req:Request,res:Response) {
+        this._findQuery(req).exec((err,items) => {
             if(err) {
                 return Resource.sendError(res,500,`find failed`,err);
             }
             this._findListResponse(req,res,items,null);
+        });
+    }
+
+    count(req:Request,res:Response) {
+        this._findQuery(req).count((err,n) => {
+            if(err) {
+                return Resource.sendError(res,500,`find failed`,err);
+            }
+            return res.json(n);
         });
     }
 }
@@ -60,6 +72,7 @@ export class Server {
             $orderby: 'title',
             $orderbyPaged: 'title',
             count: true,
+            populate: ['_lcc']
         }});
 
         let lcc = new Resource({...READONLY,...{

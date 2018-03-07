@@ -7,7 +7,12 @@ import { MatButtonModule,
          MatFormFieldModule,
          MatSelectModule,
          MatCheckboxModule,
-         MatProgressSpinnerModule } from '@angular/material';
+         MatProgressSpinnerModule,
+         MatListModule,
+         MatInputModule,
+         MatTableModule,
+         MatPaginatorModule,
+         MatSortModule } from '@angular/material';
 
 @NgModule({
     imports:[
@@ -19,7 +24,12 @@ import { MatButtonModule,
         MatFormFieldModule,
         MatSelectModule,
         MatCheckboxModule,
-        MatProgressSpinnerModule
+        MatProgressSpinnerModule,
+        MatListModule,
+        MatInputModule,
+        MatTableModule,
+        MatPaginatorModule,
+        MatSortModule
     ],
     exports: [
         BrowserModule,
@@ -30,7 +40,12 @@ import { MatButtonModule,
         MatFormFieldModule,
         MatSelectModule,
         MatCheckboxModule,
-        MatProgressSpinnerModule
+        MatProgressSpinnerModule,
+        MatListModule,
+        MatInputModule,
+        MatTableModule,
+        MatPaginatorModule,
+        MatSortModule
     ]
 })
 export class MaterialModule {}

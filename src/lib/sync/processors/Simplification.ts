@@ -14,7 +14,8 @@ export class SimplificationOutput {
  * Configuration for the simplification processor.
  */
 export interface SimplificationConfig extends SyncPipelineProcessorConfig {
-
+    /** If the process should forcibly re-simplify all documents */
+    force?: boolean;
 }
 
 /**
@@ -38,17 +39,20 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
     run():Promise<SyncPipelineProcessorResults<SimplificationOutput>> {
         return new Promise((resolve,reject) => {
             this.results.results = new SimplificationOutput();
-            let criteria = this.procEntry.lastComplete ?
-                {$or:[{
-                    // changed since last sync
-                    modified: {$gt: this.procEntry.lastComplete}
-                },{
-                    // or don't have simplified documents
-                    // ths shouldn't be necessary since mongoose should
-                    // set modified to created so new documents should
-                    // be picked up above
-                    simplified: {$exists: false }
-                }]} : {}; // first run do all
+            let criteria =
+                (this.config.force || !this.procEntry.lastComplete) ?
+                    // either first run or asked to do all
+                    {} :
+                    {$or:[{
+                        // changed since last sync
+                        modified: {$gt: this.procEntry.lastComplete}
+                    },{
+                        // or don't have simplified documents
+                        // this shouldn't be necessary since mongoose should
+                        // set modified to created so new documents should
+                        // be picked up above
+                        simplified: {$exists: false }
+                    }]};
             let cursor:QueryCursor<ItemDoc> = Item
                     .find(criteria).cursor(),
                 next = () => {
@@ -77,6 +81,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         let mdJson = item.mdJson;
         item.simplified = {
             title: mdJson.metadata.resourceInfo.citation.title,
+            abstract: mdJson.metadata.resourceInfo.abstract,
             keywords: mdJson.metadata.resourceInfo.keyword.reduce((map,k) => {
                 if(k.keywordType) {
                     let typeLabel = k.keywordType,
