@@ -5,6 +5,8 @@ import { Item } from './Item';
  * Exposes the Lcc schema
  */
 export interface LccIfc {
+    /** The sciencebase/catalog id */
+    _id: any;
     title: string;
     lastSync?: Date;
 }

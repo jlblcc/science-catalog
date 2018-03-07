@@ -1,10 +1,16 @@
 import * as express from 'express';
-import * as Resource from 'odata-resource';
+
+import Resource = require('odata-resource');
 import * as BodyParser from 'body-parser';
+import * as path from 'path';
+
+import { Request, Response } from 'express';
+import { DocumentQuery } from 'mongoose';
 
 import { ObjectId } from 'mongodb';
 
-import { Item, Lcc } from './db/models';
+import { Item, ItemDoc,
+         Lcc } from './db/models';
 
 /** Base resource configuration that disables POST,PUT and DELETE */
 const READONLY = {
@@ -12,6 +18,22 @@ const READONLY = {
     update: false,
     delete: false
 };
+
+class ItemResource extends Resource<ItemDoc> {
+    // override find and add parameter for $text (keyword) search
+    find(req:Request,res:Response) {
+        let query = this.initQuery(this.getModel().find(),req);
+        if(req.query.$text) {
+            query.and([{$text: {$search: req.query.$text}}]);
+        }
+        query.exec((err,items) => {
+            if(err) {
+                return Resource.sendError(res,500,`find failed`,err);
+            }
+            this._findListResponse(req,res,items,null);
+        });
+    }
+}
 
 /**
  * The base express API server.
@@ -21,7 +43,7 @@ export class Server {
 
     constructor() {
         let app = this.express = express();
-        //
+        app.use(express.static(path.join(__dirname,'app')));
         app.use(BodyParser.json());
         this.init();
     }
@@ -30,11 +52,11 @@ export class Server {
      * Initializes the resources.
      */
     private init() {
-        let item = new Resource({...READONLY,...{
+        let item = new ItemResource({...READONLY,...{
             rel: '/api/item',
             model: Item,
             // query arg defaults
-            $top: 5,
+            $top: 25,
             $orderby: 'title',
             $orderbyPaged: 'title',
             count: true,

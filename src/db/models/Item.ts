@@ -13,6 +13,8 @@ export enum ScType {
  * Exposes the Item schema.
  */
 export interface ItemIfc {
+    /** The sciencebase/catalog id */
+    _id: any;
     /** Reference to the corresponding Lcc */
     _lcc: ObjectId | string;
     /** The type of item */
