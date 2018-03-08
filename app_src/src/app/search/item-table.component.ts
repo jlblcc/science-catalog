@@ -12,18 +12,20 @@ export const TABLE_COLUMNS = [{
     label: 'LCC'
 }];
 
+/**
+ * Display search results in a table.
+ */
 @Component({
     selector: 'item-table',
     template: `
     <mat-table [dataSource]="dataSource" matSort>
-
         <ng-container matColumnDef="simplified.title">
-            <mat-header-cell *matHeaderCellDef mat-sort-header> Title </mat-header-cell>
+            <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true"> Title </mat-header-cell>
             <mat-cell *matCellDef="let item"><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.lcc">
-            <mat-header-cell *matHeaderCellDef mat-sort-header> LCC </mat-header-cell>
+            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true"> LCC </mat-header-cell>
             <mat-cell *matCellDef="let item">{{item.simplified.lcc | lccTitle}}</mat-cell>
         </ng-container>
 

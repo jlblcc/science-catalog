@@ -4,6 +4,10 @@ import { MatSort, Sort, MatSortable, MatSelectChange, SortDirection } from '@ang
 
 import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './item-table.component';
 
+/**
+ * Display search results in a list.  Unlike `ItemTable` this component drives
+ * sorting (via `MatSort`) manually.
+ */
 @Component({
     selector: 'item-list',
     template: `
