@@ -10,6 +10,23 @@ mark {
     */
 }
 
+// putting here for now to avoid the need for /deep/
+item-list {
+    .sort-direction-toggle {
+        box-shadow: none;
+        &.mat-button-toggle-checked {
+            background-color: transparent;
+        }
+        .mat-button-toggle-focus-overlay {
+            display: none;
+        }
+        .mat-button-toggle-label-content {
+            padding: 0px;
+            font-size: .75em;
+        }
+    }
+}
+
 
 // when using font-awesome icons in mat-icon it appears they need to be sized appropriately
 // the margins are because font-awesome icons aren't as nicely centered in fab buttons.

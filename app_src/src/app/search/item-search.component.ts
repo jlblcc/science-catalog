@@ -2,15 +2,19 @@ import { Component, ViewChild } from '@angular/core';
 import { FormGroup, FormControl } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
-import { debounceTime, map, switchMap, startWith, catchError } from 'rxjs/operators';
+import { Subject } from 'rxjs/Subject';
+import { debounceTime, map, switchMap, startWith, catchError, takeUntil, distinctUntilChanged } from 'rxjs/operators';
 import { merge as mergeObservables } from 'rxjs/observable/merge';
 import { of as observableOf } from 'rxjs/observable/of';
 
-import { MatTableDataSource, MatPaginator, MatButtonToggleGroup } from '@angular/material';
+import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort } from '@angular/material';
 
 import { LccSelect } from './lcc-select.component';
 
 import { ItemIfc } from '../../../../src/db/models';
+
+import { ItemList } from './item-list.component';
+import { ItemTable } from './item-table.component';
 
 const BASE_QUERY_ARGS = {
     $select: 'simplified'
@@ -26,7 +30,7 @@ const BASE_QUERY_ARGS = {
     <div class="search-controls">
         <div class="lcc-output-select">
             <lcc-select></lcc-select>
-            
+
             <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="list" class="results-list-type">
                 <mat-button-toggle value="list" matTooltip="Display results as a list">
                     <mat-icon fontIcon="fa-bars"></mat-icon>
@@ -66,6 +70,12 @@ export class ItemSearch {
     pageSize = 10;
     totalItems = 0;
 
+    @ViewChild(ItemList) itemList:ItemList;
+    @ViewChild(ItemTable) itemTable:ItemTable;
+    private currentSorter:MatSort;
+    private sorterChanges:Subject<MatSort> = new Subject();
+    private sortChanges:Subject<Sort> = new Subject();
+
     constructor(private http:HttpClient) {}
 
     ngOnInit() {
@@ -89,18 +99,22 @@ export class ItemSearch {
         mergeObservables(this.controlsGroup.valueChanges,this.resultsListType.valueChange.asObservable())
             .subscribe(() => this.paginator.pageIndex = 0);
 
-        mergeObservables(this.controlsGroup.valueChanges, this.paginator.page) // TODO merge paginator, etc.
+        mergeObservables(this.controlsGroup.valueChanges, this.paginator.page, this.sortChanges)
             .pipe(
-              startWith(null),
               switchMap(() => {
                   let inputs = this.controlsGroup.value,
                       $filter = '';
+                  console.log('query sorter',this.currentSorter);
                   console.log('inputs',inputs);
                   if(inputs.lcc.length) {
                       let ids = inputs.lcc.map(id => `'${id}'`);
                       $filter = `in(_lcc,${ids.join(',')})`;
                   }
-                  let qargs:any = {...BASE_QUERY_ARGS,$top: this.pageSize};
+                  let qargs:any = {
+                      ...BASE_QUERY_ARGS,
+                      $top: this.pageSize,
+                      $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
+                  };
                   qargs.$skip = this.paginator.pageIndex * qargs.$top;
                   if(inputs.keywords) {
                       qargs.$text = inputs.keywords;
@@ -109,7 +123,10 @@ export class ItemSearch {
                       qargs.$filter = $filter;
                   }
                   let page = this.http.get('/api/item',{params:qargs})
-                      .pipe(map((response:any) => response.list as ItemIfc[]));
+                                  .pipe(map((response:any) => {
+                                      this.searchRunning = false;
+                                      return response.list as ItemIfc[]
+                                  }));
                   this.searchRunning = true;
                   return !qargs.$skip ?
                     this.http.get('/api/item/count',{params:{...qargs,$top:99999}})
@@ -125,9 +142,35 @@ export class ItemSearch {
                   this.searchRunning = false;
                   return observableOf([]);
               })
-          ).subscribe(items => {
-              this.searchRunning = false;
-              this.dataSource.data = items;
-          });
+          ).subscribe(items => this.dataSource.data = items);
+
+          let sortSubscription;
+          this.sorterChanges
+              .pipe(distinctUntilChanged())
+              .subscribe((sorter:MatSort) => {
+                  console.log(`view changed`,sorter);
+                  this.currentSorter = sorter;
+                  if(sortSubscription) {
+                      sortSubscription.unsubscribe();
+                  }
+                  sortSubscription = sorter.sortChange.asObservable()
+                      .pipe(
+                          startWith({
+                              active: sorter.active,
+                              direction: sorter.direction
+                          })
+                      )
+                      .subscribe((sort:Sort) => setTimeout(() => this.sortChanges.next(sort)));
+              });
+    }
+
+    ngAfterContentInit() {
+
+    }
+
+    ngAfterViewChecked() {
+        let matSort = this.itemList && this.itemList.sort ? this.itemList.sort :
+                      this.itemTable && this.itemTable.sort ? this.itemTable.sort : null;
+        this.sorterChanges.next(matSort);
     }
 }
