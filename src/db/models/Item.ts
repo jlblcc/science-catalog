@@ -16,7 +16,7 @@ export interface ItemIfc {
     /** The sciencebase/catalog id */
     _id: any;
     /** Reference to the corresponding Lcc */
-    _lcc: ObjectId | string;
+    _lcc: any;
     /** The type of item */
     scType: ScType;
     /** The item's title */

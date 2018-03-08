@@ -2,37 +2,59 @@ import { Component, ViewChild } from '@angular/core';
 import { FormGroup, FormControl } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
-import { debounceTime, map, switchMap, startWith } from 'rxjs/operators';
+import { debounceTime, map, switchMap, startWith, catchError } from 'rxjs/operators';
 import { merge as mergeObservables } from 'rxjs/observable/merge';
+import { of as observableOf } from 'rxjs/observable/of';
 
-import { MatTableDataSource, MatPaginator } from '@angular/material';
+import { MatTableDataSource, MatPaginator, MatButtonToggleGroup } from '@angular/material';
 
 import { LccSelect } from './lcc-select.component';
 
 import { ItemIfc } from '../../../../src/db/models';
 
 const BASE_QUERY_ARGS = {
-    $select: 'title _lcc simplified'
+    $select: 'simplified'
 };
+
 @Component({
     selector: 'item-search',
     template: `
-    <lcc-select></lcc-select>
-    <mat-form-field>
-        <input matInput placeholder="Keywords" [formControl]="keywords" />
-    </mat-form-field>
+    <div class="search-running-shade" *ngIf="searchRunning">
+        <mat-spinner></mat-spinner>
+    </div>
 
-    <item-list [dataSource]="dataSource" [highlight]="highlight"></item-list>
-    <mat-paginator [length]="totalItems" [pageSize]="pageSize"></mat-paginator>
+    <div class="search-controls">
+        <div class="lcc-output-select">
+            <lcc-select></lcc-select>
+            
+            <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="list" class="results-list-type">
+                <mat-button-toggle value="list" matTooltip="Display results as a list">
+                    <mat-icon fontIcon="fa-bars"></mat-icon>
+                </mat-button-toggle>
+                <mat-button-toggle value="table" matTooltip="Display results in a table">
+                    <mat-icon fontIcon="fa-table"></mat-icon>
+                </mat-button-toggle>
+            </mat-button-toggle-group>
+        </div>
+
+        <mat-form-field>
+            <input matInput placeholder="Title/Description" [formControl]="keywords" />
+        </mat-form-field>
+    </div>
+
+    <div class="search-results">
+        <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="highlight"></item-list>
+        <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="highlight"></item-table>
+        <mat-paginator [length]="totalItems" [pageSize]="pageSize"></mat-paginator>
+    </div>
     `,
-    styles: [`
-        mat-form-field {
-            display: block;
-        }
-    `]
+    styleUrls: [ './item-search.component.scss']
 })
 export class ItemSearch {
-    @ViewChild(LccSelect) lcc;
+    searchRunning = false;
+
+    @ViewChild(MatButtonToggleGroup) resultsListType: MatButtonToggleGroup;
+    @ViewChild(LccSelect) lcc: LccSelect;
 
     keywords:FormControl = new FormControl();
     highlight:string[] = [];
@@ -47,7 +69,6 @@ export class ItemSearch {
     constructor(private http:HttpClient) {}
 
     ngOnInit() {
-        // handling the keywords control separately so it can be debounced
         // just hold onto its value.
         this.keywords.valueChanges.pipe(
             debounceTime(500)
@@ -63,8 +84,10 @@ export class ItemSearch {
             lcc: this.lcc.control,
             keywords: new FormControl() // to catch keywords values
         });
-        // if any criteria changes reset to page 0
-        this.controlsGroup.valueChanges.subscribe(() => this.paginator.pageIndex = 0);
+
+        // if any criteria, or the view type changes reset to page 0
+        mergeObservables(this.controlsGroup.valueChanges,this.resultsListType.valueChange.asObservable())
+            .subscribe(() => this.paginator.pageIndex = 0);
 
         mergeObservables(this.controlsGroup.valueChanges, this.paginator.page) // TODO merge paginator, etc.
             .pipe(
@@ -87,6 +110,7 @@ export class ItemSearch {
                   }
                   let page = this.http.get('/api/item',{params:qargs})
                       .pipe(map((response:any) => response.list as ItemIfc[]));
+                  this.searchRunning = true;
                   return !qargs.$skip ?
                     this.http.get('/api/item/count',{params:{...qargs,$top:99999}})
                         .pipe(
@@ -96,9 +120,13 @@ export class ItemSearch {
                                 return page;
                             })
                         ) : page;
+              }),
+              catchError(() => {
+                  this.searchRunning = false;
+                  return observableOf([]);
               })
           ).subscribe(items => {
-              console.log(`items`,items);
+              this.searchRunning = false;
               this.dataSource.data = items;
           });
     }

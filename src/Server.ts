@@ -72,7 +72,7 @@ export class Server {
             $orderby: 'title',
             $orderbyPaged: 'title',
             count: true,
-            populate: ['_lcc']
+            //populate: ['_lcc']
         }});
 
         let lcc = new Resource({...READONLY,...{

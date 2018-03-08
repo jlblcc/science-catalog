@@ -9,3 +9,31 @@ mark {
     border: 1px solid #666;
     */
 }
+
+
+// when using font-awesome icons in mat-icon it appears they need to be sized appropriately
+// the margins are because font-awesome icons aren't as nicely centered in fab buttons.
+.mat-icon-button mat-icon.fa,
+.mat-fab mat-icon.fa {
+    font-size: 2em;
+    margin-top: -1px;
+}
+.mat-mini-fab mat-icon.fa,
+.mat-button-toggle mat-icon.fa {
+    font-size: 1.35em;
+    margin-top: 4px;
+}
+/* this feels like a workaround but it would be nice to have both material
+   icons and font-awesome icons work without having to specify font-awesome as
+   the family in code for every fa icon used.  may want to revisit this
+   "solution" but without it the stepper's pencil icon doesn't work
+   and other material icons cannot be used (because app.module sets
+   the default icon font family to font-awesome).
+ */
+mat-icon {
+    font-family: 'Material Icons' !important;
+}
+// the base class name is fa and all the sub-classes start with fa-
+mat-icon[class*="fa-"] {
+    font-family: 'FontAwesome' !important;
+}

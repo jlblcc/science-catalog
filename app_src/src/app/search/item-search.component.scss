@@ -1,0 +1,33 @@
+:host {
+    display: relative;
+}
+.search-running-shade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.15);
+}
+
+.search-controls {
+    .lcc-output-select {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        lcc-select {
+            flex-grow: 1;
+        }
+        .results-list-type {
+            margin-left: 10px;
+        }
+    }
+}
+
+mat-form-field {
+    display: block;
+}

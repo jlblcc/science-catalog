@@ -1,5 +1,5 @@
 import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
-import { Item, ItemDoc } from '../../../db/models';
+import { Item, ItemDoc, LccIfc } from '../../../db/models';
 import { LogAdditions } from '../../log';
 import { QueryCursor } from 'mongoose';
 
@@ -54,7 +54,9 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                         simplified: {$exists: false }
                     }]};
             let cursor:QueryCursor<ItemDoc> = Item
-                    .find(criteria).cursor(),
+                    .find(criteria)
+                    .populate(['_lcc'])
+                    .cursor(),
                 next = () => {
                     cursor.next()
                         .then((item:ItemDoc) => {
@@ -78,9 +80,11 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
     }
 
     private simplify(item:ItemDoc):Promise<ItemDoc> {
-        let mdJson = item.mdJson;
+        let mdJson = item.mdJson,
+            lcc = item._lcc as LccIfc;
         item.simplified = {
             title: mdJson.metadata.resourceInfo.citation.title,
+            lcc: lcc.title,
             abstract: mdJson.metadata.resourceInfo.abstract,
             keywords: mdJson.metadata.resourceInfo.keyword.reduce((map,k) => {
                 if(k.keywordType) {

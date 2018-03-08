@@ -3,7 +3,8 @@ import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
-import { MatButtonModule,
+import { MatIconModule,
+         MatButtonModule,
          MatFormFieldModule,
          MatSelectModule,
          MatCheckboxModule,
@@ -12,7 +13,9 @@ import { MatButtonModule,
          MatInputModule,
          MatTableModule,
          MatPaginatorModule,
-         MatSortModule } from '@angular/material';
+         MatSortModule,
+         MatButtonToggleModule,
+         MatTooltipModule } from '@angular/material';
 
 @NgModule({
     imports:[
@@ -20,6 +23,7 @@ import { MatButtonModule,
         FormsModule,
         ReactiveFormsModule,
 
+        MatIconModule,
         MatButtonModule,
         MatFormFieldModule,
         MatSelectModule,
@@ -29,13 +33,16 @@ import { MatButtonModule,
         MatInputModule,
         MatTableModule,
         MatPaginatorModule,
-        MatSortModule
+        MatSortModule,
+        MatButtonToggleModule,
+        MatTooltipModule
     ],
     exports: [
         BrowserModule,
         FormsModule,
         ReactiveFormsModule,
 
+        MatIconModule,
         MatButtonModule,
         MatFormFieldModule,
         MatSelectModule,
@@ -45,7 +52,9 @@ import { MatButtonModule,
         MatInputModule,
         MatTableModule,
         MatPaginatorModule,
-        MatSortModule
+        MatSortModule,
+        MatButtonToggleModule,
+        MatTooltipModule
     ]
 })
 export class MaterialModule {}

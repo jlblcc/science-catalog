@@ -5,6 +5,7 @@ import { MaterialModule } from '../material';
 
 import { LccSelect } from './lcc-select.component';
 import { ItemList } from './item-list.component';
+import { ItemTable } from './item-table.component';
 import { HighlightText, HighlightPipe } from './highlight-text.component';
 import { LccTitlePipe } from './lcc-title.pipe';
 
@@ -17,7 +18,7 @@ import { ItemSearch } from './item-search.component';
     ],
     declarations:[
         LccSelect,
-        ItemList,
+        ItemList, ItemTable,
         HighlightText, HighlightPipe,
         ItemSearch,
         LccTitlePipe
