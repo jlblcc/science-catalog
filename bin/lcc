@@ -15,10 +15,11 @@ process.on('uncaughtException', handleError);
 
 command.version('1.0.0')
     .option('--lcc <id>', 'The lcc to add or remove.')
-    .option('--action <action>', 'What to do with the LCC (add, remove, list or available. default add)', /^(add|remove|list|available)$/i, 'add')
+    .option('--action <action>', 'What to do with the LCC (add, remove, list or available. default add)', /^(add|addAll|remove|removeAll|list|available)$/i, 'add')
     .parse(process.argv);
 
-if(command.action !== 'list' && command.action !== 'available' && !command.lcc) {
+const noLccRequredActions = ['list','available','addAll','removeAll'];
+if(noLccRequredActions.indexOf(command.action) === -1 && !command.lcc) {
     command.help();
 }
 
@@ -57,6 +58,7 @@ function remove(id) {
                 handleError(err);
             }
             if(!lcc) {
+                console.log(`LCC with id ${id} not found`)
                 return resolve(null);
             }
             lcc.remove((err,lcc) => {
@@ -82,6 +84,17 @@ function getAllIds() {
     });
 }
 
+function awaitLccPromises(promises,logMsg) {
+    Promise.all(promises)
+        .then((results) => {
+            results.filter(lcc => !!lcc)
+                .forEach(lcc => console.log(`${logMsg} [${lcc._id}] "${lcc.title}"`));
+            // on remove pause before exiting so that the remove triggers for Lcc
+            // have time to cleanup associated Items or some may linger
+            setTimeout(() => process.exit(0),logMsg === 'removed' && promises.length ? 5000 : 0);
+        }).catch(handleError);
+}
+
 db().then(() => {
     let promises,logMsg;
     switch(command.action) {
@@ -89,36 +102,38 @@ db().then(() => {
             logMsg = 'added';
             promises = command.lcc.split(',').map(id => add(id));
             break;
+        case 'addAll':
+            getAllIds()
+                .then(lccs => awaitLccPromises(lccs.map(lcc => add(lcc.sbid)),'added'))
+                .catch(handleError);
+            break;
         case 'remove':
             logMsg = 'removed';
             promises = command.lcc.split(',').map(id => remove(id));
             break;
+        case 'removeAll':
+            Lcc.find({})
+                .then(lccs => awaitLccPromises(lccs.map(lcc => remove(lcc._id)),'removed'))
+                .catch(handleError);
+            break;
         case 'list':
-            Lcc.find({},(err,lccs) => {
-                if(err) {
-                    handleError(err);
-                }
-                lccs.forEach(lcc => console.log(`[${lcc._id}] "${lcc.title}"`+(lcc.lastSync ? ` lastSync:${lcc.lastSync}` : '')));
-                process.exit(0);
-            });
+            Lcc.find({})
+                .then(lccs => {
+                    lccs.forEach(lcc => console.log(`[${lcc._id}] "${lcc.title}"`+(lcc.lastSync ? ` lastSync:${lcc.lastSync}` : '')));
+                    process.exit(0);
+                })
+                .catch(handleError);
             break;
         case 'available':
             getAllIds()
             .then(list => {
                 list.forEach(lcc => console.log(`${lcc.sbid} : ${lcc.title}`));
-                let ids = list.map(lcc => lcc.sbid).join(',');
-                console.log(ids);
                 process.exit(0);
             })
             .catch(handleError);
             break;
     }
     if(promises) {
-        Promise.all(promises)
-            .then((results) => {
-                results.filter(lcc => !!lcc)
-                    .forEach(lcc => console.log(`${logMsg} [${lcc._id}] "${lcc.title}"`));
-                process.exit(0);
-            }).catch(handleError);
+        awaitLccPromises(promises,logMsg);
     }
 }).catch(handleError);
