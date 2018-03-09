@@ -25,7 +25,7 @@
     "kerberos": "0.0.23",
     "moment": "^2.20.1",
     "mongodb": "^2.2.33",
-    "mongoose": "^4.13.4",
+    "mongoose": "^5.0.2",
     "odata-resource": "^1.0.0",
     "request": "^2.83.0",
     "request-promise-native": "^1.0.5",

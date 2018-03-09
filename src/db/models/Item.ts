@@ -9,6 +9,62 @@ export enum ScType {
    PRODUCT = 'product'
 };
 
+export interface StringToStringMap {
+    [key: string]: any;
+}
+export interface StringToStringArrayMap {
+    [key: string]: string[];
+}
+
+/**
+ * Simplified keywords.  The `types` and `keywords` maps will have the same
+ * set of keys.
+ */
+export interface SimplifiedKeywords {
+    /** Map of keyword type key to keyword type label (original `keywordType`) */
+    types: StringToStringMap;
+    /** Map of keyword type key to keyword values */
+    keywords: StringToStringArrayMap;
+}
+
+/**
+ * The basic representation of a simplified contact.  Per the mdJson schema
+ * At least one of `name` or `positionName` is required.
+ *
+ * @todo round this out, may expand for syncing into lccnetwork, etc.
+ */
+export interface SimplifiedContact {
+    /** The contact name */
+    name?: string;
+    /** The contact position */
+    positionName?: string;
+    /** The isOrganization flag */
+    isOrganization: boolean;
+    /** The list of e-mail addresses */
+    electronicMailAddress?: string[];
+    memberOfOrganization?: SimplifiedContact[];
+}
+
+export interface SimplifiedContacts {
+    [role: string]: SimplifiedContact[];
+}
+
+/**
+ * The basic representation of a simplified item document.
+ */
+export interface SimplifiedIfc {
+    /** The item title (`metadata.resourceInfo.citation.title`) */
+    title: string;
+    /** The title of the owning LCC */
+    lcc: string;
+    /** The item abstract (`metadata.resourceInfo.abstract`) */
+    abstract: string;
+    /** The item keywords (built from `metadata.resourceInfo.keyword`) */
+    keywords: SimplifiedKeywords;
+    /** The list of simplified contacts (built from `metadata.resourceInfo.pointOfContact` and `metadata.contact`) */
+    contacts: SimplifiedContacts;
+}
+
 /**
  * Exposes the Item schema.
  */
@@ -30,13 +86,28 @@ export interface ItemIfc {
     /** The `mdJson` document */
     mdJson: any;
     /** The simplified version of the `mdJson` document */
-    simplified?: any;
+    simplified?: SimplifiedIfc;
 }
 
 /**
  * Unions ItemIfc with Mongoose Document.
  */
 export interface ItemDoc extends ItemIfc, Document {}
+
+// mongoose cannot validate but TypeScript can
+const keywordsSchema= new Schema({
+    types: { type: Schema.Types.Mixed, required: true},
+    keywords: { type: Schema.Types.Mixed, required: true },
+},{ _id : false });
+
+const simplifiedSchema = new Schema({
+    title: {type: String, required: true},
+    lcc: {type: String, required: true},
+    abstract: {type: String, required: true },
+    keywords: keywordsSchema,
+    // mongoose cannot validate but TypeScript can
+    contacts: {type: Schema.Types.Mixed, required: true },
+},{ _id : false });
 
 const schema = new Schema({
         _lcc: {type: Schema.Types.ObjectId, ref: 'Lcc', required: true},
@@ -46,7 +117,7 @@ const schema = new Schema({
         created: {type: Date, required: true},
         modified: {type: Date, required: true},
         mdJson: Schema.Types.Mixed,
-        simplified: Schema.Types.Mixed
+        simplified: simplifiedSchema,
     },{
         timestamps: {
             createdAt:'created',

@@ -136,10 +136,13 @@ export class ItemSearch {
                   qargs.$text = criteria.$text;
               }
               // build the $filter value
-              let $filter = '';
+              // require simplified not equal null so that we can avoid picking up
+              // items that are currently being sync'ed into the system and have yet
+              // to have simplification run on them.
+              let $filter = 'simplified ne null';
               if(criteria.lcc.length) {
                   let ids = criteria.lcc.map(id => `'${id}'`);
-                  $filter = `in(_lcc,${ids.join(',')})`;
+                  $filter = ` and in(_lcc,${ids.join(',')})`;
               }
               // if $filter is truthy pass along
               if($filter) {

@@ -35,10 +35,11 @@ export class Tail extends EventEmitter {
     start():Tail {
         this.cursor = SyncPipelineProcessorLog
             .find(this.criteria)
-            .tailable(true,{
-                tailableRetryInterval: 500,
-                //numberOfRetries: n
-            }).cursor()
+            .setOptions({
+                tailable:true,
+                awaitData: true
+            })
+            .cursor()
             .on('data',(message) => this.emit('message',message));
         return this;
     }

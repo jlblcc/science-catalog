@@ -43,7 +43,7 @@ export function db() {
             db: 'science-catalog'
         };
         debug('cxConfig',cxConfig);
-        mongoose.connect(`mongodb://${cxConfig.host}:${cxConfig.port}/${cxConfig.db}`,{useMongoClient:true})
+        mongoose.connect(`mongodb://${cxConfig.host}:${cxConfig.port}/${cxConfig.db}`)
          .then(resolve)
          .catch(reject);
     });

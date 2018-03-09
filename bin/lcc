@@ -15,28 +15,10 @@ process.on('uncaughtException', handleError);
 
 command.version('1.0.0')
     .option('--lcc <id>', 'The lcc to add or remove.')
-    .option('--action <action>', 'What to do with the LCC (add, remove or list. default add)', /^(add|remove|list)$/i, 'add')
-    .option('--lccs','Display a list of LCCs and their known ids from ScienceBase')
+    .option('--action <action>', 'What to do with the LCC (add, remove, list or available. default add)', /^(add|remove|list|available)$/i, 'add')
     .parse(process.argv);
 
-if(command.lccs) {
-    // this list is incomplete and just for convenience
-    const LCCS = { "568576fce4b0e7594ee73efa" : "LCC Network",
-      "519e280ce4b0ac3d2125b827" : "Gulf Coast Prairie Landscape Conservation Cooperative",
-      "513f899ce4b0dcc733969431" : "Eastern Tallgrass Prairie and Big Rivers Landscape Conservation Cooperative",
-      "4fa196c3e4b0acd7432ffe28" : "Plains and Prairie Potholes Landscape Conservation Cooperative",
-      "4f4e476be4b07f02db47e143" : "North Atlantic Landscape Conservation Cooperative",
-      "52cd70e5e4b0c3f95144ebe1" : "Pacific Islands Landscape Conservation Cooperative",
-      "4f6a2afce4b0e7aaea01dbc8" : "Great Northern Landscape Conservation Cooperative",
-      "4f6a3d64e4b0e7aaea01dbfb" : "North Pacific Landscape Conservation Cooperative",
-      "50367466e4b06c3b908a67dd" : "Great Basin Landscape Conservation Cooperative",
-      "4f4e4773e4b07f02db47e248" : "Desert Landscape Conservation Cooperative",
-      "4f58e667e4b07cde2c0df6ec" : "South Atlantic Landscape Conservation Cooperative" };
-    Object.keys(LCCS).forEach(key => console.log(`${key} ${LCCS[key]}`));
-    process.exit(0);
-}
-
-if(command.action !== 'list' && !command.lcc) {
+if(command.action !== 'list' && command.action !== 'available' && !command.lcc) {
     command.help();
 }
 
@@ -87,6 +69,19 @@ function remove(id) {
     });
 }
 
+function getAllIds() {
+    return new Promise((resolve,reject) => {
+        request({
+            url: 'https://lccnetwork.org/api/v1/lcc?$select=title,sbid',
+            qs: {
+                $select: 'title,sbid',
+            }
+        })
+        .then(response => resolve(JSON.parse(response).list))
+        .catch(reject);
+    });
+}
+
 db().then(() => {
     let promises,logMsg;
     switch(command.action) {
@@ -106,6 +101,16 @@ db().then(() => {
                 lccs.forEach(lcc => console.log(`[${lcc._id}] "${lcc.title}"`+(lcc.lastSync ? ` lastSync:${lcc.lastSync}` : '')));
                 process.exit(0);
             });
+            break;
+        case 'available':
+            getAllIds()
+            .then(list => {
+                list.forEach(lcc => console.log(`${lcc.sbid} : ${lcc.title}`));
+                let ids = list.map(lcc => lcc.sbid).join(',');
+                console.log(ids);
+                process.exit(0);
+            })
+            .catch(handleError);
             break;
     }
     if(promises) {

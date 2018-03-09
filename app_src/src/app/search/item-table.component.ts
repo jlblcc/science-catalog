@@ -10,6 +10,9 @@ export const TABLE_COLUMNS = [{
 },{
     property: 'simplified.lcc',
     label: 'LCC'
+},{
+    property: 'simplified.contacts.principalInvestigator.name',
+    label: 'Principal Investigator'
 }];
 
 /**
@@ -27,6 +30,11 @@ export const TABLE_COLUMNS = [{
         <ng-container matColumnDef="simplified.lcc">
             <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true"> LCC </mat-header-cell>
             <mat-cell *matCellDef="let item">{{item.simplified.lcc | lccTitle}}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="simplified.contacts.principalInvestigator.name">
+            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true"> Principal Investigator </mat-header-cell>
+            <mat-cell *matCellDef="let item">{{item.simplified.contacts.principalInvestigator ? item.simplified.contacts.principalInvestigator[0].name : ''}}</mat-cell>
         </ng-container>
 
         <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>

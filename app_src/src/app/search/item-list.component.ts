@@ -11,26 +11,48 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
 @Component({
     selector: 'item-list',
     template: `
-    <mat-form-field>
-        <mat-select placeholder="Sort by" (selectionChange)="sortChange()" [(value)]="sort.active">
-            <mat-option *ngFor="let c of tableColumns" [value]="c.property">{{c.label}}</mat-option>
-        </mat-select>
-    </mat-form-field>
-    <mat-button-toggle class="sort-direction-toggle"
-        [checked]="sortDescending"
-        matTooltip="Change sort direction"
-        (change)="sortDirectionChange()">
-        <mat-icon [fontIcon]="sortDescending ? 'fa-arrow-down' :'fa-arrow-up'"></mat-icon>
-    </mat-button-toggle>
-
-    <mat-list>
-        <mat-list-item *ngFor="let item of dataSource.data">
-            <h4 mat-line><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text></h4>
-            <h5 mat-line>{{item.simplified.lcc | lccTitle}}</h5>
-            <p mat-line><highlight-text [text]="item.simplified.abstract" [highlight]="highlight"></highlight-text></p>
-        </mat-list-item>
-    </mat-list>
-    `
+    <div class="sort-controls">
+        <mat-form-field class="sort-column">
+            <mat-select placeholder="Sort by" (selectionChange)="sortChange()" [(value)]="sort.active">
+                <mat-option *ngFor="let c of tableColumns" [value]="c.property">{{c.label}}</mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-button-toggle class="sort-direction-toggle"
+            [checked]="sortDescending"
+            matTooltip="Change sort direction"
+            (change)="sortDirectionChange()">
+            <mat-icon [fontIcon]="sortDescending ? 'fa-arrow-down' :'fa-arrow-up'"></mat-icon>
+        </mat-button-toggle>
+    </div>
+    <mat-card *ngFor="let item of dataSource.data">
+        <mat-card-title><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text> ({{item.simplified.lcc | lccTitle}})</mat-card-title>
+        <mat-card-subtitle>Principal Investigator: {{item.simplified.contacts.principalInvestigator ? item.simplified.contacts.principalInvestigator[0].name : ''}}</mat-card-subtitle>
+        <mat-card-content>
+            <highlight-text [text]="item.simplified.abstract" [highlight]="highlight"></highlight-text>
+        </mat-card-content>
+    </mat-card>
+    `,
+    styles: [`
+        mat-card {
+            margin-bottom: 10px;
+        }
+        .sort-controls {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        .sort-controls .sort-column {
+            flex-grow: 1;
+        }
+        .sort-controls .sort-column /deep/ .mat-input-underline {
+            // no idea why, this is ootb 1.25em and for this ONE control that causes
+            // the underling to not show up.
+            bottom: 1.26em;
+        }
+        .sort-controls .sort-direction-toggle {
+            margin-left: 15px;
+        }
+    `]
 })
 export class ItemList {
     tableColumns = TABLE_COLUMNS;
