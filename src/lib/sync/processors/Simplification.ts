@@ -140,7 +140,11 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             this.log.warn(`[${SimplificationCodes.MISSING_CONTACT}][${item._id}] "${contactId}"`,{
                 _item: item._id,
                 _lcc: item._lcc._id,
-                code: SimplificationCodes.MISSING_CONTACT
+                code: SimplificationCodes.MISSING_CONTACT,
+                data: {
+                    contacts: item.mdJson.contact,
+                    missingContactId: contactId
+                }
             });
             return null;
         }

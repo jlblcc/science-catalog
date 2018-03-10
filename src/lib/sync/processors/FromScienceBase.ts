@@ -38,6 +38,10 @@ export class ItemCounts {
     randModed?:number;
     /** Whether the execution resulted in an error (See SyncPipelineProcessorLog for error) */
     error:boolean;
+    /** The number of projects */
+    projects = 0;
+    /** The number of products */
+    products = 0;
     /** When the LCC sync started */
     startMillis;
     /** When the LCC sync completed */
@@ -58,7 +62,7 @@ export class ItemCounts {
     }
 };
 
-const DEFAULT_ITEM_PAGE_SIZE = 5;
+const DEFAULT_ITEM_PAGE_SIZE = 20;
 const DEFAULT_PAUSE_BETWEEN_LCC = 30000;
 
 /**
@@ -89,7 +93,13 @@ export enum FromScienceBaseLogCodes {
     ITEM_UNCHANGED = 'item_unchanged',
     ITEM_DELETED = 'item_deleted',
     ITEM_IGNORED = 'item_ignored',
-    ITEM_ERROR = 'item_error'
+    ITEM_ERROR = 'item_error',
+    PROJECT_SYNC_STARTED = 'project_sync_started',
+    PROJECT_SYNC_COMPLETED = 'project_sync_completed',
+    ASSOC_PRODUCT_MISSING_SBID = 'assoc_product_missing_sbid',
+    PRODUCT_SYNC_STARTED = 'product_sync_started',
+    PRODUCT_SYNC_COMPLETED = 'product_sync_completed',
+    PRODUCT_SYNC_MISSING_PRODUCTS = 'product_sync_missing_products',
 };
 
 /**
@@ -116,12 +126,14 @@ export function fromScienceBaseReport(results:ItemCounts[]):string {
  *
  * It produces on output `ItemCount[]`.
  *
- * @todo Support sync of `product` as well as `project`
+ * @todo Support dangling `products`
  * @todo Handle deleted items from sciencebase
  * @todo Why are the numbers for `randModded` and `updated` not the same when `randMod` is enabled?
  * @todo Test `If-Modified-Since` request for `mdJson` document.
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
+    get pageSize() { return (this.config.pageSize||DEFAULT_ITEM_PAGE_SIZE); }
+
     run():Promise<SyncPipelineProcessorResults<ItemCounts[]>> {
         this.results.results = [];
         return new Promise((resolve,_reject) => {
@@ -161,11 +173,13 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 _lcc: lcc._id
             };
             this.log.info(`Starting LCC [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.LCC_STARTED});
-            let complete = () => {
+            let counts = new ItemCounts(lcc),
+                complete = () => {
                     lcc.lastSync = new Date();
                     return lcc.save();
                 },
-                resolve = (counts:ItemCounts) => {
+                resolve = () => {
+                    counts.finish();
                     this.log.info(`[${FromScienceBaseLogCodes.LCC_COMPLETED}][${lcc._id}] "${lcc.title}" in ${counts.total} seconds.`,{...logAdditions,
                         code: FromScienceBaseLogCodes.LCC_COMPLETED,
                         data:counts
@@ -180,7 +194,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 reject = (err) => {
                     this.log.error(`[${FromScienceBaseLogCodes.LCC_ERROR}][${lcc._id}] "${lcc.title}"`,{...logAdditions,
                         code: FromScienceBaseLogCodes.LCC_ERROR,
-                        data:err
+                        data: this.constructErrorForStorage(err),
                     });
                     complete()
                     .then(() => _reject(err))
@@ -188,8 +202,27 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         console.error(e);
                         _reject(err);
                     });
+                };
+            this.lccProjectSync(lcc,counts)
+                .then(productIds => this.lccProductSync(lcc,counts,productIds))
+                .then(resolve)
+                .catch(reject);
+        });
+    }
+
+
+
+    private lccProjectSync(lcc:LccDoc,counts:ItemCounts):Promise<string[]> {
+        return new Promise((_resolve,reject) => {
+            let logAdditions:LogAdditions = {
+                _lcc: lcc._id
+            };
+            this.log.info(`Project Sync Started [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PROJECT_SYNC_STARTED});
+            let productIds:string[] = [],
+                resolve = () => {
+                    this.log.info(`Project Sync Completed [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PROJECT_SYNC_COMPLETED});
+                    _resolve(productIds)
                 },
-                counts = new ItemCounts(lcc),
                 importOnePage = (response) => {
                     counts.pages++;
                     response = JSON.parse(response);
@@ -197,11 +230,11 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                             if(response.nextlink && response.nextlink.url) {
                                 request(response.nextlink.url).then(importOnePage).catch(reject);
                             } else {
-                                resolve(counts.finish());
+                                resolve();
                             }
                         },
                         items = response.items,
-                        promises = items.map(i => this.projectSync(i,lcc,counts));
+                        promises = items.map(i => this.projectSync(i,lcc,counts,productIds));
                     counts.total += items.length;
                     if(promises.length) {
                         // wait for them to complete
@@ -212,8 +245,8 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         next();
                     }
                 };
-            // get the ball rolling
-            request({
+                // get the ball rolling
+                request({
                     url: `https://www.sciencebase.gov/catalog/items`,
                     qs: {
                         fields: 'title,files',
@@ -223,7 +256,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         sort: 'lastUpdated',
                         order: 'desc',
                         format: 'json',
-                        max: (this.config.pageSize||DEFAULT_ITEM_PAGE_SIZE)
+                        max: this.pageSize
                     }
                 })
                 .then(importOnePage)
@@ -231,7 +264,92 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         });
     }
 
-    private projectSync(item:any,lcc:LccDoc,counts:ItemCounts) {
+    private lccProductSync(lcc:LccDoc,counts:ItemCounts,productIds:string[]):Promise<any> {
+        return new Promise((_resolve,reject) => {
+            let logAdditions:LogAdditions = {
+                    _lcc: lcc._id
+                },
+                initialItemCount = counts.total,
+                initialItemIgnored = counts.ignored,
+                resolve = () => {
+                    /* can't do this see comparison of requested ids to returned ids check/warning below
+                    let productsConsidered = counts.total - initialItemCount;
+                    // sanity check
+                    if(productsConsidered !== productIds.length) {
+                        throw new Error(`Mismatch between the number of products considered (${productsConsidered}) and the number of product ids to consider (${productIds.length})`);
+                    }*/
+                    this.log.info(`Product Sync Completed [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_COMPLETED});
+                    _resolve();
+                };
+            this.log.info(`Product Sync Started (${productIds.length}) [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_STARTED});
+            if(!productIds.length) {
+                return resolve();
+            }
+            // break productIds into pages
+            let pages = [], start = 0, max = this.pageSize, c;
+            while((c = productIds.slice(start,(start+max))) && c.length) {
+                pages.push(c);
+                start += max;
+            }
+
+            let next = () => {
+                if(!pages.length) {
+                    resolve();
+                }
+                counts.pages++;
+                let ids = pages.pop();
+                this.log.debug
+                request({
+                    url: `https://www.sciencebase.gov/catalog/items`,
+                    qs: {
+                        fields: 'title,files',
+                        filter: 'ids='+ids.join(','),
+                        filter0: 'tags=LCC Network Science Catalog',
+                        sort: 'lastUpdated',
+                        order: 'desc',
+                        format: 'json',
+                    }
+                })
+                .then((response => {
+                    response = JSON.parse(response);
+                    let items = response.items,
+                        promises = items.map(i => this.productSync(i,lcc,counts));
+                    counts.total += items.length;
+                    if(items.length !== ids.length) {
+                        // this may or may not be an issue, the difference could be explained by either
+                        // the ids not matching the tags criteria or being "secured" and not publicly accessible
+                        let returnedIds = items.map(i => i.id),
+                            missingIds = ids.filter(i => returnedIds.indexOf(i) === -1);
+                        this.log.warn(`Missing product ids [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_MISSING_PRODUCTS,data: {
+                            requestedIds: ids,
+                            returnedIds: returnedIds,
+                            missingIds: missingIds
+                        }});
+                    }
+                    if(promises.length) {
+                        Promise.all(promises)
+                            .then(next)
+                            .catch(reject);
+                    } else {
+                        resolve();
+                    }
+                }))
+                .catch(reject);
+            };
+            next(); // get the product sync going
+        });
+    }
+
+
+    private projectSync(item:any,lcc:LccDoc,counts:ItemCounts,productIds:string[]) {
+        return this.itemSync(item,lcc,counts,ScType.PROJECT,productIds);
+    }
+
+    private productSync(item:any,lcc:LccDoc,counts:ItemCounts) {
+        return this.itemSync(item,lcc,counts,ScType.PRODUCT);
+    }
+
+    private itemSync(item:any,lcc:LccDoc,counts:ItemCounts,itemType:ScType,productIds?:string[]) {
         return new Promise((_resolve,_reject) => {
             let logAdditions:LogAdditions = {
                 _lcc: lcc._id,
@@ -239,6 +357,14 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
             },
             resolve = (o,code:FromScienceBaseLogCodes) => {
                 this.log.info(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code});
+                switch(itemType) {
+                    case ScType.PROJECT:
+                        counts.projects++;
+                        break;
+                    case ScType.PRODUCT:
+                        counts.products++;
+                        break;
+                }
                 switch(code) {
                     case FromScienceBaseLogCodes.ITEM_CREATED:
                         counts.created++;
@@ -303,10 +429,24 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         _id: new ObjectId(item.id),
                         _lcc: lcc._id,
                         title: item.title,
-                        scType: ScType.PROJECT,
+                        scType: itemType,
                         hash: sha1.digest('hex'),
                         mdJson: mdJson,
                     };
+
+                    if(itemType === ScType.PROJECT && productIds) {
+                        (mdJson.metadata.associatedResource||[]).filter(r => r.associationType === 'product')
+                            .forEach(productAssociation => {
+                                let sbid = (productAssociation.resourceCitation.identifier||[]).reduce((found,ident) => {
+                                    return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
+                                },undefined);
+                                if(sbid) {
+                                    productIds.push(sbid);
+                                } else {
+                                    this.log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID}][${item.id}] "${item.title}"`,{...logAdditions,code: FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID,data:productAssociation});
+                                }
+                            });
+                    }
 
                     Item.findById(catalog_item._id,(err,existing) => {
                         if(err) {

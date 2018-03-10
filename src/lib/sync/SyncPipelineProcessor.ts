@@ -98,13 +98,19 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
                 }).catch((err:Error) => {
                     this.procEntry.lastComplete = new Date();
                     this.procEntry.results = null;
-                    this.procEntry.error = {
-                            message: err.message,
-                            stack: err.stack
-                    };
+                    this.procEntry.error = this.constructErrorForStorage(err);
                     this.procEntry.save(onSave);
                 });
         });
+    }
+
+    protected constructErrorForStorage(err) {
+        if(err && (err.message || err.stack)) {
+            return {
+                message: err.message,
+                stack: err.stack,
+            };
+        }
     }
 
     /**
