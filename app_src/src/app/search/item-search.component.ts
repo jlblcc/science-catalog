@@ -17,7 +17,7 @@ import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
 
 const BASE_QUERY_ARGS = {
-    $select: 'simplified'
+    $select: 'scType simplified'
 };
 
 @Component({
@@ -142,7 +142,7 @@ export class ItemSearch {
               let $filter = 'simplified ne null';
               if(criteria.lcc.length) {
                   let ids = criteria.lcc.map(id => `'${id}'`);
-                  $filter = ` and in(_lcc,${ids.join(',')})`;
+                  $filter += ` and in(_lcc,${ids.join(',')})`;
               }
               // if $filter is truthy pass along
               if($filter) {

@@ -25,7 +25,7 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
         </mat-button-toggle>
     </div>
     <mat-card *ngFor="let item of dataSource.data">
-        <mat-card-title><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text> ({{item.simplified.lcc | lccTitle}})</mat-card-title>
+        <mat-card-title><item-icon [item]="item"></item-icon> <highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text> ({{item.simplified.lcc | lccTitle}})</mat-card-title>
         <mat-card-subtitle>Principal Investigator: {{item.simplified.contacts.principalInvestigator ? item.simplified.contacts.principalInvestigator[0].name : ''}}</mat-card-subtitle>
         <mat-card-content>
             <highlight-text [text]="item.simplified.abstract" [highlight]="highlight"></highlight-text>
@@ -36,6 +36,9 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
         mat-card {
             margin-bottom: 10px;
         }
+        mat-card .mat-card-title {
+            font-size: 1.1em;
+        }
         .sort-controls {
             display: flex;
             flex-direction: row;
@@ -45,12 +48,14 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
             flex-grow: 1;
         }
         .sort-controls .sort-column /deep/ .mat-input-underline {
-            // no idea why, this is ootb 1.25em and for this ONE control that causes
-            // the underling to not show up.
+            /* no idea why, this is ootb 1.25em and for this ONE control that causes the underling to not show up. */
             bottom: 1.26em;
         }
         .sort-controls .sort-direction-toggle {
             margin-left: 15px;
+        }
+        item-icon {
+            font-size: 0.75em;
         }
     `]
 })

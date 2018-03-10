@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 
 import { MaterialModule } from '../material';
 
+import { ItemIcon } from './item-icon.component';
 import { LccSelect } from './lcc-select.component';
 import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
@@ -17,6 +18,7 @@ import { ItemSearch } from './item-search.component';
         MaterialModule
     ],
     declarations:[
+        ItemIcon,
         LccSelect,
         ItemList, ItemTable,
         HighlightText, HighlightPipe,
