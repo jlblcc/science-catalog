@@ -10,6 +10,7 @@ import { of as observableOf } from 'rxjs/observable/of';
 import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort } from '@angular/material';
 
 import { LccSelect } from './lcc-select.component';
+import { SctypeSelect } from './sctype-select.component';
 
 import { ItemIfc } from '../../../../src/db/models';
 
@@ -30,7 +31,7 @@ const BASE_QUERY_ARGS = {
     <div class="search-controls">
         <div class="lcc-output-select">
             <lcc-select></lcc-select>
-
+            <sctype-select></sctype-select>
             <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="list" class="results-list-type">
                 <mat-button-toggle value="list" matTooltip="Display results as a list">
                     <mat-icon fontIcon="fa-bars"></mat-icon>
@@ -64,6 +65,8 @@ export class ItemSearch {
 
     /** The LCC selection component */
     @ViewChild(LccSelect) lcc: LccSelect;
+    /** The type selection component */
+    @ViewChild(SctypeSelect) scType: SctypeSelect;
     /** FormControl for $text based search */
     $text:FormControl = new FormControl();
     /** Individual words entered into the $text input so results displays can highlight them */
@@ -107,6 +110,7 @@ export class ItemSearch {
         // any change to the criteria input.
         let criteriaGroup = new FormGroup({
             lcc: this.lcc.control,
+            scType: this.scType.control,
             $text: new FormControl() // to catch $text values
         });
 
@@ -140,6 +144,9 @@ export class ItemSearch {
               // items that are currently being sync'ed into the system and have yet
               // to have simplification run on them.
               let $filter = 'simplified ne null';
+              if(criteria.scType) {
+                  $filter += ` and scType eq '${criteria.scType}'`;
+              }
               if(criteria.lcc.length) {
                   let ids = criteria.lcc.map(id => `'${id}'`);
                   $filter += ` and in(_lcc,${ids.join(',')})`;
