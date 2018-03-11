@@ -1,9 +1,0 @@
-<mat-sidenav-container class="dashboard-container">
-    <mat-sidenav #sidenav [mode]="sideNavMode" [opened]="sideNavOpen">
-        <dashboard-sidebar></dashboard-sidebar>
-    </mat-sidenav>
-    <dashboard-navbar (onToggleSidebar)="sideNavOpen = !sideNavOpen"></dashboard-navbar>
-    <div class="dashboard-content">
-        <router-outlet></router-outlet>
-    </div>
-</mat-sidenav-container>

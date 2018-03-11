@@ -63,8 +63,9 @@ export class Server {
 
     constructor() {
         let app = this.express = express();
-        app.use(express.static(path.join(__dirname,'app')));
         app.use(BodyParser.json());
+        app.use(express.static(path.join(__dirname,'public')));
+        app.get('/',(req,res) => res.redirect('/app'));
         this.init();
     }
 
