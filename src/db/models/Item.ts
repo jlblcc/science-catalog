@@ -63,6 +63,8 @@ export interface SimplifiedIfc {
     keywords: SimplifiedKeywords;
     /** The list of simplified contacts (built from `metadata.resourceInfo.pointOfContact` and `metadata.contact`) */
     contacts: SimplifiedContacts;
+    /** The list of fiscal years reported via funding (built from `mdJson.metadata.funding.timePeriod`) */
+    fiscalYears: number[];
 }
 
 /**
@@ -107,6 +109,7 @@ const simplifiedSchema = new Schema({
     keywords: keywordsSchema,
     // mongoose cannot validate but TypeScript can
     contacts: {type: Schema.Types.Mixed, required: true },
+    fiscalYears: [{type: Number, required: true}],
 },{ _id : false });
 
 const schema = new Schema({

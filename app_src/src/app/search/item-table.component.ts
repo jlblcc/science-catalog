@@ -16,6 +16,9 @@ export const TABLE_COLUMNS = [{
 },{
     property: 'simplified.contacts.principalInvestigator.name',
     label: 'Principal Investigator'
+},{
+    property: 'simplified.fiscalYears',
+    label: 'Fiscal Year'
 }];
 
 /**
@@ -45,12 +48,18 @@ export const TABLE_COLUMNS = [{
             <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.contacts.principalInvestigator ? item.simplified.contacts.principalInvestigator[0].name : ''}}</mat-cell>
         </ng-container>
 
+        <ng-container matColumnDef="simplified.fiscalYears">
+            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-fiscal"> Fiscal Year(s) </mat-header-cell>
+            <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.fiscalYears.join(', ')}}</mat-cell>
+        </ng-container>
+
         <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
         <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
     </mat-table>
     `,
     styles:[`
-        .item-type {
+        .item-type,
+        .item-fiscal {
             flex-grow: 1;
         }
         .item-title {

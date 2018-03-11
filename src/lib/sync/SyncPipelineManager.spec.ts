@@ -9,7 +9,8 @@ import { expect } from 'chai';
 
 const rethrow = err => {
     console.error('RETHROWING',err);
-    throw err; };
+    throw err;
+};
 
 describe('SyncPipelineManager',() => {
     // all tests require a connection

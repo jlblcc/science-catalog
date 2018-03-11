@@ -6,6 +6,7 @@ import { Item,
          SimplifiedContact } from '../../../db/models';
 import { LogAdditions } from '../../log';
 import { QueryCursor } from 'mongoose';
+import * as moment from 'moment-timezone';
 
 /**
  * The output of the simplification processor.
@@ -29,6 +30,7 @@ export enum SimplificationCodes {
     SIMPLIFIED = 'simplified',
     MISSING_CONTACT = 'missing_contact',
     MISSING_KEYWORDS = 'missing_keywords',
+    INVALID_FUNDING_TIMEPERIOD = 'invalid_funding_timeperiod',
 }
 
 /**
@@ -39,6 +41,67 @@ export enum SimplificationCodes {
  */
 export function simplificationReport(output:SimplificationOutput) {
     return `simplified ${output.total} items`;
+}
+
+/**
+ * The `timePeriod` as used by `mdJson.metadata.funding[]`
+ */
+export interface FiscalTimePeriod {
+    startDateTime: string;
+    endDateTime?: string;
+}
+
+/**
+ * Translates an ISO8601 into its fiscal year.
+ *
+ * @param d An ISO8601 formatted date string.
+ * @returns The fiscal year for `d` or null.
+ */
+export function fiscalYear(d:string):number {
+    if(d) {
+        let m = moment(d).tz('UTC');
+        // if >= october next year
+        return m.year() + (m.month() >= 9 ? 1 : 0);
+    }
+    return null;
+}
+
+function _fiscalYears(period:FiscalTimePeriod) {
+    let start = period ? period.startDateTime : null,
+        end = period ? period.endDateTime : null,
+        years:number[] = [];
+    if(start) {
+        let startYear = fiscalYear(start),
+            endYear = fiscalYear(end);
+        if(endYear && endYear < startYear) {
+            throw new Error(`Invalid date range ${start} - ${end}`)
+        } else if (!endYear) {
+            endYear = startYear;
+        }
+        while(startYear <= endYear) {
+            years.push(startYear++);
+        }
+    }
+    return years;
+}
+
+/**
+ * Translates a date range of ISO8601 formatted strings into the corresponding fiscal years.
+ *
+ * @param period The period or periods to get the fiscal year range for.
+ * @param returns The array of fiscal years.
+ */
+export function fiscalYears(period:FiscalTimePeriod | FiscalTimePeriod[]):number[] {
+    let yearRanges = (period instanceof Array ? period : [period]).map(p => _fiscalYears(p));
+    if(!yearRanges.length) {
+        return [];
+    } else if (yearRanges.length === 1) {
+        return yearRanges[0];
+    }
+    return yearRanges.reduce((years,range) => {
+        range.filter(y => years.indexOf(y) === -1).forEach(y => years.push(y));
+        return years;
+    },[]).sort();
 }
 
 export default class Simplification extends SyncPipelineProcessor<SimplificationConfig,SimplificationOutput> {
@@ -87,14 +150,34 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
 
     private simplify(item:ItemDoc):Promise<ItemDoc> {
         let mdJson = item.mdJson,
-            lcc = item._lcc as LccIfc;
+            lcc = item._lcc as LccIfc,
+            logAdditions:LogAdditions = {
+                _item: item._id,
+                _lcc: item._lcc.id
+            };
         // keyword isn't required but...
         if(!mdJson.metadata.resourceInfo.keyword) {
-            this.log.warn(`[${SimplificationCodes.MISSING_KEYWORDS}][${item._id}]`,{
-                _item: item._id,
-                _lcc: item._lcc._id,
-                code: SimplificationCodes.MISSING_KEYWORDS
-            });
+            this.log.warn(`[${SimplificationCodes.MISSING_KEYWORDS}][${item._id}]`,{...logAdditions,
+                    code: SimplificationCodes.MISSING_KEYWORDS
+                });
+        }
+        let fiscals:number[] = [];
+        try {
+            let timePeriods = (mdJson.metadata.funding||[])
+                .filter(f => !!f.timePeriod) // only those with timePeriods
+                .map(f => f.timePeriod) as FiscalTimePeriod[];
+            fiscals = fiscalYears(timePeriods);
+            /*
+            console.log('timePeriods',timePeriods);
+            console.log('fiscals',fiscals);*/
+        } catch (fiscalError) {
+            this.log.warn(`[${SimplificationCodes.INVALID_FUNDING_TIMEPERIOD}][${item._id}]`,{...logAdditions,
+                    code: SimplificationCodes.INVALID_FUNDING_TIMEPERIOD,
+                    data: {
+                        error: this.constructErrorForStorage(fiscalError),
+                        funding: mdJson.metadata.funding
+                    }
+                });
         }
         item.simplified = {
             title: mdJson.metadata.resourceInfo.citation.title,
@@ -123,6 +206,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     .forEach(c => map[poc.role].push(c));
                 return map;
             },{}),
+            fiscalYears: fiscals
         };
         return item.save();
     }
