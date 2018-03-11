@@ -99,7 +99,16 @@ export class ItemSearch {
         this.$text.valueChanges.pipe(
             debounceTime(500)
         ).subscribe((v:string) => {
-            this.highlight = v ? v.split(' ') : [];
+            let regex = new RegExp('"([\\w\\s^"]+)"|\\b(\\w+)\\b','g'),
+                match, matches = [];
+            while ((match = regex.exec(v)) !== null) {
+                match = match[0];
+                if(match.charAt(0) === '"' && match.charAt(match.length-1) === '"') {
+                    match = match.substring(1,match.length-1);
+                }
+                matches.push(match);
+            }
+            this.highlight = matches;
             criteriaGroup.setValue({
                 ...criteriaGroup.value,
                 $text: v
@@ -132,6 +141,7 @@ export class ItemSearch {
                   ...BASE_QUERY_ARGS,
                   $top: this.pageSize,
                   $skip: this.paginator.pageIndex * this.pageSize,
+                  $ellipsis: '300',
                   $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
               };
               let criteria = criteriaGroup.value;

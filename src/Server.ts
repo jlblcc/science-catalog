@@ -3,6 +3,7 @@ import * as express from 'express';
 import Resource = require('odata-resource');
 import * as BodyParser from 'body-parser';
 import * as path from 'path';
+import * as htmlEllipsis from 'html-ellipsis';
 
 import { Request, Response } from 'express';
 import { DocumentQuery } from 'mongoose';
@@ -33,7 +34,14 @@ class ItemResource extends Resource<ItemDoc> {
             if(err) {
                 return Resource.sendError(res,500,`find failed`,err);
             }
-            this._findListResponse(req,res,items,null);
+            let ellipsisLength = typeof(req.query.$ellipsis) !== 'undefined' ? parseInt(req.query.$ellipsis) : NaN,
+                postMapper = !isNaN(ellipsisLength) ? (o) => {
+                    if(o && o.simplified && o.simplified.abstract) {
+                        o.simplified.abstract = htmlEllipsis(o.simplified.abstract,ellipsisLength,' ...');
+                    }
+                    return o;
+                } : null;
+            this._findListResponse(req,res,items,postMapper);
         });
     }
 
