@@ -26,7 +26,7 @@ export interface SimplificationConfig extends SyncPipelineProcessorConfig {
 }
 
 /**
- *
+ * Logging codes for the Simplification SyncPipelineProcessor
  */
 export enum SimplificationCodes {
     SIMPLIFIED = 'simplified',

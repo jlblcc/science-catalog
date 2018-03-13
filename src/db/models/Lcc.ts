@@ -7,7 +7,9 @@ import { Item } from './Item';
 export interface LccIfc {
     /** The sciencebase/catalog id */
     _id: any;
+    /** The LCC title */
     title: string;
+    /** The last time the LCC's items were synced */
     lastSync?: Date;
 }
 
@@ -32,10 +34,5 @@ schema.post('remove',(lcc:LccDoc) => {
 
 /**
  * LCC model.
- *
- * #### Schema
- *
- * - title: The name of the LCC.
- * - lastSync: The last time a sync for this LCC was performed.
  */
 export const Lcc = model<LccDoc>('Lcc',schema,'Lcc');
