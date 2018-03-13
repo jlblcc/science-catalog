@@ -6,7 +6,6 @@ import { Schema, model, Document } from 'mongoose';
 export interface ContactIfc {
     name?: string;
     positionName?: string;
-    contactType?: string;
     isOrganization: boolean;
     electronicMailAddress?: string;
     aliases?: string[];
@@ -20,7 +19,6 @@ export interface ContactDoc extends ContactIfc, Document {}
 const schema = new Schema({
     name: {type: String, required: false},
     positionName: {type: String, required: false},
-    contactType: {type: String, required: false},
     isOrganization: {type: Boolean, required: true},
     electronicMailAddress: [{type: String, required: false}],
     aliases: [{type: String, required: false, index: 1}],

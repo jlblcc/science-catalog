@@ -5,7 +5,9 @@ import { Item,
          LccIfc,
          SimplifiedKeywords,
          SimplifiedContact,
-         SimplifiedFunding } from '../../../db/models';
+         SimplifiedFunding,
+         Contact,
+         ContactDoc } from '../../../db/models';
 import { LogAdditions } from '../../log';
 import { QueryCursor } from 'mongoose';
 import * as moment from 'moment-timezone';
@@ -112,47 +114,81 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
     // generating multiple log warnings for a given item (a contact may be simplified multiple
     // times for a given item like for contacts and again for funding sources/recipients)
     private warnedContactIds:string[] = [];
+    private orgsMap:any;
+    private nonOrgsMap:any;
 
     run():Promise<SyncPipelineProcessorResults<SimplificationOutput>> {
-        return new Promise((resolve,reject) => {
-            this.results.results = new SimplificationOutput();
-            let criteria =
-                (this.config.force || !this.procEntry.lastComplete) ?
-                    // either first run or asked to do all
-                    {} :
-                    {$or:[{
-                        // changed since last sync
-                        modified: {$gt: this.procEntry.lastComplete}
-                    },{
-                        // or don't have simplified documents
-                        // this shouldn't be necessary since mongoose should
-                        // set modified to created so new documents should
-                        // be picked up above
-                        simplified: {$exists: false }
-                    }]};
-            let cursor:QueryCursor<ItemDoc> = Item
-                    .find(criteria)
-                    .populate(['_lcc'])
-                    .cursor(),
-                next = () => {
-                    cursor.next()
-                        .then((item:ItemDoc) => {
-                            if(!item) {
-                                return resolve(this.results);
-                            }
-                            this.simplify(item)
-                                .then((i:ItemDoc) => {
-                                    this.log.info(`[${SimplificationCodes.SIMPLIFIED}][${i._id}] "${i.title}"`,{
-                                        _lcc: i._lcc,
-                                        _item: i._id,
-                                        code: SimplificationCodes.SIMPLIFIED
-                                    });
-                                    this.results.results.total++;
-                                    next();
+        return new Promise((_resolve,reject) => {
+            let resolve = () => {
+                delete this.orgsMap;
+                delete this.nonOrgsMap;
+                _resolve(this.results);
+            };
+            this.loadContacts()
+                .then(() => {
+                    this.results.results = new SimplificationOutput();
+                    let criteria =
+                        (this.config.force || !this.procEntry.lastComplete) ?
+                            // either first run or asked to do all
+                            {} :
+                            {$or:[{
+                                // changed since last sync
+                                modified: {$gt: this.procEntry.lastComplete}
+                            },{
+                                // or don't have simplified documents
+                                // this shouldn't be necessary since mongoose should
+                                // set modified to created so new documents should
+                                // be picked up above
+                                simplified: {$exists: false }
+                            }]};
+                    let cursor:QueryCursor<ItemDoc> = Item
+                            .find(criteria)
+                            .populate(['_lcc'])
+                            .cursor(),
+                        next = () => {
+                            cursor.next()
+                                .then((item:ItemDoc) => {
+                                    if(!item) {
+                                        return resolve();
+                                    }
+                                    this.simplify(item)
+                                        .then((i:ItemDoc) => {
+                                            this.log.info(`[${SimplificationCodes.SIMPLIFIED}][${i._id}] "${i.title}"`,{
+                                                _lcc: i._lcc,
+                                                _item: i._id,
+                                                code: SimplificationCodes.SIMPLIFIED
+                                            });
+                                            this.results.results.total++;
+                                            next();
+                                        }).catch(reject);
                                 }).catch(reject);
-                        }).catch(reject);
-                };
-            next();
+                        };
+                    next();
+                })
+                .catch(reject);
+        });
+    }
+
+    private loadContacts():Promise<any> {
+        this.orgsMap = {};
+        this.nonOrgsMap = {};
+        return new Promise((resolve,reject) => {
+            Contact.find({})
+                .exec()
+                .then(contacts => {
+                    // put all the contacts in a big map by their aliases
+                    contacts.forEach(c => c.aliases.forEach((a:any) => {
+                        let map = c.isOrganization ? this.orgsMap : this.nonOrgsMap;
+                        /* @todo log a warning?? */
+                        /*if(map[a]) {
+                            console.warn(`The alias "${a}" is already mapped (org:${c.isOrganization})?`);
+                        }*/
+                        map[a] = c
+                    }));
+                    //console.log(`found ${contacts.length} contacts with ${Object.keys(this.orgsMap).length + Object.keys(this.nonOrgsMap).length} unique aliases`);
+                    resolve();
+                })
+                .catch(reject);
         });
     }
 
@@ -319,8 +355,10 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             return null;
         }
         let { name, positionName, isOrganization, electronicMailAddress, contactType } = c;
+        let contactMap = isOrganization ? this.orgsMap : this.nonOrgsMap,
+            mapped = contactMap[name.trim().toLowerCase()];
         let contact:SimplifiedContact = {
-            name: name,
+            name: mapped.name, // if this isn't found then we kind of want the pipeline to fail
             positionName: positionName,
             contactType: contactType ? contactType.toLowerCase() : undefined, // Using toLowerCase() to normalize (see comment below).
             isOrganization: isOrganization,
