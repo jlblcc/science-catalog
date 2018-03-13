@@ -1,6 +1,7 @@
 import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
 import { Item,
          ItemDoc,
+         ScType,
          LccIfc,
          SimplifiedKeywords,
          SimplifiedContact,
@@ -32,6 +33,7 @@ export enum SimplificationCodes {
     MISSING_CONTACT = 'missing_contact',
     MISSING_KEYWORDS = 'missing_keywords',
     INVALID_FUNDING_TIMEPERIOD = 'invalid_funding_timeperiod',
+    NON_USD_FUNDING_ALLOCATION = 'non_usd_funding_allocation',
 }
 
 /**
@@ -106,6 +108,11 @@ export function fiscalYears(period:FiscalTimePeriod | FiscalTimePeriod[]):number
 }
 
 export default class Simplification extends SyncPipelineProcessor<SimplificationConfig,SimplificationOutput> {
+    // used to capture which contactIds for a given item have had warnings issued to avoid
+    // generating multiple log warnings for a given item (a contact may be simplified multiple
+    // times for a given item like for contacts and again for funding sources/recipients)
+    private warnedContactIds:string[] = [];
+
     run():Promise<SyncPipelineProcessorResults<SimplificationOutput>> {
         return new Promise((resolve,reject) => {
             this.results.results = new SimplificationOutput();
@@ -150,6 +157,9 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
     }
 
     private simplify(item:ItemDoc):Promise<ItemDoc> {
+        // reset warnedContactIds for each document
+        this.warnedContactIds = [];
+
         let mdJson = item.mdJson,
             lcc = item._lcc as LccIfc,
             logAdditions:LogAdditions = {
@@ -197,28 +207,53 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                 return map;
             },{}),
             resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
-            funding: this.simplifyFunding(item),
         };
+        if(item.scType === ScType.PROJECT) {
+            // there is one product that has funding but the requirements say
+            // funding is project specific so assume that one product is an
+            // unwanted anomaly
+            item.simplified.funding = this.simplifyFunding(item);
+        }
         return item.save();
     }
 
     private simplifyFunding(item:ItemDoc):SimplifiedFunding {
         let mdJson = item.mdJson,
-            lcc = item._lcc as LccIfc,
+            funding = mdJson.metadata.funding;
+        // if no funding then move on
+        if(!funding || !funding.length) {
+            return undefined;
+        }
+        let lcc = item._lcc as LccIfc,
             logAdditions:LogAdditions = {
                 _item: item._id,
                 _lcc: item._lcc.id
             },
-            fiscals:number[] = [];
+            simplified:SimplifiedFunding = {
+                amount: funding.reduce((total,f) => {
+                                    return total + (f.allocation||[]).reduce((aSum,a) => {
+                                            if(a.currency && a.currency !== 'USD') {
+                                                this.log.warn(`[${SimplificationCodes.NON_USD_FUNDING_ALLOCATION}][${item._id}]`,{...logAdditions,
+                                                        code: SimplificationCodes.NON_USD_FUNDING_ALLOCATION,
+                                                        data: a
+                                                    });
+                                                return aSum;
+                                            }
+                                            return aSum+(a.amount||0);
+                                        },0);
+                                },0),
+                matching: funding.reduce((matching,f) => {
+                                    return matching||(f.allocation||[]).reduce((m,a) => m||(a.matching ? true : false),false)
+                                },false)
+            };
+        // calculate fiscal years
         try {
-            let timePeriods = (mdJson.metadata.funding||[])
+            let timePeriods = funding
                 .filter(f => !!f.timePeriod) // only those with timePeriods
                 .map(f => f.timePeriod) as FiscalTimePeriod[];
-            fiscals = fiscalYears(timePeriods);
-            /*
-            console.log('timePeriods',timePeriods);
-            console.log('fiscals',fiscals);*/
+            simplified.fiscalYears = fiscalYears(timePeriods);
         } catch (fiscalError) {
+            // happens if someone has defined an invalid start/end range (bad data)
             this.log.warn(`[${SimplificationCodes.INVALID_FUNDING_TIMEPERIOD}][${item._id}]`,{...logAdditions,
                     code: SimplificationCodes.INVALID_FUNDING_TIMEPERIOD,
                     data: {
@@ -227,10 +262,35 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     }
                 });
         }
-        let funding = {
-            fiscalYears: fiscals
+        // look for awardIds (funding[].allocation[].sourceAllocationId)
+        simplified.awardIds = funding.reduce((ids,f) => {
+                (f.allocation||[]).forEach((a) => {
+                    if(a.sourceAllocationId && ids.indexOf(a.sourceAllocationId) === -1) {
+                        ids.push(a.sourceAllocationId);
+                    }
+                });
+                return ids;
+            },[]);
+
+        // generate funding sources/recipients
+        const simplifyContacts = (key) => {
+            const contacts:SimplifiedContact[] = [],
+                duplicateContact = (c) => contacts.reduce((found,ec) => found||(this.equalContacts(c,ec) ? true : false),false);
+            funding.forEach(f => {
+                (f.allocation||[]).forEach(a => {
+                    if(a[key]) {
+                        let c = this.simplifyContact(a[key],item);
+                        if(!duplicateContact(c)) {
+                            contacts.push(c);
+                        }
+                    }
+                });
+            });
+            return contacts;
         };
-        return funding;
+        simplified.sources = simplifyContacts('sourceId');
+        simplified.recipients = simplifyContacts('recipientId');
+        return simplified;
     }
 
     private simplifyContacts(contactIds:string[],item:ItemDoc) {
@@ -243,23 +303,28 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         let contacts = item.mdJson.contact,
             c = contacts.reduce((found,c) => found||(c.contactId === contactId ? c : undefined),undefined);
         if(!c) {
-            this.log.warn(`[${SimplificationCodes.MISSING_CONTACT}][${item._id}] "${contactId}"`,{
-                _item: item._id,
-                _lcc: item._lcc._id,
-                code: SimplificationCodes.MISSING_CONTACT,
-                data: {
-                    contacts: item.mdJson.contact,
-                    missingContactId: contactId
-                }
-            });
+            // for a given item only issue one warning per missing contactId (array reset per item)
+            if(this.warnedContactIds.indexOf(contactId) === -1) {
+                this.warnedContactIds.push(contactId);
+                this.log.warn(`[${SimplificationCodes.MISSING_CONTACT}][${item._id}] "${contactId}"`,{
+                    _item: item._id,
+                    _lcc: item._lcc._id,
+                    code: SimplificationCodes.MISSING_CONTACT,
+                    data: {
+                        contacts: item.mdJson.contact,
+                        missingContactId: contactId
+                    }
+                });
+            }
             return null;
         }
-        let { name, positionName, isOrganization, electronicMailAddress } = c;
+        let { name, positionName, isOrganization, electronicMailAddress, contactType } = c;
         let contact:SimplifiedContact = {
             name: name,
             positionName: positionName,
+            contactType: contactType ? contactType.toLowerCase() : undefined, // Using toLowerCase() to normalize (see comment below).
             isOrganization: isOrganization,
-            electronicMailAddress: electronicMailAddress
+            electronicMailAddress: electronicMailAddress && electronicMailAddress.length ? electronicMailAddress : undefined,
         };
         if(c.memberOfOrganization) {
             // missign contacts happen...
@@ -270,4 +335,51 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         }
         return contact;
     }
+
+    private equalContacts(c1:SimplifiedContact, c2:SimplifiedContact) {
+        return c1.name === c2.name &&
+            c1.positionName === c2.positionName &&
+            c1.contactType === c2.contactType &&
+            c1.isOrganization === c2.isOrganization;
+        // not comparing electronicMailAddress or memberOfOrganization arrays
+    }
+    /*
+db.Item.distinct('mdJson.contact.contactType')
+[
+	"Academic",
+	"Federal",
+	"NGO",
+	"Research",
+	"lcc",
+	"academic",
+	"federal",
+	"Cooperator/Partner",
+	"consortium",
+	"Native/Tribal",
+	"Private",
+	"Foundation",
+	"LCC",
+	"Nonprofit",
+	"Province",
+	"State",
+	"Unknown",
+	"nonProfit",
+	"Principal Investigator",
+	"Consortium",
+	"Lead Organization",
+	"state",
+	"Contact",
+	"local",
+	"private",
+	"Co-Investigator",
+	"foundation",
+	"Point of Contact",
+	"Author",
+	"research",
+	"Funding Agency",
+	"Local",
+	"Distributor",
+	"tribal"
+]
+     */
 }

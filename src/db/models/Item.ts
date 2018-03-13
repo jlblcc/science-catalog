@@ -36,6 +36,11 @@ export interface SimplifiedKeywords {
     /** Map of keyword type key to keyword values */
     keywords: StringToStringArrayMap;
 }
+// mongoose cannot validate but TypeScript can
+const keywordsSchema= new Schema({
+    types: { type: Schema.Types.Mixed, required: true},
+    keywords: { type: Schema.Types.Mixed, required: true },
+},{ _id : false });
 
 /**
  * The basic representation of a simplified contact.  Per the mdJson schema
@@ -48,12 +53,26 @@ export interface SimplifiedContact {
     name?: string;
     /** The contact position */
     positionName?: string;
+    /** The contactType property */
+    contactType?: string;
     /** The isOrganization flag */
     isOrganization: boolean;
     /** The list of e-mail addresses */
     electronicMailAddress?: string[];
+    /** The list of simplified organization contacts a contact is a member of */
     memberOfOrganization?: SimplifiedContact[];
 }
+const contactSchema = new Schema({
+    name: {type: String, required: false},
+    positionName: {type: String, required: false},
+    contactType: {type: String, required: false},
+    isOrganization: {type: Boolean, required: true},
+    electronicMailAddress: [{type: String, required: false}],
+},{_id: false});
+// recursive here
+contactSchema.add({
+    memberOfOrganization: [{type: contactSchema, required: false}],
+});
 
 /**
  * Map of contact role to contact.
@@ -71,14 +90,38 @@ export interface ResourceType {
     /** An associated name (e.g. "Report on X") */
     name?: string;
 }
+const resourceTypeSchema = new Schema({
+    type: { type: String, required: true },
+    name: { type: String, required: false },
+},{_id: false});
 
 /**
- * Simplified/processed information about funding.
+ * Simplified/processed information about funding (built from `metadata.funding[]`).
+ * https://mdtools.adiwg.org/#viewer-page?v=2-6
+ * (Note: mongoose adds empty arrays for optional arrays)
  */
 export interface SimplifiedFunding {
-    /** The list of fiscal years reported via funding (built from `mdJson.metadata.funding.timePeriod`) */
-    fiscalYears: number[];
+    /** The total funding (USD) */
+    amount: number;
+    /** The list of fiscal years reported via funding (built from `funding[].timePeriod`) */
+    fiscalYears?: number[];
+    /** Any `sourceAllocationId` found (built from `funding[].allocation[].sourceAllocationId`) */
+    awardIds?: string[];
+    /** Whether any allocation has matching set to try */
+    matching: boolean;
+    /** Funding source contacts */
+    sources?: SimplifiedContact[];
+    /** Funding recipient contacts */
+    recipients?: SimplifiedContact[];
 }
+const fundingSchema = new Schema({
+    amount: {type: Number, required: true},
+    fiscalYears: [{type: Number, required: false}],
+    awardIds: [{type: String, required: false}],
+    matching: {type: Boolean, required: true},
+    sources: [{type: contactSchema, required: false}],
+    recipients: [{type: contactSchema, required: false}],
+},{_id: false});
 
 /**
  * The basic representation of a simplified item document.
@@ -128,21 +171,6 @@ export interface ItemIfc {
  * Unions ItemIfc with Mongoose Document.
  */
 export interface ItemDoc extends ItemIfc, Document {}
-
-// mongoose cannot validate but TypeScript can
-const keywordsSchema= new Schema({
-    types: { type: Schema.Types.Mixed, required: true},
-    keywords: { type: Schema.Types.Mixed, required: true },
-},{ _id : false });
-
-const resourceTypeSchema = new Schema({
-    type: { type: String, required: true },
-    name: { type: String, required: false },
-},{_id: false});
-
-const fundingSchema = new Schema({
-    fiscalYears: [{type: Number, required: true}],
-},{_id: false});
 
 const simplifiedSchema = new Schema({
     title: {type: String, required: true},
