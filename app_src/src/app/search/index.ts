@@ -13,6 +13,7 @@ import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
 import { HighlightText, HighlightPipe } from './highlight-text.component';
 import { LccTitlePipe } from './lcc-title.pipe';
+import { ResourceTypePipe } from './resource-type.pipe';
 
 import { ItemSearch } from './item-search.component';
 
@@ -24,17 +25,18 @@ import { ItemSearch } from './item-search.component';
     declarations:[
         ItemIcon,
         LccSelect, SctypeSelect, KeywordSelect,
-        
+
         ItemList, ItemTable,
         HighlightText, HighlightPipe,
         ItemSearch,
-        LccTitlePipe
+
+        LccTitlePipe, ResourceTypePipe
     ],
     exports:[
         ItemSearch
     ],
     providers: [
-        LccTitlePipe
+        LccTitlePipe, ResourceTypePipe
     ]
 })
 export class SearchModule {}

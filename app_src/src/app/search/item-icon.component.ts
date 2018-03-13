@@ -9,7 +9,7 @@ import { ItemIfc } from '../../../../src/db/models';
     template: `
     <mat-icon *ngFor="let rt of item.simplified.resourceType"
         [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
-        [matTooltip]="rt.type + (rt.name ? (': '+rt.name) : '')"
+        matTooltip="{{rt.type | resourceType:rt.name}}"
         matTooltipPosition="right"></mat-icon>
     `
 })
@@ -20,7 +20,7 @@ export class ItemIcon {
     // so is not future proof
     readonly FONT_ICONS = {
         "project": "fa-product-hunt",
-        "report": "fa-book",
+        "report": "fa-file-text-o",
         "document": "fa-file-o",
         "dataset": "fa-database",
         "factSheet": "fa-file-o",
@@ -29,7 +29,7 @@ export class ItemIcon {
         "publication": "fa-book",
         "collection": "fa-bars",
         "website": "fa-link",
-        "Journal": "fa-book",
+        "Journal": "fa-file-text-o",
         "service": "fa-cogs",
         "application": "fa-code",
         "tabularDataset": "fa-table",

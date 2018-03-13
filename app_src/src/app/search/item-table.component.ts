@@ -5,8 +5,8 @@ import { MatSort, Sort } from '@angular/material';
 export const DEFAULT_SORT_DIRECTION = 'asc';
 export const DEFAULT_ACTIVE_SORT = 'simplified.title';
 export const TABLE_COLUMNS = [{
-    property: 'scType',
-    label: 'Project/Product'
+    property: 'simplified.resourceType',
+    label: 'Resource type'
 },{
     property: 'simplified.title',
     label: 'Title'
@@ -15,10 +15,10 @@ export const TABLE_COLUMNS = [{
     label: 'LCC'
 },{
     property: 'simplified.contacts.principalInvestigator.name',
-    label: 'Principal Investigator'
+    label: 'Principal investigator'
 },{
     property: 'simplified.fiscalYears',
-    label: 'Fiscal Year'
+    label: 'Fiscal year(s)'
 }];
 
 /**
@@ -28,8 +28,8 @@ export const TABLE_COLUMNS = [{
     selector: 'item-table',
     template: `
     <mat-table [dataSource]="dataSource" matSort>
-        <ng-container matColumnDef="scType">
-            <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-type"> Type </mat-header-cell>
+        <ng-container matColumnDef="simplified.resourceType">
+            <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-type"> Resource type </mat-header-cell>
             <mat-cell *matCellDef="let item"><item-icon [item]="item" class="item-type"></item-icon></mat-cell>
         </ng-container>
 
@@ -44,12 +44,12 @@ export const TABLE_COLUMNS = [{
         </ng-container>
 
         <ng-container matColumnDef="simplified.contacts.principalInvestigator.name">
-            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-pi"> Principal Investigator </mat-header-cell>
+            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-pi"> Principal investigator </mat-header-cell>
             <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.contacts.principalInvestigator ? item.simplified.contacts.principalInvestigator[0].name : ''}}</mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.fiscalYears">
-            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-fiscal"> Fiscal Year(s) </mat-header-cell>
+            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-fiscal"> Fiscal year(s) </mat-header-cell>
             <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.fiscalYears.join(', ')}}</mat-cell>
         </ng-container>
 

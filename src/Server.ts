@@ -3,7 +3,7 @@ import * as express from 'express';
 import Resource = require('odata-resource');
 import * as BodyParser from 'body-parser';
 import * as path from 'path';
-import * as htmlEllipsis from 'html-ellipsis';
+import * as truncateHtml from 'truncate-html';
 
 import { Request, Response } from 'express';
 import { DocumentQuery } from 'mongoose';
@@ -37,7 +37,10 @@ class ItemResource extends Resource<ItemDoc> {
             let ellipsisLength = typeof(req.query.$ellipsis) !== 'undefined' ? parseInt(req.query.$ellipsis) : NaN,
                 postMapper = !isNaN(ellipsisLength) ? (o) => {
                     if(o && o.simplified && o.simplified.abstract) {
-                        o.simplified.abstract = htmlEllipsis(o.simplified.abstract,ellipsisLength,' ...');
+                        o.simplified.abstract = truncateHtml(o.simplified.abstract,ellipsisLength,{
+                            stripTags: true,
+                            ellipsis: ' ...'
+                        });
                     }
                     return o;
                 } : null;

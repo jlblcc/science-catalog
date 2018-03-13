@@ -22,7 +22,6 @@
     "commander": "^2.11.0",
     "debug": "^3.1.0",
     "express": "^4.16.2",
-    "html-ellipsis": "^1.1.1",
     "kerberos": "0.0.23",
     "moment": "^2.20.1",
     "moment-timezone": "^0.5.14",
@@ -32,6 +31,7 @@
     "odata-resource": "^1.1.1",
     "request": "^2.83.0",
     "request-promise-native": "^1.0.5",
+    "truncate-html": "^1.0.0-rc.6",
     "typedoc": "^0.10.0",
     "typescript": "^2.7.2",
     "typescript-eslint-parser": "^13.0.0"
