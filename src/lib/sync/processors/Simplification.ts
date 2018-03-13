@@ -183,7 +183,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             title: mdJson.metadata.resourceInfo.citation.title,
             lcc: lcc.title,
             abstract: mdJson.metadata.resourceInfo.abstract,
-            keywords: (mdJson.metadata.resourceInfo.keyword||[]).reduce((map,k):SimplifiedKeywords => {
+            keywords: (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
                 if(k.keywordType) {
                     let typeLabel = k.keywordType,
                         typeKey = typeLabel
@@ -191,13 +191,19 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                             .toLowerCase()
                             .replace(/[\.-]/g,'')
                             .replace(/\s+/g,'_');
-                    map.types[typeKey] = typeLabel;
+                    // look through types to see if this one has been put in there yet
+                    if(!map.types.filter(kt => kt.type === typeKey).length) {
+                        map.types.push({
+                            type: typeKey,
+                            label: typeLabel
+                        });
+                    }
                     map.keywords[typeKey] = map.keywords[typeKey]||[];
                     k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
                 }
                 return map;
             },{
-                types: {},
+                types: [],
                 keywords: {},
             }),
             contacts: mdJson.metadata.resourceInfo.pointOfContact.reduce((map,poc) => {
@@ -206,6 +212,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     .forEach(c => map[poc.role].push(c));
                 return map;
             },{}),
+            resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
             fiscalYears: fiscals
         };
         return item.save();

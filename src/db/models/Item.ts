@@ -17,12 +17,22 @@ export interface StringToStringArrayMap {
 }
 
 /**
+ * Holds an individual mapping from type to label for a keyword type.
+ */
+export interface SimplifiedKeywordType {
+    /** The keyword type (key into `SimplifiedKeywords.keywords`) */
+    type: string;
+    /** The keyword type label (the original `keywordType`) */
+    label: string;
+}
+
+/**
  * Simplified keywords.  The `types` and `keywords` maps will have the same
  * set of keys.
  */
 export interface SimplifiedKeywords {
     /** Map of keyword type key to keyword type label (original `keywordType`) */
-    types: StringToStringMap;
+    types: SimplifiedKeywordType[];
     /** Map of keyword type key to keyword values */
     keywords: StringToStringArrayMap;
 }
@@ -45,8 +55,21 @@ export interface SimplifiedContact {
     memberOfOrganization?: SimplifiedContact[];
 }
 
+/**
+ * Map of contact role to contact.
+ */
 export interface SimplifiedContacts {
     [role: string]: SimplifiedContact[];
+}
+
+/**
+ * Definition of a resource type.
+ */
+export interface ResourceType {
+    /** The resource type */
+    type: string;
+    /** An associated name (e.g. "Report on X") */
+    name?: string;
 }
 
 /**
@@ -63,6 +86,8 @@ export interface SimplifiedIfc {
     keywords: SimplifiedKeywords;
     /** The list of simplified contacts (built from `metadata.resourceInfo.pointOfContact` and `metadata.contact`) */
     contacts: SimplifiedContacts;
+    /** The list of string resourceTypes (extracted from `metadata.resourceInfo.resourceType.type`) */
+    resourceType: ResourceType[];
     /** The list of fiscal years reported via funding (built from `mdJson.metadata.funding.timePeriod`) */
     fiscalYears: number[];
 }
@@ -102,6 +127,11 @@ const keywordsSchema= new Schema({
     keywords: { type: Schema.Types.Mixed, required: true },
 },{ _id : false });
 
+const resourceTypeSchema = new Schema({
+    type: { type: String, required: true },
+    name: { type: String, required: false },
+},{_id: false});
+
 const simplifiedSchema = new Schema({
     title: {type: String, required: true},
     lcc: {type: String, required: true},
@@ -109,6 +139,7 @@ const simplifiedSchema = new Schema({
     keywords: keywordsSchema,
     // mongoose cannot validate but TypeScript can
     contacts: {type: Schema.Types.Mixed, required: true },
+    resourceType: [resourceTypeSchema],
     fiscalYears: [{type: Number, required: true}],
 },{ _id : false });
 

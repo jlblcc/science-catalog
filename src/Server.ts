@@ -83,6 +83,30 @@ export class Server {
             count: true,
             //populate: ['_lcc']
         }});
+        let distinctKeywordBase = (req) => {
+            return item.getModel().find(req.query.scType ? { 'scType': req.query.scType } : {});
+        };
+        item.staticLink('keywordTypes',(req,res) => {
+            distinctKeywordBase(req)
+                .distinct('simplified.keywords.types')
+                .then(keyTypes => res.send(keyTypes))
+                .catch(err => Resource.sendError(res,500,'distinct keywordTypes',err));
+        });
+        item.staticLink('keywordsByType',(req,res) => {
+            let keywordType = req.query.keywordType;
+            if(!keywordType) {
+                return Resource.sendError(res,400,'missing required parameter keywordType');
+            }
+            distinctKeywordBase(req)
+                .distinct(`simplified.keywords.keywords.${keywordType}`)
+                .then(keywords => res.send(keywords.sort()))
+                .catch(err => Resource.sendError(res,500,`distinct keyword ${keywordType}`,err));
+        });
+        item.staticLink('resourceTypes',(req,res) => {
+            item.getModel().distinct('mdJson.metadata.resourceInfo.resourceType.type')
+                .then(types => res.send(types))
+                .catch(err => Resource.sendError(res,500,`distinct resourceType`,err));
+        });
 
         let lcc = new Resource({...READONLY,...{
             rel: '/api/lcc',

@@ -11,6 +11,7 @@ import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort }
 
 import { LccSelect } from './lcc-select.component';
 import { SctypeSelect } from './sctype-select.component';
+import { KeywordSelect } from './keyword-select.component';
 
 import { ItemIfc } from '../../../../src/db/models';
 
@@ -32,7 +33,7 @@ const BASE_QUERY_ARGS = {
         <div class="lcc-output-select">
             <lcc-select></lcc-select>
             <sctype-select></sctype-select>
-            <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="list" class="results-list-type">
+            <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type">
                 <mat-button-toggle value="list" matTooltip="Display results as a list">
                     <mat-icon fontIcon="fa-bars"></mat-icon>
                 </mat-button-toggle>
@@ -45,6 +46,13 @@ const BASE_QUERY_ARGS = {
         <mat-form-field>
             <input matInput placeholder="Title/Description" [formControl]="$text" />
         </mat-form-field>
+
+        <mat-expansion-panel class="advanced-search-panel" expanded="true">
+            <mat-expansion-panel-header>Advanced search</mat-expansion-panel-header>
+            <div class="advanced-search-controls">
+                <keyword-select></keyword-select>
+            </div>
+        </mat-expansion-panel>
     </div>
 
     <div class="search-results">
@@ -67,6 +75,8 @@ export class ItemSearch {
     @ViewChild(LccSelect) lcc: LccSelect;
     /** The type selection component */
     @ViewChild(SctypeSelect) scType: SctypeSelect;
+    /** The keyword selection component (advanced) */
+    @ViewChild(KeywordSelect) keywords: KeywordSelect;
     /** FormControl for $text based search */
     $text:FormControl = new FormControl();
     /** Individual words entered into the $text input so results displays can highlight them */
@@ -93,6 +103,7 @@ export class ItemSearch {
     constructor(private http:HttpClient) {}
 
     ngOnInit() {
+        this.keywords.sctypeSelect = this.scType;
         // capture input from the $text control and push it into the
         // criteriaGroup, doing this so we can debounce the input so
         // we're not running a query per character press
@@ -120,6 +131,7 @@ export class ItemSearch {
         let criteriaGroup = new FormGroup({
             lcc: this.lcc.control,
             scType: this.scType.control,
+            keywords: this.keywords.control,
             $text: new FormControl() // to catch $text values
         });
 
@@ -145,6 +157,7 @@ export class ItemSearch {
                   $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
               };
               let criteria = criteriaGroup.value;
+              console.log('criteria',criteria);
               // if $text search, pass along
               if(criteria.$text) {
                   qargs.$text = criteria.$text;
@@ -161,6 +174,9 @@ export class ItemSearch {
                   let ids = criteria.lcc.map(id => `'${id}'`);
                   $filter += ` and in(_lcc,${ids.join(',')})`;
               }
+              criteria.keywords.forEach(k => {
+                 $filter += ` and simplified.keywords.keywords.${k.typeKey} eq '${k.value}'` ;
+              });
               // if $filter is truthy pass along
               if($filter) {
                   qargs.$filter = $filter;

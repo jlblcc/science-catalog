@@ -6,6 +6,9 @@ import { MaterialModule } from '../material';
 import { ItemIcon } from './item-icon.component';
 import { SctypeSelect } from './sctype-select.component';
 import { LccSelect } from './lcc-select.component';
+import { KeywordSelect } from './keyword-select.component';
+
+
 import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
 import { HighlightText, HighlightPipe } from './highlight-text.component';
@@ -20,7 +23,8 @@ import { ItemSearch } from './item-search.component';
     ],
     declarations:[
         ItemIcon,
-        LccSelect, SctypeSelect,
+        LccSelect, SctypeSelect, KeywordSelect,
+        
         ItemList, ItemTable,
         HighlightText, HighlightPipe,
         ItemSearch,
