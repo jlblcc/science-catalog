@@ -3,7 +3,8 @@ import { Item,
          ItemDoc,
          LccIfc,
          SimplifiedKeywords,
-         SimplifiedContact } from '../../../db/models';
+         SimplifiedContact,
+         SimplifiedFunding } from '../../../db/models';
 import { LogAdditions } from '../../log';
 import { QueryCursor } from 'mongoose';
 import * as moment from 'moment-timezone';
@@ -161,24 +162,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     code: SimplificationCodes.MISSING_KEYWORDS
                 });
         }
-        let fiscals:number[] = [];
-        try {
-            let timePeriods = (mdJson.metadata.funding||[])
-                .filter(f => !!f.timePeriod) // only those with timePeriods
-                .map(f => f.timePeriod) as FiscalTimePeriod[];
-            fiscals = fiscalYears(timePeriods);
-            /*
-            console.log('timePeriods',timePeriods);
-            console.log('fiscals',fiscals);*/
-        } catch (fiscalError) {
-            this.log.warn(`[${SimplificationCodes.INVALID_FUNDING_TIMEPERIOD}][${item._id}]`,{...logAdditions,
-                    code: SimplificationCodes.INVALID_FUNDING_TIMEPERIOD,
-                    data: {
-                        error: this.constructErrorForStorage(fiscalError),
-                        funding: mdJson.metadata.funding
-                    }
-                });
-        }
+
         item.simplified = {
             title: mdJson.metadata.resourceInfo.citation.title,
             lcc: lcc.title,
@@ -213,9 +197,40 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                 return map;
             },{}),
             resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
-            fiscalYears: fiscals
+            funding: this.simplifyFunding(item),
         };
         return item.save();
+    }
+
+    private simplifyFunding(item:ItemDoc):SimplifiedFunding {
+        let mdJson = item.mdJson,
+            lcc = item._lcc as LccIfc,
+            logAdditions:LogAdditions = {
+                _item: item._id,
+                _lcc: item._lcc.id
+            },
+            fiscals:number[] = [];
+        try {
+            let timePeriods = (mdJson.metadata.funding||[])
+                .filter(f => !!f.timePeriod) // only those with timePeriods
+                .map(f => f.timePeriod) as FiscalTimePeriod[];
+            fiscals = fiscalYears(timePeriods);
+            /*
+            console.log('timePeriods',timePeriods);
+            console.log('fiscals',fiscals);*/
+        } catch (fiscalError) {
+            this.log.warn(`[${SimplificationCodes.INVALID_FUNDING_TIMEPERIOD}][${item._id}]`,{...logAdditions,
+                    code: SimplificationCodes.INVALID_FUNDING_TIMEPERIOD,
+                    data: {
+                        error: this.constructErrorForStorage(fiscalError),
+                        funding: mdJson.metadata.funding
+                    }
+                });
+        }
+        let funding = {
+            fiscalYears: fiscals
+        };
+        return funding;
     }
 
     private simplifyContacts(contactIds:string[],item:ItemDoc) {

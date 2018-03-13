@@ -73,6 +73,14 @@ export interface ResourceType {
 }
 
 /**
+ * Simplified/processed information about funding.
+ */
+export interface SimplifiedFunding {
+    /** The list of fiscal years reported via funding (built from `mdJson.metadata.funding.timePeriod`) */
+    fiscalYears: number[];
+}
+
+/**
  * The basic representation of a simplified item document.
  */
 export interface SimplifiedIfc {
@@ -88,8 +96,8 @@ export interface SimplifiedIfc {
     contacts: SimplifiedContacts;
     /** The list of string resourceTypes (extracted from `metadata.resourceInfo.resourceType.type`) */
     resourceType: ResourceType[];
-    /** The list of fiscal years reported via funding (built from `mdJson.metadata.funding.timePeriod`) */
-    fiscalYears: number[];
+    /** The simplified funding information */
+    funding?: SimplifiedFunding;
 }
 
 /**
@@ -132,6 +140,10 @@ const resourceTypeSchema = new Schema({
     name: { type: String, required: false },
 },{_id: false});
 
+const fundingSchema = new Schema({
+    fiscalYears: [{type: Number, required: true}],
+},{_id: false});
+
 const simplifiedSchema = new Schema({
     title: {type: String, required: true},
     lcc: {type: String, required: true},
@@ -140,7 +152,7 @@ const simplifiedSchema = new Schema({
     // mongoose cannot validate but TypeScript can
     contacts: {type: Schema.Types.Mixed, required: true },
     resourceType: [resourceTypeSchema],
-    fiscalYears: [{type: Number, required: true}],
+    funding: { type: fundingSchema, required: false },
 },{ _id : false });
 
 const schema = new Schema({
