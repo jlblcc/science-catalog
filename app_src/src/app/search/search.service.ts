@@ -14,7 +14,16 @@ const BASE_QUERY_ARGS = {
 };
 
 export interface FundingSearchCriteria {
-    fundingSource?: string;
+    fiscalYears?: number [];
+    awardId?: string;
+    match?:boolean;
+    lowerAmount?:number;
+    upperAmount?:number;
+
+    sourceType?: string[];
+    source?: string;
+    recipientType?: string[];
+    recipient?: string;
 }
 export interface KeywordSearchCriteria {
     /** The keyword type key */
@@ -70,7 +79,7 @@ export class SearchService {
         // require simplified not equal null so that we can avoid picking up
         // items that are currently being sync'ed into the system and have yet
         // to have simplification run on them.
-        let $filter = 'simplified ne null';
+        let $filter = 'simplified ne null',tmp:any;
         if(criteria.scType) {
             $filter += ` and scType eq '${criteria.scType}'`;
         }
@@ -81,10 +90,41 @@ export class SearchService {
         criteria.keywords.forEach(k => {
            $filter += ` and simplified.keywords.keywords.${k.typeKey} eq '${k.value}'` ;
         });
-        // if $filter is truthy pass along
-        if($filter) {
-            qargs.$filter = $filter;
+        if(criteria.funding) {
+            let f = criteria.funding;
+            if(f.fiscalYears && f.fiscalYears.length) {
+                $filter += ` and in(simplified.funding.fiscalYears,${f.fiscalYears.join(',')})`;
+            }
+            if(f.awardId) {
+                $filter += ` and simplified.funding.awardIds eq '${f.awardId}'`;
+            }
+            if(typeof(f.match) === 'boolean') {
+                $filter += ` and simplified.funding.matching eq ${f.match}`;
+            }
+            if(f.lowerAmount) {
+                $filter += ` and simplified.funding.amount ge ${f.lowerAmount}`;
+            }
+            if(f.upperAmount) {
+                $filter += ` and simplified.funding.amount le ${f.upperAmount}`;
+            }
+            if(f.source) {
+                $filter += ` and simplified.funding.sources.name eq '${f.source}'`;
+            }
+            if(f.sourceType && f.sourceType.length) {
+                tmp = f.sourceType.map(t => `'${t}'`).join(',');
+                $filter += ` and in(simplified.funding.sources.contactType,${tmp})`
+            }
+            if(f.recipient) {
+                $filter += ` and simplified.funding.recipients.name eq '${f.recipient}'`;
+            }
+            if(f.recipientType && f.recipientType.length) {
+                tmp = f.recipientType.map(t => `'${t}'`).join(',');
+                $filter += ` and in(simplified.funding.recipients.contactType,${tmp})`
+            }
         }
+
+        qargs.$filter = $filter;
+
         let page = this.http.get('/api/item',{params:qargs})
                         .pipe(map((response:any) => {
                             this.searchRunning = false;

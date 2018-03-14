@@ -110,7 +110,7 @@ export class Server {
                     if(regex) {
                         values = values.filter(v => regex.test(v));
                     }
-                    res.send(values);
+                    res.send(values.sort());
                 })
                 .catch(err => Resource.sendError(res,500,`distinct ${req.query.$select}`,err));
         });

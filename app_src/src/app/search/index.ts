@@ -8,6 +8,7 @@ import { SctypeSelect } from './sctype-select.component';
 import { LccSelect } from './lcc-select.component';
 import { KeywordSelect } from './keyword-select.component';
 import { DistinctAutocomplete } from './distinct-autocomplete.component';
+import { DistinctSelect } from './distinct-select.component';
 import { FundingSearchControls } from './funding-search-controls.component';
 
 
@@ -28,7 +29,8 @@ import { SearchService } from './search.service';
     ],
     declarations:[
         ItemIcon,
-        LccSelect, SctypeSelect, KeywordSelect, DistinctAutocomplete,
+        LccSelect, SctypeSelect, KeywordSelect,
+        DistinctAutocomplete, DistinctSelect,
         FundingSearchControls,
 
         ItemList, ItemTable,

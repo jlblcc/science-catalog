@@ -4,7 +4,7 @@ import { FormControl } from '@angular/forms';
 import { MatAutocompleteSelectedEvent } from '@angular/material';
 
 import { Observable } from 'rxjs/Observable';
-import { debounceTime, switchMap } from 'rxjs/operators';
+import { debounceTime, switchMap, startWith, tap } from 'rxjs/operators';
 
 import { SearchService } from './search.service';
 
@@ -18,7 +18,12 @@ import { SearchService } from './search.service';
     <mat-autocomplete #distinctAuto="matAutocomplete" (optionSelected)="optionSelected($event)">
         <mat-option *ngFor="let o of options | async" [value]="o">{{o}}</mat-option>
     </mat-autocomplete>
-    `
+    `,
+    styles:[`
+        mat-form-field {
+            display: block;
+        }
+    `]
 })
 export class DistinctAutocomplete {
     @Input() placeholder:string;
@@ -34,6 +39,12 @@ export class DistinctAutocomplete {
     ngOnInit() {
         this.options = this.typeAhead.valueChanges.pipe(
                 debounceTime(500),
+                startWith(null),
+                tap(v => {
+                    if(!v && this.control.value) {
+                        this.control.setValue(null);
+                    }
+                }),
                 switchMap(v => this.search.distinct<any>(
                     this.distinctProperty,
                     !this.containsMode ? `contains(${this.distinctProperty},'${v}')` : null,
