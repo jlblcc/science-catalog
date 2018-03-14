@@ -100,7 +100,7 @@ export class Server {
                 // what distinct is run over and THEN further trim the resulting values
                 // this is because distinct over an array of objects will return the whole
                 // item which will almost certainly contain other hits within that array
-                regex = new RegExp( req.query.$contains.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"));
+                regex = new RegExp( req.query.$contains.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"),'i');
                 const where = {};
                 where[req.query.$select] = { $regex: regex };
                 query.where(where);

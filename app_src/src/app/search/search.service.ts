@@ -5,7 +5,7 @@ import { MatPaginator, MatSort } from '@angular/material';
 
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
-import { map, switchMap } from 'rxjs/operators';
+import { map, switchMap, startWith } from 'rxjs/operators';
 
 import { ScType, ItemIfc } from '../../../../src/db/models';
 
@@ -48,6 +48,7 @@ export interface SearchCriteria {
 
 @Injectable()
 export class SearchService {
+    private current$Filter:string;
     $filterChanges:Subject<string> = new Subject();
     /** How many items to display per page */
     readonly pageSize = 10;
@@ -128,7 +129,7 @@ export class SearchService {
         let page = this.http.get('/api/item',{params:qargs})
                         .pipe(map((response:any) => {
                             this.searchRunning = false;
-                            this.$filterChanges.next($filter);
+                            this.$filterChanges.next(this.current$Filter = $filter);
                             return response.list as ItemIfc[]
                         }));
         this.searchRunning = true;
@@ -146,15 +147,35 @@ export class SearchService {
     }
 
     distinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
+        let $f = this.current$Filter;
         const params:any = {
             $select: $select
         };
-        if($filter) {
-            params.$filter = $filter;
+        if($f || $filter) {
+            params.$filter = $f && $filter ? `{$f} and ${$filter}` : ($f ? $f : $filter);
         }
         if($contains) {
             params.$contains = $contains;
         }
         return this.http.get<T []>('/api/item/distinct',{ params: params });
+    }
+
+    liveDistinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
+        return this.$filterChanges.pipe(
+            startWith(this.current$Filter),
+            switchMap($f => {
+                console.log(`$f = "${$f}"`);
+                const params:any = {
+                    $select: $select
+                };
+                if($f || $filter) {
+                    params.$filter = $f && $filter ? `{$f} and ${$filter}` : ($f ? $f : $filter);
+                }
+                if($contains) {
+                    params.$contains = $contains;
+                }
+                return this.http.get<T []>('/api/item/distinct',{ params: params });
+            })
+        );
     }
 }

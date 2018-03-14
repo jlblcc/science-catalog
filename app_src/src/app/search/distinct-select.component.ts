@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { FormControl } from '@angular/forms';
 
 import { Observable } from 'rxjs/Observable';
+import { tap } from 'rxjs/operators';
 
 import { SearchService } from './search.service';
 
@@ -25,6 +26,9 @@ export class DistinctSelect {
     constructor(private search:SearchService) {}
 
     ngOnInit() {
-        this.options = this.search.distinct<any>(this.distinctProperty);
+        this.options = this.search.liveDistinct<any>(this.distinctProperty)
+            .pipe(
+                tap((arr:any[]) => arr.length ? this.control.enable({emitEvent:false}) : this.control.disable({emitEvent:false}))
+            );
     }
 }

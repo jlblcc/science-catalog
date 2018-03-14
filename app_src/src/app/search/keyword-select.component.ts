@@ -69,6 +69,7 @@ export class KeywordSelect {
     constructor(private search:SearchService) {}
 
     ngOnInit() {
+        // TODO with liveDistinct this logic can all change since the over-all filter in use is always included
         this.keywordTypes = this.sctypeSelect.control.valueChanges
             .pipe(
                 startWith(null), // initially not filtering by type
@@ -78,7 +79,7 @@ export class KeywordSelect {
                             this.keywordTypesControl.setValue(null);
                         }
                     }),
-                switchMap(scType => this.search.distinct<SimplifiedKeywordType>('simplified.keywords.types',scType ? `scType eq ${scType}` : null))
+                switchMap(scType => this.search.liveDistinct<SimplifiedKeywordType>('simplified.keywords.types'/*,scType ? `scType eq ${scType}` : null*/))
             );
         this.keywordValues = mergeObservables(this.keywordTypesControl.valueChanges, this.sctypeSelect.control.valueChanges)
             .pipe(
