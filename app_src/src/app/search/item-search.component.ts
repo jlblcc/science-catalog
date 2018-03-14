@@ -19,6 +19,8 @@ import { ItemIfc } from '../../../../src/db/models';
 import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
 
+import { SearchCriteria, SearchService } from './search.service';
+
 const BASE_QUERY_ARGS = {
     $select: 'scType simplified'
 };
@@ -26,7 +28,7 @@ const BASE_QUERY_ARGS = {
 @Component({
     selector: 'item-search',
     template: `
-    <div class="search-running-shade" *ngIf="searchRunning">
+    <div class="search-running-shade" *ngIf="search.searchRunning">
         <mat-spinner></mat-spinner>
     </div>
 
@@ -63,19 +65,12 @@ const BASE_QUERY_ARGS = {
     <div class="search-results">
         <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="highlight"></item-list>
         <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="highlight"></item-table>
-        <mat-paginator [length]="totalItems" [pageSize]="pageSize"></mat-paginator>
+        <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize"></mat-paginator>
     </div>
     `,
     styleUrls: [ './item-search.component.scss']
 })
 export class ItemSearch {
-    /** Whether a search is currently running (show spinner) */
-    searchRunning = false;
-    /** How many items to display per page (hard coded) */
-    pageSize = 10;
-    /** How many items are in the current search result */
-    totalItems = 0;
-
     /** The LCC selection component */
     @ViewChild(LccSelect) lcc: LccSelect;
     /** The type selection component */
@@ -100,17 +95,16 @@ export class ItemSearch {
     /** If on table view contains ItemTable child component */
     @ViewChild(ItemTable) itemTable:ItemTable;
 
-    /** The sort control for the current Item[List|Table] */
-    private currentSorter:MatSort;
     /** Kicked when the view changes to update the underlying sorter */
     private sorterChanges:Subject<MatSort> = new Subject();
     /** Pass through for events comming from `currentSorter`. */
     private sortChanges:Subject<Sort> = new Subject();
 
-    constructor(private http:HttpClient) {}
+    constructor(public search:SearchService) {}
 
     ngOnInit() {
         this.keywords.sctypeSelect = this.scType;
+        this.search.paginator = this.paginator;
     }
 
     ngAfterViewInit() {
@@ -159,71 +153,21 @@ export class ItemSearch {
             this.paginator.page, // page navigation
             this.sortChanges // sort property/direction change
         ).pipe(
-          switchMap(() => {
-              let qargs:any = {
-                  ...BASE_QUERY_ARGS,
-                  $top: this.pageSize,
-                  $skip: this.paginator.pageIndex * this.pageSize,
-                  $ellipsis: '300',
-                  $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
-              };
-              let criteria = criteriaGroup.value;
-              console.log('criteria',criteria);
-              // if $text search, pass along
-              if(criteria.$text) {
-                  qargs.$text = criteria.$text;
-              }
-              // build the $filter value
-              // require simplified not equal null so that we can avoid picking up
-              // items that are currently being sync'ed into the system and have yet
-              // to have simplification run on them.
-              let $filter = 'simplified ne null';
-              if(criteria.scType) {
-                  $filter += ` and scType eq '${criteria.scType}'`;
-              }
-              if(criteria.lcc.length) {
-                  let ids = criteria.lcc.map(id => `'${id}'`);
-                  $filter += ` and in(_lcc,${ids.join(',')})`;
-              }
-              criteria.keywords.forEach(k => {
-                 $filter += ` and simplified.keywords.keywords.${k.typeKey} eq '${k.value}'` ;
-              });
-              // if $filter is truthy pass along
-              if($filter) {
-                  qargs.$filter = $filter;
-              }
-              let page = this.http.get('/api/item',{params:qargs})
-                              .pipe(map((response:any) => {
-                                  this.searchRunning = false;
-                                  return response.list as ItemIfc[]
-                              }));
-              this.searchRunning = true;
-              // if this is page 0 run a count and then fetch the page contents
-              // so we can update the pager, otherwise just fetch the page.
-              return !qargs.$skip ?
-                this.http.get('/api/item/count',{params:{...qargs,$top:99999}})
-                    .pipe(
-                        switchMap((response) => {
-                            console.log(`Total results ${response}`);
-                            this.totalItems = response as number;
-                            return page;
-                        })
-                    ) : page;
-          }),
+          switchMap(() => this.search.search(criteriaGroup.value as SearchCriteria)),
           catchError(() => {
-              this.searchRunning = false;
+              this.search.searchRunning = false;
               return observableOf([]);
           })
-      ).subscribe(items => this.dataSource.data = items);
+        ).subscribe(items => this.dataSource.data = items);
 
-      let sortSubscription;
-      // this will happen when the component is loaded and whenever
-      // the view is toggled between table/list (switching who's controlling
-      // how the results are sorted (the table column headers or control in list view)
-      this.sorterChanges
+        let sortSubscription;
+        // this will happen when the component is loaded and whenever
+        // the view is toggled between table/list (switching who's controlling
+        // how the results are sorted (the table column headers or control in list view)
+        this.sorterChanges
           .pipe(distinctUntilChanged()) // only do this once per view change
           .subscribe((sorter:MatSort) => {
-              this.currentSorter = sorter;
+              this.search.currentSorter = sorter;
               if(sortSubscription) {
                   // if toggling back and forth make sure to cleanup
                   // takeUntil(sorterChanges) might be cleaner but

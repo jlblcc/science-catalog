@@ -27,7 +27,6 @@ item-list {
     }
 }
 
-
 // when using font-awesome icons in mat-icon it appears they need to be sized appropriately
 // the margins are because font-awesome icons aren't as nicely centered in fab buttons.
 .mat-icon-button mat-icon.fa,
@@ -53,4 +52,10 @@ mat-icon {
 // the base class name is fa and all the sub-classes start with fa-
 mat-icon[class*="fa-"] {
     font-family: 'FontAwesome' !important;
+}
+/* no idea why, this is ootb 1.25em and for a few controls that causes the
+   underline to not show up.
+*/
+.mat-input-underline {
+    bottom: 1.26em;
 }

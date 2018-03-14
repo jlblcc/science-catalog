@@ -19,6 +19,8 @@ import { ResourceTypePipe } from './resource-type.pipe';
 
 import { ItemSearch } from './item-search.component';
 
+import { SearchService } from './search.service';
+
 @NgModule({
     imports: [
         CommonModule,
@@ -33,13 +35,14 @@ import { ItemSearch } from './item-search.component';
         HighlightText, HighlightPipe,
         ItemSearch,
 
-        LccTitlePipe, ResourceTypePipe
+        LccTitlePipe, ResourceTypePipe,
     ],
     exports:[
         ItemSearch
     ],
     providers: [
-        LccTitlePipe, ResourceTypePipe
+        LccTitlePipe, ResourceTypePipe,
+        SearchService
     ]
 })
 export class SearchModule {}

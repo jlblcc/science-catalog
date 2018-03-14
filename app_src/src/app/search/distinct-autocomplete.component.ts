@@ -1,11 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 
 import { MatAutocompleteSelectedEvent } from '@angular/material';
 
 import { Observable } from 'rxjs/Observable';
 import { debounceTime, switchMap } from 'rxjs/operators';
+
+import { SearchService } from './search.service';
 
 @Component({
     selector: 'distinct-autocomplete',
@@ -28,22 +29,15 @@ export class DistinctAutocomplete {
     typeAhead:FormControl = new FormControl();
     options:Observable<any[]>;
 
-    constructor(private http:HttpClient) {}
+    constructor(private search:SearchService) {}
 
     ngOnInit() {
         this.options = this.typeAhead.valueChanges.pipe(
                 debounceTime(500),
-                switchMap(v => {
-                    let params:any = {
-                        $select: this.distinctProperty
-                    };
-                    if(this.containsMode) {
-                        params.$contains = v;
-                    } else {
-                        params.$filter = `contains(${this.distinctProperty},'${v}')`;
-                    }
-                    return this.http.get<any []>('/api/item/distinct',{ params: params});
-                })
+                switchMap(v => this.search.distinct<any>(
+                    this.distinctProperty,
+                    !this.containsMode ? `contains(${this.distinctProperty},'${v}')` : null,
+                    this.containsMode ? v : null))
             )
     }
 

@@ -94,7 +94,8 @@ export class Server {
                 regex;
             if(req.query.$filter) {
                 ItemResource.parseFilter(query,req.query.$filter);
-            } else if (req.query.$contains) {
+            }
+            if (req.query.$contains) {
                 // this kind of duplicates with $filter could do BUT will trim
                 // what distinct is run over and THEN further trim the resulting values
                 // this is because distinct over an array of objects will return the whole

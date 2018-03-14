@@ -1,6 +1,5 @@
 import { Component, ViewChild } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 
 import { MatChipList, MatChipEvent } from '@angular/material';
 
@@ -13,13 +12,9 @@ import { SctypeSelect } from './sctype-select.component';
 
 import { SimplifiedKeywordType } from '../../../../src/db/models';
 
-export interface KeywordFilterSelection {
-    typeKey:string;
-    typeLabel:string;
-    value:string;
-}
+import { KeywordSearchCriteria, SearchService } from './search.service';
 
-function selectionFound(keywords:KeywordFilterSelection[],keyword:KeywordFilterSelection) {
+function selectionFound(keywords:KeywordSearchCriteria[],keyword:KeywordSearchCriteria) {
     return !!keywords.reduce((found,kw) => {
         return found || ((kw.typeKey === keyword.typeKey && kw.value === keyword.value) ? kw : undefined);
     },undefined);
@@ -71,7 +66,7 @@ export class KeywordSelect {
 
     @ViewChild(MatChipList) keywordChips:MatChipList;
 
-    constructor(private http:HttpClient) {}
+    constructor(private search:SearchService) {}
 
     ngOnInit() {
         this.keywordTypes = this.sctypeSelect.control.valueChanges
@@ -83,15 +78,7 @@ export class KeywordSelect {
                             this.keywordTypesControl.setValue(null);
                         }
                     }),
-                switchMap(scType => {
-                        const params:any = {
-                                $select: 'simplified.keywords.types'
-                            };
-                        if(scType) {
-                            params.$filter = `scType eq '${scType}'`
-                        }
-                        return this.http.get<SimplifiedKeywordType[]>('/api/item/distinct',{ params: params });
-                    })
+                switchMap(scType => this.search.distinct<SimplifiedKeywordType>('simplified.keywords.types',scType ? `scType eq ${scType}` : null))
             );
         this.keywordValues = mergeObservables(this.keywordTypesControl.valueChanges, this.sctypeSelect.control.valueChanges)
             .pipe(
@@ -104,13 +91,8 @@ export class KeywordSelect {
                     if(!keywordType) {
                         return observableOf([]);
                     }
-                    const params:any = {
-                            $select: `simplified.keywords.keywords.${keywordType.type}`
-                        };
-                    if(this.sctypeSelect.control.value) {
-                        params.$filter = `scType eq '${this.sctypeSelect.control.value}'`;
-                    }
-                    return this.http.get<string[]>('/api/item/distinct',{ params: params })
+                    return this.search.distinct<string>(`simplified.keywords.keywords.${keywordType.type}`,
+                        this.sctypeSelect.control.value ? `scType eq '${this.sctypeSelect.control.value}'` : null)
                         .pipe(
                             tap(values => {
                                 if(values.length) {
@@ -125,7 +107,7 @@ export class KeywordSelect {
                 console.log('keyword value change',keywordValue);
                 if(keywordValue) {
                     let keywordType = this.keywordTypesControl.value,
-                        selection:KeywordFilterSelection = {
+                        selection:KeywordSearchCriteria = {
                             typeKey: keywordType.type,
                             typeLabel: keywordType.label,
                             value: keywordValue
