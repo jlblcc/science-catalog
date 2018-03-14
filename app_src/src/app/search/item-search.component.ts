@@ -12,6 +12,7 @@ import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort }
 import { LccSelect } from './lcc-select.component';
 import { SctypeSelect } from './sctype-select.component';
 import { KeywordSelect } from './keyword-select.component';
+import { FundingSearchControls } from './funding-search-controls.component';
 
 import { ItemIfc } from '../../../../src/db/models';
 
@@ -50,7 +51,11 @@ const BASE_QUERY_ARGS = {
         <mat-expansion-panel class="advanced-search-panel" expanded="true">
             <mat-expansion-panel-header>Advanced search</mat-expansion-panel-header>
             <div class="advanced-search-controls">
-                <keyword-select></keyword-select>
+                <mat-expansion-panel  expanded="true">
+                    <mat-expansion-panel-header>Keywords</mat-expansion-panel-header>
+                    <keyword-select></keyword-select>
+                </mat-expansion-panel>
+                <funding-search-controls></funding-search-controls>
             </div>
         </mat-expansion-panel>
     </div>
@@ -77,6 +82,8 @@ export class ItemSearch {
     @ViewChild(SctypeSelect) scType: SctypeSelect;
     /** The keyword selection component (advanced) */
     @ViewChild(KeywordSelect) keywords: KeywordSelect;
+    /** The funding controls */
+    @ViewChild(FundingSearchControls) funding: FundingSearchControls;
     /** FormControl for $text based search */
     $text:FormControl = new FormControl();
     /** Individual words entered into the $text input so results displays can highlight them */
@@ -104,6 +111,9 @@ export class ItemSearch {
 
     ngOnInit() {
         this.keywords.sctypeSelect = this.scType;
+    }
+
+    ngAfterViewInit() {
         // capture input from the $text control and push it into the
         // criteriaGroup, doing this so we can debounce the input so
         // we're not running a query per character press
@@ -132,6 +142,7 @@ export class ItemSearch {
             lcc: this.lcc.control,
             scType: this.scType.control,
             keywords: this.keywords.control,
+            funding: this.funding.controls,
             $text: new FormControl() // to catch $text values
         });
 

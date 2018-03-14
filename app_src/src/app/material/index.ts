@@ -18,7 +18,8 @@ import { MatIconModule,
          MatTooltipModule,
          MatCardModule,
          MatExpansionModule,
-         MatChipsModule } from '@angular/material';
+         MatChipsModule,
+         MatAutocompleteModule } from '@angular/material';
 
 @NgModule({
     imports:[
@@ -41,7 +42,8 @@ import { MatIconModule,
         MatTooltipModule,
         MatCardModule,
         MatExpansionModule,
-        MatChipsModule
+        MatChipsModule,
+        MatAutocompleteModule
     ],
     exports: [
         BrowserModule,
@@ -63,7 +65,8 @@ import { MatIconModule,
         MatTooltipModule,
         MatCardModule,
         MatExpansionModule,
-        MatChipsModule
+        MatChipsModule,
+        MatAutocompleteModule
     ]
 })
 export class MaterialModule {}
