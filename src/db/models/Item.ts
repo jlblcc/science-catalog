@@ -49,6 +49,8 @@ const keywordsSchema= new Schema({
  * @todo round this out, may expand for syncing into lccnetwork, etc.
  */
 export interface SimplifiedContact {
+    /** The original `contactId` as used in the `mdJson` **/
+    contactId: string;
     /** The contact name */
     name?: string;
     /** The contact position */
@@ -63,6 +65,7 @@ export interface SimplifiedContact {
     memberOfOrganization?: SimplifiedContact[];
 }
 const contactSchema = new Schema({
+    contactId: {type: String, required: true},
     name: {type: String, required: false},
     positionName: {type: String, required: false},
     contactType: {type: String, required: false},
@@ -77,7 +80,7 @@ contactSchema.add({
 /**
  * Map of contact role to contact.
  */
-export interface SimplifiedContacts {
+export interface SimplifiedContactsMap {
     [role: string]: SimplifiedContact[];
 }
 
@@ -135,8 +138,10 @@ export interface SimplifiedIfc {
     abstract: string;
     /** The item keywords (built from `metadata.resourceInfo.keyword`) */
     keywords: SimplifiedKeywords;
+    /** The list of simplified contacts (built from `metadata.contact`) */
+    contacts: SimplifiedContact[];
     /** The list of simplified contacts (built from `metadata.resourceInfo.pointOfContact` and `metadata.contact`) */
-    contacts: SimplifiedContacts;
+    pointOfContact: SimplifiedContactsMap;
     /** The list of string resourceTypes (extracted from `metadata.resourceInfo.resourceType.type`) */
     resourceType: ResourceType[];
     /** The simplified funding information */
@@ -177,8 +182,9 @@ const simplifiedSchema = new Schema({
     lcc: {type: String, required: true},
     abstract: {type: String, required: true },
     keywords: keywordsSchema,
+    contacts: [{type: contactSchema, required: true}],
     // mongoose cannot validate but TypeScript can
-    contacts: {type: Schema.Types.Mixed, required: true },
+    pointOfContact: {type: Schema.Types.Mixed, required: true },
     resourceType: [resourceTypeSchema],
     funding: { type: fundingSchema, required: false },
 },{ _id : false });

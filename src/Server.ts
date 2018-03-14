@@ -86,29 +86,32 @@ export class Server {
             count: true,
             //populate: ['_lcc']
         }});
-        let distinctKeywordBase = (req) => {
-            return item.getModel().find(req.query.scType ? { 'scType': req.query.scType } : {});
-        };
-        item.staticLink('keywordTypes',(req,res) => {
-            distinctKeywordBase(req)
-                .distinct('simplified.keywords.types')
-                .then(keyTypes => res.send(keyTypes))
-                .catch(err => Resource.sendError(res,500,'distinct keywordTypes',err));
-        });
-        item.staticLink('keywordsByType',(req,res) => {
-            let keywordType = req.query.keywordType;
-            if(!keywordType) {
-                return Resource.sendError(res,400,'missing required parameter keywordType');
+        item.staticLink('distinct',(req,res) => {
+            if(!req.query.$select) {
+                return Resource.sendError(res,400,'Missing required parameter $select');
             }
-            distinctKeywordBase(req)
-                .distinct(`simplified.keywords.keywords.${keywordType}`)
-                .then(keywords => res.send(keywords.sort()))
-                .catch(err => Resource.sendError(res,500,`distinct keyword ${keywordType}`,err));
-        });
-        item.staticLink('resourceTypes',(req,res) => {
-            item.getModel().distinct('mdJson.metadata.resourceInfo.resourceType.type')
-                .then(types => res.send(types))
-                .catch(err => Resource.sendError(res,500,`distinct resourceType`,err));
+            let query = item.getModel().find(),
+                regex;
+            if(req.query.$filter) {
+                ItemResource.parseFilter(query,req.query.$filter);
+            } else if (req.query.$contains) {
+                // this kind of duplicates with $filter could do BUT will trim
+                // what distinct is run over and THEN further trim the resulting values
+                // this is because distinct over an array of objects will return the whole
+                // item which will almost certainly contain other hits within that array
+                regex = new RegExp( req.query.$contains.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"));
+                const where = {};
+                where[req.query.$select] = { $regex: regex };
+                query.where(where);
+            }
+            query.distinct(req.query.$select)
+                .then(values => {
+                    if(regex) {
+                        values = values.filter(v => regex.test(v));
+                    }
+                    res.send(values);
+                })
+                .catch(err => Resource.sendError(res,500,`distinct ${req.query.$select}`,err));
         });
 
         let lcc = new Resource({...READONLY,...{

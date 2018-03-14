@@ -14,7 +14,7 @@ export const TABLE_COLUMNS = [{
     property: 'simplified.lcc',
     label: 'LCC'
 },{
-    property: 'simplified.contacts.principalInvestigator.name',
+    property: 'simplified.pointOfContact.principalInvestigator.name',
     label: 'Principal investigator'
 },{
     property: 'simplified.funding.fiscalYears',
@@ -43,9 +43,9 @@ export const TABLE_COLUMNS = [{
             <mat-cell *matCellDef="let item" class="item-lcc">{{item.simplified.lcc | lccTitle}}</mat-cell>
         </ng-container>
 
-        <ng-container matColumnDef="simplified.contacts.principalInvestigator.name">
+        <ng-container matColumnDef="simplified.pointOfContact.principalInvestigator.name">
             <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-pi"> Principal investigator </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.contacts.principalInvestigator ? item.simplified.contacts.principalInvestigator[0].name : ''}}</mat-cell>
+            <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.pointOfContact.principalInvestigator ? item.simplified.pointOfContact.principalInvestigator[0].name : ''}}</mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.funding.fiscalYears">

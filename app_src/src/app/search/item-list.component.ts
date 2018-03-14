@@ -27,7 +27,7 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
     <mat-card *ngFor="let item of dataSource.data">
         <mat-card-title><item-icon [item]="item"></item-icon> <highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text> ({{item.simplified.lcc | lccTitle}})</mat-card-title>
         <mat-card-subtitle>
-            <span *ngIf="item.simplified.contacts.principalInvestigator"><label>Principal Investigator:</label> {{item.simplified.contacts.principalInvestigator[0].name}}</span>
+            <span *ngIf="item.simplified.pointOfContact.principalInvestigator"><label>Principal Investigator:</label> {{item.simplified.pointOfContact.principalInvestigator[0].name}}</span>
             <span *ngIf="item.simplified.funding && item.simplified.funding.fiscalYears.length"><label>Fiscal Year(s):</label> {{item.simplified.funding.fiscalYears.join(',')}}</span>
         </mat-card-subtitle>
         <mat-card-content>

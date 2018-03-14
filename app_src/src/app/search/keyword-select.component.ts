@@ -78,14 +78,20 @@ export class KeywordSelect {
             .pipe(
                 startWith(null), // initially not filtering by type
                 tap(scType => {
-                    if(scType) {
-                        this.control.setValue([]);
-                        this.keywordTypesControl.setValue(null);
-                    }
-                }),
-                switchMap(scType => this.http.get<SimplifiedKeywordType[]>('/api/item/keywordTypes',{
-                        params: scType ? { scType: scType } : {}
-                    }))
+                        if(scType) {
+                            this.control.setValue([]);
+                            this.keywordTypesControl.setValue(null);
+                        }
+                    }),
+                switchMap(scType => {
+                        const params:any = {
+                                $select: 'simplified.keywords.types'
+                            };
+                        if(scType) {
+                            params.$filter = `scType eq '${scType}'`
+                        }
+                        return this.http.get<SimplifiedKeywordType[]>('/api/item/distinct',{ params: params });
+                    })
             );
         this.keywordValues = mergeObservables(this.keywordTypesControl.valueChanges, this.sctypeSelect.control.valueChanges)
             .pipe(
@@ -99,12 +105,12 @@ export class KeywordSelect {
                         return observableOf([]);
                     }
                     const params:any = {
-                        keywordType: keywordType.type
-                    };
+                            $select: `simplified.keywords.keywords.${keywordType.type}`
+                        };
                     if(this.sctypeSelect.control.value) {
-                        params.scType = this.sctypeSelect.control.value;
+                        params.$filter = `scType eq '${this.sctypeSelect.control.value}'`;
                     }
-                    return this.http.get<string[]>('/api/item/keywordsByType',{ params: params })
+                    return this.http.get<string[]>('/api/item/distinct',{ params: params })
                         .pipe(
                             tap(values => {
                                 if(values.length) {

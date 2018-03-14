@@ -214,34 +214,39 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             lcc: lcc.title,
             abstract: mdJson.metadata.resourceInfo.abstract,
             keywords: (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
-                if(k.keywordType) {
-                    let typeLabel = k.keywordType,
-                        typeKey = typeLabel
-                            .trim()
-                            .toLowerCase()
-                            .replace(/[\.-]/g,'')
-                            .replace(/\s+/g,'_');
-                    // look through types to see if this one has been put in there yet
-                    if(!map.types.filter(kt => kt.type === typeKey).length) {
-                        map.types.push({
-                            type: typeKey,
-                            label: typeLabel
-                        });
+                    if(k.keywordType) {
+                        let typeLabel = k.keywordType,
+                            typeKey = typeLabel
+                                .trim()
+                                .toLowerCase()
+                                .replace(/[\.-]/g,'')
+                                .replace(/\s+/g,'_');
+                        // look through types to see if this one has been put in there yet
+                        if(!map.types.filter(kt => kt.type === typeKey).length) {
+                            map.types.push({
+                                type: typeKey,
+                                label: typeLabel
+                            });
+                        }
+                        map.keywords[typeKey] = map.keywords[typeKey]||[];
+                        k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
                     }
-                    map.keywords[typeKey] = map.keywords[typeKey]||[];
-                    k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
-                }
-                return map;
-            },{
-                types: [],
-                keywords: {},
-            }),
-            contacts: mdJson.metadata.resourceInfo.pointOfContact.reduce((map,poc) => {
-                map[poc.role] = map[poc.role] || [];
-                this.simplifyContacts(poc.party.map(ref => ref.contactId),item)
-                    .forEach(c => map[poc.role].push(c));
-                return map;
-            },{}),
+                    return map;
+                },{
+                    types: [],
+                    keywords: {},
+                }),
+            contacts: this.simplifyContacts(mdJson.contact.map(c => c.contactId),item),
+            pointOfContact: mdJson.metadata.resourceInfo.pointOfContact.reduce((map,poc) => {
+                    map[poc.role] = map[poc.role] || [];
+                    if(!poc.party) {
+                        console.log('no party?');
+                        console.log(item);
+                    }
+                    this.simplifyContacts(poc.party.map(ref => ref.contactId),item)
+                        .forEach(c => map[poc.role].push(c));
+                    return map;
+                },{}),
             resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
         };
         if(item.scType === ScType.PROJECT) {
@@ -358,6 +363,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         let contactMap = isOrganization ? this.orgsMap : this.nonOrgsMap,
             mapped = contactMap[name.trim().toLowerCase()];
         let contact:SimplifiedContact = {
+            contactId: contactId,
             name: mapped.name, // if this isn't found then we kind of want the pipeline to fail
             positionName: positionName,
             contactType: contactType ? contactType.toLowerCase() : undefined, // Using toLowerCase() to normalize (see comment below).
