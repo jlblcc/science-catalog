@@ -126,6 +126,27 @@ const fundingSchema = new Schema({
     recipients: [{type: contactSchema, required: false}],
 },{_id: false});
 
+
+/**
+ * Simplified dates of interest.
+ * @todo The keys here were built from a distinct query, perhaps it should just be open ended?
+ */
+export interface SimplifiedDates {
+    creation?: Date;
+    lastUpdate?: Date;
+    publication?: Date;
+    end?: Date;
+    start?: Date;
+    lastRevision?: Date;
+}
+const datesSchema = new Schema({
+    creation: {type: Date, required: false },
+    lastUpdate: {type: Date, required: false },
+    publication: {type: Date, required: false },
+    end: {type: Date, required: false },
+    start: {type: Date, required: false },
+    lastRevision: {type: Date, required: false },
+},{_id: false});
 /**
  * The basic representation of a simplified item document.
  */
@@ -134,6 +155,8 @@ export interface SimplifiedIfc {
     title: string;
     /** The title of the owning LCC */
     lcc: string;
+    /** Dates of interest */
+    dates?: SimplifiedDates;
     /** The item abstract (`metadata.resourceInfo.abstract`) */
     abstract: string;
     /** The item keywords (built from `metadata.resourceInfo.keyword`) */
@@ -180,6 +203,7 @@ export interface ItemDoc extends ItemIfc, Document {}
 const simplifiedSchema = new Schema({
     title: {type: String, required: true},
     lcc: {type: String, required: true},
+    dates: {type: datesSchema, required: false},
     abstract: {type: String, required: true },
     keywords: keywordsSchema,
     contacts: [{type: contactSchema, required: true}],

@@ -255,6 +255,15 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             // unwanted anomaly
             item.simplified.funding = this.simplifyFunding(item);
         }
+        if(mdJson.metadata.metadataInfo.metadataDate && mdJson.metadata.metadataInfo.metadataDate.length) {
+            item.simplified.dates = mdJson.metadata.metadataInfo.metadataDate.reduce((dates,d) => {
+                    if(d.date && d.dateType) {
+                        // if there isn't a match in the schema then Mongoose will drop
+                        dates[d.dateType] = moment(d.date).tz('UTC').toDate();
+                    }
+                    return dates;
+                },{});
+        }
         return item.save();
     }
 

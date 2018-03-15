@@ -10,7 +10,7 @@ import { DocumentQuery } from 'mongoose';
 
 import { ObjectId } from 'mongodb';
 
-import { Item, ItemDoc,
+import { Item, ItemDoc, SimplifiedIfc,
          Lcc } from './db/models';
 
 /** Base resource configuration that disables POST,PUT and DELETE */
@@ -19,6 +19,8 @@ const READONLY = {
     update: false,
     delete: false
 };
+
+declare function emit(k, v);
 
 class ItemResource extends Resource<ItemDoc> {
     private _findQuery(req:Request) {
@@ -100,7 +102,7 @@ export class Server {
                 // what distinct is run over and THEN further trim the resulting values
                 // this is because distinct over an array of objects will return the whole
                 // item which will almost certainly contain other hits within that array
-                regex = new RegExp( req.query.$contains.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"),'i');
+                regex = new RegExp(req.query.$contains.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"),'i');
                 const where = {};
                 where[req.query.$select] = { $regex: regex };
                 query.where(where);
@@ -113,6 +115,154 @@ export class Server {
                     res.send(values.sort());
                 })
                 .catch(err => Resource.sendError(res,500,`distinct ${req.query.$select}`,err));
+        });
+
+        item.staticLink('summaryStatistics',(req,res) => {
+            const query = item.getModel().find();
+            if(req.query.$filter) {
+                ItemResource.parseFilter(query,req.query.$filter);
+            }
+            item.getModel().mapReduce({
+                query: query,
+                map: function() {
+                    let doc = this as ItemDoc,
+                        simplified = doc.simplified,
+                        stats:any = {
+                            fundingTotal: 0,
+                            fundsBySourceType: null,
+                            fundsByRecipientType: null, // TODO by year
+                            matchingContributionsByOrgType: null, // TODO by year
+                            orgsProvidingInKindMatch: 0,
+                            projectsByResourceType: null,
+                            productsByResourceType: null,
+                            uniqueCollaboratorsByOrgType: null,
+                            projectsInLastMonth: 0,
+                            productsInLastMonth: 0,
+                        },
+                        contactMap = simplified.contacts.reduce((map,c) => {
+                                map[c.contactId] = c;
+                                return map;
+                            },{});
+                    if(simplified.funding) {
+                        stats.fundingTotal += simplified.funding.amount;
+                        let allocations = doc.mdJson.metadata.funding.reduce((arr,f) => {
+                                    (f.allocation||[]).forEach(a => arr.push(a));
+                                    return arr;
+                                },[]),
+                            matchingAllocations = allocations.filter(a => a.matching),
+                            mapAllocationsByContactType = (arr,key) => {
+                                return arr.reduce((map,a) => {
+                                        let c;
+                                        if(a[key] && (c = contactMap[a[key]])) {
+                                            let t = c.contactType||'?';
+                                            map[t] = map[t]||0;
+                                            map[t] += a.amount;
+                                        }
+                                        return map;
+                                    },{});
+                            };
+                        stats.fundsBySourceType = mapAllocationsByContactType(allocations,'sourceId');
+                        stats.fundsByRecipientType = mapAllocationsByContactType(allocations,'recipientId');
+                        if(matchingAllocations.length) {
+                            stats.matchingContributionsByOrgType = mapAllocationsByContactType(matchingAllocations,'sourceId');
+                            stats.orgsProvidingInKindMatch = matchingAllocations.reduce((arr,a) => {
+                                    let c;
+                                    if(a.sourceId && (c = contactMap[a.sourceId]) && arr.indexOf(c.name) === -1) {
+                                        arr.push(c.name);
+                                    }
+                                    return arr;
+                                },[]);
+                        }
+                    }
+                    stats.uniqueCollaboratorsByOrgType = simplified.contacts.reduce((map,c) => {
+                            let t = c.contactType||'?';
+                            map[t] = map[t]||[];
+                            if(map[t].indexOf(c.name) === -1) {
+                                map[t].push(c.name);
+                            }
+                            return map;
+                        },{});
+                    stats[doc.scType === 'project' ? 'projectsByResourceType' : 'productsByResourceType']
+                        = simplified.resourceType.reduce((map,rt) => {
+                                map[rt.type] = 1;
+                                return map;
+                            },{});
+                    if(simplified.dates && simplified.dates.creation) {
+                        let now = Date.now(),
+                            oneMonth = 30*24*60*60*1000;
+                        if((now - simplified.dates.creation.getTime()) < oneMonth) {
+                            stats[doc.scType === 'project' ? 'projectsInLastMonth' : 'productsInLastMonth'] = 1;
+                        }
+                    }
+                    emit('stats',stats);
+                },
+                reduce: function(key,values:any[]) {
+                    let stats = values.reduce((stats,v) => {
+                            stats.fundingTotal += v.fundingTotal;
+                            stats.projectsInLastMonth += v.projectsInLastMonth;
+                            stats.productsInLastMonth += v.productsInLastMonth;
+                            let sumMap = (key) => {
+                                    let vMap = v[key];
+                                    if(vMap) {
+                                        stats[key] = Object.keys(vMap).reduce((map,key) => {
+                                                map[key] = map[key]||0;
+                                                map[key] += vMap[key];
+                                                return map;
+                                            },(stats[key]||{}));
+                                    }
+                                };
+                            sumMap('fundsBySourceType');
+                            sumMap('fundsByRecipientType');
+                            sumMap('matchingContributionsByOrgType');
+                            sumMap('projectsByResourceType');
+                            sumMap('productsByResourceType');
+                            if(v.orgsProvidingInKindMatch) {
+                                stats.orgsProvidingInKindMatch = stats.orgsProvidingInKindMatch||[];
+                                v.orgsProvidingInKindMatch.forEach(o => {
+                                    if(stats.orgsProvidingInKindMatch.indexOf(o) === -1) {
+                                        stats.orgsProvidingInKindMatch.push(o);
+                                    }
+                                });
+                            }
+                            if(v.uniqueCollaboratorsByOrgType) {
+                                stats.uniqueCollaboratorsByOrgType = Object.keys(v.uniqueCollaboratorsByOrgType).reduce((map,key) => {
+                                        map[key] = map[key]||[];
+                                        v.uniqueCollaboratorsByOrgType[key].forEach(o => {
+                                            if(map[key].indexOf(o) === -1) {
+                                                map[key].push(o);
+                                            }
+                                        });
+                                        return map;
+                                    },(stats.uniqueCollaboratorsByOrgType||{}))
+                            }
+                            return stats;
+                        },{
+                            fundingTotal: 0,
+                            fundsBySourceType: null,
+                            fundsByRecipientType: null,
+                            matchingContributionsByOrgType: null,
+                            orgsProvidingInKindMatch: 0,
+                            projectsByResourceType: null,
+                            productsByResourceType: null,
+                            uniqueCollaboratorsByOrgType: null,
+                            projectsInLastMonth: 0,
+                            productsInLastMonth: 0,
+                        });
+                    return stats;
+                }
+            })
+            .then(results => {
+                console.log(`summaryStatistics:stats`,JSON.stringify(results.stats,null,2));
+                // collapse "unique" arrays/maps into numbers
+                let stats = results.results[0].value;
+                stats.orgsProvidingInKindMatch = stats.orgsProvidingInKindMatch ? stats.orgsProvidingInKindMatch.length : 0;
+                if(stats.uniqueCollaboratorsByOrgType) {
+                    Object.keys(stats.uniqueCollaboratorsByOrgType)
+                        .forEach(key => stats.uniqueCollaboratorsByOrgType[key] = stats.uniqueCollaboratorsByOrgType[key].length);
+                }
+                res.send(stats)
+            })
+            .catch(err => Resource.sendError(res,500,'summaryStatistics',err));
         });
 
         let lcc = new Resource({...READONLY,...{
