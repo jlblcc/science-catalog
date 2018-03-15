@@ -162,7 +162,8 @@ export class SearchService {
 
     liveDistinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
         return this.$filterChanges.pipe(
-            startWith(this.current$Filter),
+            //don't start until the initial query has fired
+            //startWith(this.current$Filter),
             switchMap($f => {
                 //console.log(`$f = "${$f}"`);
                 const params:any = {
