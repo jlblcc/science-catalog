@@ -45,7 +45,7 @@ export class DistinctAutocomplete {
                         this.control.setValue(null);
                     }
                 }),
-                switchMap(v => this.search.liveDistinct<any>(
+                switchMap(v => this.search.distinct<any>(
                     this.distinctProperty,
                     !this.containsMode ? `contains(${this.distinctProperty},'${v}')` : null,
                     this.containsMode ? v : null))

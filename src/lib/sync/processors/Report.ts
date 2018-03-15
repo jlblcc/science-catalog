@@ -5,6 +5,7 @@ import { SyncPipelineProcessorEntry,
          SyncPipelineProcessorEntryDoc } from '../../../db/models';
 import { fromScienceBaseReport } from './FromScienceBase';
 import { simplificationReport } from './Simplification';
+import { contactsReport } from './Contacts';
 
 import * as moment from 'moment';
 
@@ -28,7 +29,8 @@ export interface ReportConfig extends SyncPipelineProcessorConfig {
 
 const REPORT_GENERATORS = {
     'FromScienceBase': fromScienceBaseReport,
-    'Simplification': simplificationReport
+    'Simplification': simplificationReport,
+    'Contacts': contactsReport,
 }
 
 const TIME_FMT = 'HH:mm:ss';

@@ -48,6 +48,9 @@ function selectionFound(keywords:KeywordSearchCriteria[],keyword:KeywordSearchCr
         .keyword-selection >mat-form-field {
             flex-grow: 1;
         }
+        .keyword-selection .keyword-type {
+            margin-right: 10px;
+        }
     `]
 })
 export class KeywordSelect {

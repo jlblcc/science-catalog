@@ -63,7 +63,7 @@ export class ItemCounts {
 };
 
 const DEFAULT_ITEM_PAGE_SIZE = 20;
-const DEFAULT_PAUSE_BETWEEN_LCC = 30000;
+const DEFAULT_PAUSE_BETWEEN_LCC = 45000;
 
 /**
  * FromScienceBase configuration options.

@@ -278,7 +278,7 @@ export class Server {
                                     });
                                     return arr;
                                 },[]);
-                            stats[key] = arr.sort((a,b) => a.key.localeCompare(b.key));
+                            stats[key] = arr.length ? arr.sort((a,b) => a.key.localeCompare(b.key)) : null;
                         }
                     };
                 stats.orgsProvidingInKindMatch = stats.orgsProvidingInKindMatch ? stats.orgsProvidingInKindMatch.length : 0;

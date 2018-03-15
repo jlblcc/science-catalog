@@ -11,50 +11,51 @@ import { MonitorsDestroy } from '../common';
     template: `
     <mat-tab-group *ngIf="data">
         <mat-tab label="General">
-            <div class="sum-line" *ngIf="data.projectsInLastMonth"><label>Projects in the last month</label> {{data.projectsInLastMonth}}</div>
-            <div class="sum-line" *ngIf="data.productsInLastMonth"><label>Products in the last month</label> {{data.productsInLastMonth}}</div>
+            <div class="sum-line" *ngIf="data.projectsInLastMonth"><span class="mat-subheading-2">Projects in the last month</span>{{data.projectsInLastMonth}}
+            </div>
+            <div class="sum-line" *ngIf="data.productsInLastMonth"><span class="mat-subheading-2">Products in the last month</span> {{data.productsInLastMonth}}</div>
             <div class="sum-line" *ngIf="data.projectsByResourceType">
-                <label>Projects by resource type</label>
+                <span class="mat-subheading-2">Projects by resource type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.projectsByResourceType"><label>{{d.key | resourceType}}</label> {{d.value}}</div>
+                    <div *ngFor="let d of data.projectsByResourceType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> {{d.value}}</div>
                 </div>
             </div>
             <div class="sum-line" *ngIf="data.productsByResourceType">
-                <label>Products by resource type</label>
+                <span class="mat-subheading-2">Products by resource type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.productsByResourceType"><label>{{d.key | resourceType}}</label> {{d.value}}</div>
+                    <div *ngFor="let d of data.productsByResourceType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> {{d.value}}</div>
                 </div>
             </div>
         </mat-tab>
-        <mat-tab label="Funds">
-            <div class="sum-line"><label>Total funds</label> \${{data.fundingTotal | number:'1.2-2'}}</div>
+        <mat-tab label="Funds" *ngIf="data.fundingTotal || data.fundsBySourceType">
+            <div class="sum-line"><span class="mat-subheading-2">Total funds</span> \${{data.fundingTotal | number:'1.2-2'}}</div>
             <div class="sum-line" *ngIf="data.fundsBySourceType">
-                <label>Funds by source type</label>
+                <span class="mat-subheading-2">Funds by source type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.fundsBySourceType"><label>{{d.key | resourceType}}</label> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.fundsBySourceType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
             <div class="sum-line" *ngIf="data.fundsByRecipientType">
-                <label>Funds by recipient type</label>
+                <span class="mat-subheading-2">Funds by recipient type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.fundsByRecipientType"><label>{{d.key | resourceType}}</label> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.fundsByRecipientType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
         </mat-tab>
         <mat-tab label="Matching contributions" *ngIf="data.orgsProvidingInKindMatch || data.matchingContributionsByOrgType">
-            <div class="sum-line"><label>Organizations providing matching contributions</label> {{data.orgsProvidingInKindMatch}}</div>
+            <div class="sum-line"><span class="mat-subheading-2">Organizations providing matching contributions</span> {{data.orgsProvidingInKindMatch}}</div>
             <div class="sum-line" *ngIf="data.matchingContributionsByOrgType">
-                <label>Matching contributions by organization type</label>
+                <span class="mat-subheading-2">Matching contributions by organization type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.matchingContributionsByOrgType"><label>{{d.key | resourceType}}</label> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.matchingContributionsByOrgType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
         </mat-tab>
         <mat-tab label="Collaborators" *ngIf="data.uniqueCollaboratorsByOrgType">
             <div class="sum-line">
-                <label>Unique collaborators by org type</label>
+                <span class="mat-subheading-2">Unique collaborators by org type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.uniqueCollaboratorsByOrgType"><label>{{d.key | resourceType}}</label> {{d.value}}</div>
+                    <div *ngFor="let d of data.uniqueCollaboratorsByOrgType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> {{d.value}}</div>
                 </div>
             </div>
         </mat-tab>
@@ -64,17 +65,13 @@ import { MonitorsDestroy } from '../common';
         .sum-line {
             margin:5px;
         }
-        .sum-line label {
-            font-weight: bold;
+        .mat-subheading-1,
+        .mat-subheading-2 {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 0px;
         }
-        .sum-line ul {
-            list-style: none;
-        }
-        .cols {
-            display: flex;
-            flex-wrap: wrap;
+        .mat-subheading-2 {
+            font-weight: 500;
         }
         .sum-grid {
             display: flex;

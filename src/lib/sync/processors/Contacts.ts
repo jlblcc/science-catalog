@@ -26,6 +26,16 @@ export interface ContactsConfig extends SyncPipelineProcessorConfig {
     force: boolean;
 }
 
+/**
+* Translates the processor output into a report string.
+*
+* @param results The output of the Contacts SyncPipelineProcessor.
+* @returns A string representation.
+ */
+export function contactsReport(output:ContactsOutput) {
+    return `consolidated ${output.total} contacts down to ${output.consolidated}`;
+}
+
 const PREFIXES = {
     Us: 'U.S.',
     Uc: 'U.C.',
