@@ -33,8 +33,10 @@ const BASE_QUERY_ARGS = {
     </div>
 
     <div class="search-controls">
-        <div class="lcc-output-select">
-            <lcc-select></lcc-select>
+        <div class="basic-controls-line-1">
+            <mat-form-field class="text-search">
+                <input matInput placeholder="Title/Description" [formControl]="$text" />
+            </mat-form-field>
             <sctype-select></sctype-select>
             <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type">
                 <mat-button-toggle value="list" matTooltip="Display results as a list">
@@ -46,9 +48,7 @@ const BASE_QUERY_ARGS = {
             </mat-button-toggle-group>
         </div>
 
-        <mat-form-field>
-            <input matInput placeholder="Title/Description" [formControl]="$text" />
-        </mat-form-field>
+        <lcc-select></lcc-select>
 
         <mat-expansion-panel class="advanced-search-panel" expanded="true">
             <mat-expansion-panel-header>Advanced search</mat-expansion-panel-header>

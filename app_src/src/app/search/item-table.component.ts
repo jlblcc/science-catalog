@@ -35,7 +35,7 @@ export const TABLE_COLUMNS = [{
 
         <ng-container matColumnDef="simplified.title">
             <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-title"> Title </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-title"><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text></mat-cell>
+            <mat-cell *matCellDef="let item" class="item-title"><a target="_blank"[href]="'https://www.sciencebase.gov/catalog/item/'+item._id"><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text></a></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.lcc">

@@ -16,11 +16,11 @@
 
 .search-controls {
     margin-bottom: 15px;
-    .lcc-output-select {
+    .basic-controls-line-1 {
         display: flex;
         flex-direction: row;
         align-items: center;
-        lcc-select {
+        .text-search {
             flex-grow: 1;
         }
         .results-list-type,

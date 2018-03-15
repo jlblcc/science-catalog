@@ -59,3 +59,12 @@ mat-icon[class*="fa-"] {
 .mat-input-underline {
     bottom: 1.27em;
 }
+
+.item-title a {
+    // TODO theme this
+    color: rgba(0,0,0,.87);
+    text-decoration: none;
+    &:hover {
+        text-decoration: underline;
+    }
+}
