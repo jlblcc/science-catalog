@@ -5,7 +5,7 @@ import { MatPaginator, MatSort } from '@angular/material';
 
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
-import { map, switchMap, startWith } from 'rxjs/operators';
+import { map, switchMap, startWith, filter } from 'rxjs/operators';
 
 import { ScType, ItemIfc } from '../../../../src/db/models';
 
@@ -180,5 +180,13 @@ export class SearchService {
                 return this.http.get<T []>('/api/item/distinct',{ params: params });
             })
         );
+    }
+
+    summaryStatistics():Observable<any> {
+        return this.$filterChanges.pipe(
+                startWith(this.current$Filter),
+                filter(f => !!f), // filter will never be empty, except for at load time
+                switchMap($f => this.http.get<any>('/api/item/summaryStatistics',{params :{ $filter: $f}}))
+            );
     }
 }

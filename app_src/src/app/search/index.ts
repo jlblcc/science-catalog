@@ -10,6 +10,7 @@ import { KeywordSelect } from './keyword-select.component';
 import { DistinctAutocomplete } from './distinct-autocomplete.component';
 import { DistinctSelect } from './distinct-select.component';
 import { FundingSearchControls } from './funding-search-controls.component';
+import { SummaryStatistics } from './summary-statistics.component';
 
 
 import { ItemList } from './item-list.component';
@@ -32,6 +33,7 @@ import { SearchService } from './search.service';
         LccSelect, SctypeSelect, KeywordSelect,
         DistinctAutocomplete, DistinctSelect,
         FundingSearchControls,
+        SummaryStatistics,
 
         ItemList, ItemTable,
         HighlightText, HighlightPipe,

@@ -50,7 +50,7 @@ const BASE_QUERY_ARGS = {
 
         <lcc-select></lcc-select>
 
-        <mat-expansion-panel class="advanced-search-panel" expanded="true">
+        <mat-expansion-panel class="advanced-search-panel" expanded="false">
             <mat-expansion-panel-header>Advanced search</mat-expansion-panel-header>
             <div class="advanced-search-controls">
                 <mat-expansion-panel  expanded="true">
@@ -59,6 +59,13 @@ const BASE_QUERY_ARGS = {
                 </mat-expansion-panel>
                 <funding-search-controls></funding-search-controls>
             </div>
+        </mat-expansion-panel>
+        <mat-expansion-panel class="summary-statistics-panel"
+            [expanded]="statisticsExpanded"
+            (opened)="statisticsExpanded = true"
+            (closed)="statisticsExpanded = false">
+            <mat-expansion-panel-header>Summary statistics</mat-expansion-panel-header>
+            <summary-statistics *ngIf="statisticsExpanded"></summary-statistics>
         </mat-expansion-panel>
     </div>
 
@@ -99,6 +106,8 @@ export class ItemSearch {
     private sorterChanges:Subject<MatSort> = new Subject();
     /** Pass through for events comming from `currentSorter`. */
     private sortChanges:Subject<Sort> = new Subject();
+
+    statisticsExpanded:boolean = false;
 
     constructor(public search:SearchService) {}
 

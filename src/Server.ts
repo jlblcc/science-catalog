@@ -253,13 +253,46 @@ export class Server {
             })
             .then(results => {
                 console.log(`summaryStatistics:stats`,JSON.stringify(results.stats,null,2));
+                if(!results.results.length) {
+                    return res.send({
+                        fundingTotal: 0,
+                        fundsBySourceType: null,
+                        fundsByRecipientType: null,
+                        matchingContributionsByOrgType: null,
+                        orgsProvidingInKindMatch: 0,
+                        projectsByResourceType: null,
+                        productsByResourceType: null,
+                        uniqueCollaboratorsByOrgType: null,
+                        projectsInLastMonth: 0,
+                        productsInLastMonth: 0,
+                    });
+                }
                 // collapse "unique" arrays/maps into numbers
-                let stats = results.results[0].value;
+                let stats = results.results[0].value,
+                    mapToArray = (key) => {
+                        if(stats[key]) {
+                            let arr = Object.keys(stats[key]).reduce((arr,k) => {
+                                    arr.push({
+                                        key: k,
+                                        value: stats[key][k]
+                                    });
+                                    return arr;
+                                },[]);
+                            stats[key] = arr.sort((a,b) => a.key.localeCompare(b.key));
+                        }
+                    };
                 stats.orgsProvidingInKindMatch = stats.orgsProvidingInKindMatch ? stats.orgsProvidingInKindMatch.length : 0;
                 if(stats.uniqueCollaboratorsByOrgType) {
                     Object.keys(stats.uniqueCollaboratorsByOrgType)
                         .forEach(key => stats.uniqueCollaboratorsByOrgType[key] = stats.uniqueCollaboratorsByOrgType[key].length);
                 }
+                // map keys are unknown so will be easier for the client to
+                // deal with arrays
+                Object.keys(stats).forEach(key => {
+                    if(stats[key] && typeof(stats[key]) === 'object') {
+                        mapToArray(key);
+                    }
+                })
                 res.send(stats)
             })
             .catch(err => Resource.sendError(res,500,'summaryStatistics',err));
