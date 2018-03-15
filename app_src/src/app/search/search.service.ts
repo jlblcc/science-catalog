@@ -129,7 +129,9 @@ export class SearchService {
         let page = this.http.get('/api/item',{params:qargs})
                         .pipe(map((response:any) => {
                             this.searchRunning = false;
-                            this.$filterChanges.next(this.current$Filter = $filter);
+                            if(this.current$Filter !== $filter) {
+                                this.$filterChanges.next(this.current$Filter = $filter);
+                            }
                             return response.list as ItemIfc[]
                         }));
         this.searchRunning = true;
