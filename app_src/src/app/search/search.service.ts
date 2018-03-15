@@ -164,7 +164,7 @@ export class SearchService {
         return this.$filterChanges.pipe(
             startWith(this.current$Filter),
             switchMap($f => {
-                console.log(`$f = "${$f}"`);
+                //console.log(`$f = "${$f}"`);
                 const params:any = {
                     $select: $select
                 };

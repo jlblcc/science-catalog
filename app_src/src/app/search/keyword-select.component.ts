@@ -8,8 +8,6 @@ import { startWith, switchMap, map, tap } from 'rxjs/operators';
 import { merge as mergeObservables } from 'rxjs/observable/merge';
 import { of as observableOf } from 'rxjs/observable/of';
 
-import { SctypeSelect } from './sctype-select.component';
-
 import { SimplifiedKeywordType } from '../../../../src/db/models';
 
 import { KeywordSearchCriteria, SearchService } from './search.service';
@@ -53,8 +51,6 @@ function selectionFound(keywords:KeywordSearchCriteria[],keyword:KeywordSearchCr
     `]
 })
 export class KeywordSelect {
-    sctypeSelect:SctypeSelect;
-
     keywordTypes:Observable<SimplifiedKeywordType[]>;
     keywordTypesControl:FormControl = new FormControl();
 
@@ -69,43 +65,30 @@ export class KeywordSelect {
     constructor(private search:SearchService) {}
 
     ngOnInit() {
-        // TODO with liveDistinct this logic can all change since the over-all filter in use is always included
-        this.keywordTypes = this.sctypeSelect.control.valueChanges
+        this.keywordTypes = this.search.liveDistinct<SimplifiedKeywordType>('simplified.keywords.types')
             .pipe(
-                startWith(null), // initially not filtering by type
-                tap(scType => {
-                        if(scType) {
-                            this.control.setValue([]);
-                            this.keywordTypesControl.setValue(null);
-                        }
-                    }),
-                switchMap(scType => this.search.liveDistinct<SimplifiedKeywordType>('simplified.keywords.types'/*,scType ? `scType eq ${scType}` : null*/))
+                map((types:SimplifiedKeywordType[]) => types.sort((a,b) => a.label.localeCompare(b.label)))
             );
-        this.keywordValues = mergeObservables(this.keywordTypesControl.valueChanges, this.sctypeSelect.control.valueChanges)
+        this.keywordValues = this.keywordTypesControl.valueChanges
             .pipe(
                 startWith(null),
                 switchMap(() => {
                     let keywordType = this.keywordTypesControl.value;
-                    console.log(`keyword type or sctype change`, keywordType);
+                    console.log(`keywordTypesControl:change`, keywordType);
                     this.keywordValuesControl.setValue(null);
                     this.keywordValuesControl.disable();
                     if(!keywordType) {
                         return observableOf([]);
                     }
-                    return this.search.distinct<string>(`simplified.keywords.keywords.${keywordType.type}`,
-                        this.sctypeSelect.control.value ? `scType eq '${this.sctypeSelect.control.value}'` : null)
+                    return this.search.distinct<string>(`simplified.keywords.keywords.${keywordType.type}`)
                         .pipe(
-                            tap(values => {
-                                if(values.length) {
-                                    this.keywordValuesControl.enable();
-                                }
-                            })
+                            tap((arr:any[]) => arr.length ? this.keywordValuesControl.enable({emitEvent:false}) : this.keywordValuesControl.disable({emitEvent:false}))
                         );
                 })
             );
         this.keywordValuesControl.valueChanges
             .subscribe((keywordValue) => {
-                console.log('keyword value change',keywordValue);
+                console.log('keywordValuesControl:change',keywordValue);
                 if(keywordValue) {
                     let keywordType = this.keywordTypesControl.value,
                         selection:KeywordSearchCriteria = {
@@ -119,8 +102,11 @@ export class KeywordSelect {
                         this.control.setValue(newValue);
                     }
                 }
+                this.keywordValuesControl.setValue(null,{emitEvent:false}); // clear the selection
+                // disable the control until another type is picked, the list of selectable options
+                // remains based on the previously selected keyword type.
+                this.keywordValuesControl.disable({emitEvent:false});
             });
-        this.keywordChips.change.asObservable().subscribe(v => console.log(`chipChange`,v))
     }
 
     removeKeyword(index) {

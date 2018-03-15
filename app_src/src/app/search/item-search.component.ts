@@ -103,7 +103,6 @@ export class ItemSearch {
     constructor(public search:SearchService) {}
 
     ngOnInit() {
-        this.keywords.sctypeSelect = this.scType;
         this.search.paginator = this.paginator;
     }
 
