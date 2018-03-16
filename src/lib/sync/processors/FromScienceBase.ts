@@ -69,9 +69,9 @@ const DEFAULT_PAUSE_BETWEEN_LCC = 45000;
  * FromScienceBase configuration options.
  */
 export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
-    /** How many items to fetch from sciencebase at a time when syncing projects/products (default 5) */
+    /** How many items to fetch from sciencebase at a time when syncing projects/products (default 20) */
     pageSize?:number;
-    /** How long to pause (milliseconds) beween syncing LCCs (default 30000).  This option exists to avoid
+    /** How long to pause (milliseconds) beween syncing LCCs (default 45000).  This option exists to avoid
         putting too much sustained pressure on ScienceBase.  If too many requests arrive too close together
         the ScienceBase API will return a 429 which terminates the sync process. */
     pauseBetweenLcc?:number;
@@ -85,20 +85,35 @@ export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
  * Logging codes used by this processor.
  */
 export enum FromScienceBaseLogCodes {
+    /** An individual lcc sync has started */
     LCC_STARTED = 'lcc_started',
+    /** An individual lcc sync has completed */
     LCC_COMPLETED = 'lcc_completed',
+    /** An error occured while syncing an lcc */
     LCC_ERROR = 'lcc_error',
+    /** An item has been created in the catalog */
     ITEM_CREATED = 'item_created',
+    /** An item has been updated in the catalog */
     ITEM_UPDATED = 'item_updated',
+    /** An item in the catalog has not changed since the last sync */
     ITEM_UNCHANGED = 'item_unchanged',
+    /** An item has been deleted from the catalog */
     ITEM_DELETED = 'item_deleted',
+    /** An item was ignored (no `mdJson`) */
     ITEM_IGNORED = 'item_ignored',
+    /** An error occured while an item was being syned */
     ITEM_ERROR = 'item_error',
+    /** An lcc's project sync has started */
     PROJECT_SYNC_STARTED = 'project_sync_started',
+    /** An lcc's project sync has completed */
     PROJECT_SYNC_COMPLETED = 'project_sync_completed',
+    /** A project to product association is missing the science base id */
     ASSOC_PRODUCT_MISSING_SBID = 'assoc_product_missing_sbid',
+    /** An lcc's product sync has started */
     PRODUCT_SYNC_STARTED = 'product_sync_started',
+    /** An lcc's product sync has completed */
     PRODUCT_SYNC_COMPLETED = 'product_sync_completed',
+    /** The list of associated products found and returned from sciencebase do not match */
     PRODUCT_SYNC_MISSING_PRODUCTS = 'product_sync_missing_products',
 };
 
