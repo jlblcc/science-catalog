@@ -45,10 +45,11 @@ export class DistinctAutocomplete {
                         this.control.setValue(null);
                     }
                 }),
-                switchMap(v => this.search.distinct<any>(
+                switchMap(v => this.search.liveDistinct<any>(
                     this.distinctProperty,
                     !this.containsMode ? `contains(${this.distinctProperty},'${v}')` : null,
-                    this.containsMode ? v : null))
+                    this.containsMode ? v : null,
+                    true /* fire immediately */))
             ).pipe(
                 tap((arr:any[]) => arr.length ? this.typeAhead.enable({emitEvent:false}) : this.typeAhead.disable({emitEvent:false}))
             );

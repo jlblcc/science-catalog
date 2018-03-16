@@ -162,24 +162,29 @@ export class SearchService {
         return this.http.get<T []>('/api/item/distinct',{ params: params });
     }
 
-    liveDistinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
-        return this.$filterChanges.pipe(
-            //don't start until the initial query has fired
-            //startWith(this.current$Filter),
-            switchMap($f => {
-                //console.log(`$f = "${$f}"`);
-                const params:any = {
-                    $select: $select
-                };
-                if($f || $filter) {
-                    params.$filter = $f && $filter ? `{$f} and ${$filter}` : ($f ? $f : $filter);
-                }
-                if($contains) {
-                    params.$contains = $contains;
-                }
-                return this.http.get<T []>('/api/item/distinct',{ params: params });
-            })
-        );
+    liveDistinct<T>($select:string,$filter?:string,$contains?:string,startWithCurrent?:boolean):Observable<T []> {
+        let switchTo = ($f) => {
+            //console.log(`$f = "${$f}"`);
+            const params:any = {
+                $select: $select
+            };
+            if($f || $filter) {
+                params.$filter = $f && $filter ? `{$f} and ${$filter}` : ($f ? $f : $filter);
+            }
+            if($contains) {
+                params.$contains = $contains;
+            }
+            return this.http.get<T []>('/api/item/distinct',{ params: params });
+        };
+        return startWithCurrent ?
+            this.$filterChanges.pipe(
+                startWith(this.current$Filter),
+                switchMap(switchTo)
+            ) :
+            this.$filterChanges.pipe(
+                //don't start until the initial query has fired
+                switchMap(switchTo)
+            );
     }
 
     summaryStatistics():Observable<any> {
