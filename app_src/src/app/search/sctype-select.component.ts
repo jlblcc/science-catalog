@@ -3,6 +3,8 @@ import { FormControl } from '@angular/forms';
 
 import { MatButtonToggleChange } from '@angular/material';
 
+import { SearchService } from './search.service';
+
 @Component({
     selector: 'sctype-select',
     template: `
@@ -29,11 +31,33 @@ import { MatButtonToggleChange } from '@angular/material';
     `
 })
 export class SctypeSelect {
-    control:FormControl = new FormControl();
-    includeProject = true;
-    projectTT = 'Exclude project';
-    includeProduct = true;
-    productTT = 'Exclude product';
+    control:FormControl;
+    includeProject;
+    projectTT;
+    includeProduct;
+    productTT;
+
+    constructor(private search:SearchService) {
+        let initial = search.current(),
+            scType = initial ? initial.scType : null;
+        this.control = new FormControl(scType);
+        switch(scType) {
+            case 'project':
+                this.includeProject = true;
+                this.includeProduct = false;
+                break;
+            case 'product':
+                this.includeProject = false;
+                this.includeProduct = true;
+                break;
+            default:
+                this.includeProject = true;
+                this.includeProduct = true;
+                break;
+        }
+        this.projectTT = `${this.includeProject ? 'Exclude' : 'Include'} projects`;
+        this.productTT = `${this.includeProduct ? 'Exclude' : 'Include'} products`;
+    }
 
     toggle(change:MatButtonToggleChange) {
         if(change.value === 'project') {
