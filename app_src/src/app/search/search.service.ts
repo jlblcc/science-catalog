@@ -60,8 +60,7 @@ export interface SearchCriteria {
 @Injectable()
 export class SearchService {
     private currentCriteria:SearchCriteria;
-    private current$Filter:string;
-    private $filterChanges:Subject<string> = new Subject();
+    private criteriaChanges:Subject<SearchCriteria> = new Subject();
     /** How many items to display per page */
     readonly pageSize = 10;
     /** How many items are in the last search result */
@@ -86,7 +85,6 @@ export class SearchService {
                 console.error(`Error deserializing criteria`,e);
             }
         }
-        this.$filterChanges.subscribe($f => console.log(`filterChange "${$f}"`))
     }
 
     current():SearchCriteria {
@@ -145,8 +143,7 @@ export class SearchService {
 
     search(criteria:SearchCriteria):Observable<ItemIfc[]> {
         console.log('SearchService.search',criteria);
-        this.currentCriteria = criteria;
-        console.log('Shareable url',this.getShareableUrl());
+
         let qargs:any = {
             ...BASE_QUERY_ARGS,
             $top: this.pageSize,
@@ -209,15 +206,17 @@ export class SearchService {
             }
         }
 
-        qargs.$filter = $filter;
+        criteria.$filter = qargs.$filter = $filter;
 
         let page = this.http.get('/api/item',{params:qargs})
                         .pipe(map((response:any) => {
                             this.searchRunning = false;
-console.log(`Filter change?`,(this.current$Filter !== $filter));
-                            if(this.current$Filter !== $filter) {
-console.log('Filter change from "${this.current$Filter}" to ${$filter}');
-                                this.$filterChanges.next(this.current$Filter = $filter);
+                            if(!this.currentCriteria ||
+                               criteria.$filter !== this.currentCriteria.$filter ||
+                               criteria.$text !== this.currentCriteria.$text) {
+                              this.criteriaChanges.next(this.currentCriteria = criteria);
+                              // TODO remove, just logging for testing
+                              console.log('Shareable url',this.getShareableUrl());
                             }
                             return response.list as ItemIfc[]
                         }));
@@ -235,13 +234,16 @@ console.log('Filter change from "${this.current$Filter}" to ${$filter}');
               ) : page;
     }
 
-    distinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
-        let $f = this.current$Filter;
+    private _distinct<T>(criteria:SearchCriteria,$select:string,$filter?:string,$contains?:string):Observable<T []> {
+        let $f = criteria ? criteria.$filter : undefined;
         const params:any = {
             $select: $select
         };
         if($f || $filter) {
             params.$filter = $f && $filter ? `{$f} and ${$filter}` : ($f ? $f : $filter);
+        }
+        if(criteria && criteria.$text) {
+            params.$text = criteria.$text;
         }
         if($contains) {
             params.$contains = $contains;
@@ -249,36 +251,36 @@ console.log('Filter change from "${this.current$Filter}" to ${$filter}');
         return this.http.get<T []>('/api/item/distinct',{ params: params });
     }
 
+    distinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
+        return this._distinct(this.currentCriteria,$select,$filter,$contains);
+    }
+
     liveDistinct<T>($select:string,$filter?:string,$contains?:string,startWithCurrent?:boolean):Observable<T []> {
-        let switchTo = ($f) => {
-            //console.log(`$f = "${$f}"`);
-            const params:any = {
-                $select: $select
-            };
-            if($f || $filter) {
-                params.$filter = $f && $filter ? `{$f} and ${$filter}` : ($f ? $f : $filter);
-            }
-            if($contains) {
-                params.$contains = $contains;
-            }
-            return this.http.get<T []>('/api/item/distinct',{ params: params });
-        };
+        const switchTo = (criteria:SearchCriteria):Observable<T []> => this._distinct(criteria,$select,$filter,$contains);
         return startWithCurrent ?
-            this.$filterChanges.pipe(
-                startWith(this.current$Filter),
+            this.criteriaChanges.pipe(
+                startWith(this.currentCriteria),
                 switchMap(switchTo)
             ) :
-            this.$filterChanges.pipe(
+            this.criteriaChanges.pipe(
                 //don't start until the initial query has fired
                 switchMap(switchTo)
             );
     }
 
     summaryStatistics():Observable<any> {
-        return this.$filterChanges.pipe(
-                startWith(this.current$Filter),
-                filter(f => !!f), // filter will never be empty, except for at load time
-                switchMap($f => this.http.get<any>('/api/item/summaryStatistics',{params :{ $filter: $f}}))
-            );
+        return this.criteriaChanges.pipe(
+            startWith(this.currentCriteria),
+            filter(c => !!c), // will never be empty except for at load time
+            switchMap(c => {
+                let params:any = {
+                    $filter: c.$filter
+                };
+                if(c.$text) {
+                    params.$text = c.$text;
+                }
+                return this.http.get<any>('/api/item/summaryStatistics',{params:params});
+            })
+        );
     }
 }

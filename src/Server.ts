@@ -31,6 +31,16 @@ class ItemResource extends Resource<ItemDoc> {
         }
         return query;
     }
+    private _distinctQuery(req:Request) {
+        let query = this.getModel().find();
+        if(req.query.$filter) {
+            ItemResource.parseFilter(query,req.query.$filter);
+        }
+        if(req.query.$text) {
+            query.and([{$text: {$search: req.query.$text}}]);
+        }
+        return query;
+    }
     // override find and add parameter for $text (keyword) search
     find(req:Request,res:Response) {
         this._findQuery(req).exec((err,items) => {
@@ -89,15 +99,12 @@ export class Server {
             count: true,
             //populate: ['_lcc']
         }});
-        item.staticLink('distinct',(req,res) => {
+        item.staticLink('distinct',function(req,res) {
             if(!req.query.$select) {
                 return Resource.sendError(res,400,'Missing required parameter $select');
             }
-            let query = item.getModel().find(),
+            let query = this._distinctQuery(req),
                 regex;
-            if(req.query.$filter) {
-                ItemResource.parseFilter(query,req.query.$filter);
-            }
             if (req.query.$contains) {
                 // this kind of duplicates with $filter could do BUT will trim
                 // what distinct is run over and THEN further trim the resulting values
@@ -118,11 +125,8 @@ export class Server {
                 .catch(err => Resource.sendError(res,500,`distinct ${req.query.$select}`,err));
         });
 
-        item.staticLink('summaryStatistics',(req,res) => {
-            const query = item.getModel().find();
-            if(req.query.$filter) {
-                ItemResource.parseFilter(query,req.query.$filter);
-            }
+        item.staticLink('summaryStatistics',function(req,res) {
+            const query = this._distinctQuery(req);
             item.getModel().mapReduce({
                 query: query,
                 map: function() {
