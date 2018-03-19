@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Location } from '@angular/common';
 
 import { MatPaginator, MatSort } from '@angular/material';
 
@@ -7,7 +8,9 @@ import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import { map, switchMap, startWith, filter } from 'rxjs/operators';
 
-import { ScType, ItemIfc } from '../../../../src/db/models';
+import { ScType, ItemIfc, LccIfc } from '../../../../src/db/models';
+
+import * as pako from 'pako';
 
 const BASE_QUERY_ARGS = {
     $select: 'scType simplified'
@@ -50,12 +53,15 @@ export interface SearchCriteria {
     $text?: string;
     /** funding criteria */
     funding?: FundingSearchCriteria;
+    /** The $filter value built from these criteria */
+    $filter?: string;
 }
 
 @Injectable()
 export class SearchService {
+    private currentCriteria:SearchCriteria;
     private current$Filter:string;
-    $filterChanges:Subject<string> = new Subject();
+    private $filterChanges:Subject<string> = new Subject();
     /** How many items to display per page */
     readonly pageSize = 10;
     /** How many items are in the last search result */
@@ -67,10 +73,80 @@ export class SearchService {
     /** The sort control for the current Item[List|Table] */
     currentSorter:MatSort;
 
-    constructor(private http:HttpClient) {}
+    constructor(private http:HttpClient,private location:Location) {
+        let path = location.path();
+        if(path) {
+            if(path.charAt(0) === '/') {
+                path = path.substring(1);
+            }
+            try {
+                this.currentCriteria = this.deserialize(path);
+                console.log('initial criteria',this.currentCriteria);
+            } catch(e) {
+                console.error(`Error deserializing criteria`,e);
+            }
+        }
+        this.$filterChanges.subscribe($f => console.log(`filterChange "${$f}"`))
+    }
+
+    current():SearchCriteria {
+        return this.currentCriteria;
+    }
+
+    getShareableUrl():string {
+        let href = window.location.href,
+            hash = href.indexOf('#');
+        if(hash !== -1) {
+            href = href.substring(0,hash);
+        }
+        return href+this.location.prepareExternalUrl(this.serialize(this.currentCriteria));
+    }
+
+    /**
+     * Take some search criteria and serialize it into a string that can be
+     * re-constituted later.
+     */
+    private serialize(criteria:SearchCriteria):string {
+        let copy = JSON.parse(JSON.stringify(criteria)),
+            simplify = (o) => {
+                Object.keys(o).forEach(k => {
+                    if(!o[k] || (o[k] instanceof Array && !o[k].length)) {
+                        delete o[k];
+                    } else if (typeof(o[k]) === 'object') {
+                        o[k] = simplify(o[k]);
+                        if(!o[k]) {
+                            delete o[k];
+                        }
+                    }
+                });
+                return Object.keys(o).length ? o : null;
+            };
+        // recursively remove null/empty keys to bring the object size down to
+        // the minimum necessary.
+        copy = simplify(copy);
+        // using pako to gzip the result, for small filters is not much
+        // space savings but for larger filters it can decrease the char count
+        // by hundreds of chars once base 64 encoded
+        let binaryString = pako.deflate(JSON.stringify(copy),{to:'string'});
+        return window.btoa(binaryString);
+    }
+
+    private deserialize(encodedCriteria:string):SearchCriteria {
+        const binaryString = window.atob(encodedCriteria);
+        return JSON.parse(pako.inflate(binaryString, { to: 'string' }));
+    }
+
+    lccs():Observable<LccIfc []> {
+        return this.http.get('/api/lcc',{params:{$orderby:'title'}})
+            .pipe(
+                map((response:any) => response.list as LccIfc[])
+            );
+    }
 
     search(criteria:SearchCriteria):Observable<ItemIfc[]> {
         console.log('SearchService.search',criteria);
+        this.currentCriteria = criteria;
+        console.log('Shareable url',this.getShareableUrl());
         let qargs:any = {
             ...BASE_QUERY_ARGS,
             $top: this.pageSize,
@@ -138,7 +214,9 @@ export class SearchService {
         let page = this.http.get('/api/item',{params:qargs})
                         .pipe(map((response:any) => {
                             this.searchRunning = false;
+console.log(`Filter change?`,(this.current$Filter !== $filter));
                             if(this.current$Filter !== $filter) {
+console.log('Filter change from "${this.current$Filter}" to ${$filter}');
                                 this.$filterChanges.next(this.current$Filter = $filter);
                             }
                             return response.list as ItemIfc[]

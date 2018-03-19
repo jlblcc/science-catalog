@@ -5,6 +5,7 @@ import { MaterialModule } from '../material';
 
 import { ItemIcon } from './item-icon.component';
 import { SctypeSelect } from './sctype-select.component';
+import { TextSearch } from './text-search.component';
 import { LccSelect } from './lcc-select.component';
 import { KeywordSelect } from './keyword-select.component';
 import { DistinctAutocomplete } from './distinct-autocomplete.component';
@@ -30,7 +31,7 @@ import { SearchService } from './search.service';
     ],
     declarations:[
         ItemIcon,
-        LccSelect, SctypeSelect, KeywordSelect,
+        LccSelect, TextSearch, SctypeSelect, KeywordSelect,
         DistinctAutocomplete, DistinctSelect,
         FundingSearchControls,
         SummaryStatistics,

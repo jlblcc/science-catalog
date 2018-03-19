@@ -11,6 +11,7 @@ import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort }
 
 import { LccSelect } from './lcc-select.component';
 import { SctypeSelect } from './sctype-select.component';
+import { TextSearch } from './text-search.component';
 import { KeywordSelect } from './keyword-select.component';
 import { FundingSearchControls } from './funding-search-controls.component';
 
@@ -34,9 +35,7 @@ const BASE_QUERY_ARGS = {
 
     <div class="search-controls">
         <div class="basic-controls-line-1">
-            <mat-form-field class="text-search">
-                <input matInput placeholder="Title/Description" [formControl]="$text" />
-            </mat-form-field>
+            <text-search></text-search>
             <sctype-select></sctype-select>
             <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type">
                 <mat-button-toggle value="list" matTooltip="Display results as a list">
@@ -70,8 +69,8 @@ const BASE_QUERY_ARGS = {
     </div>
 
     <div class="search-results">
-        <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="highlight"></item-list>
-        <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="highlight"></item-table>
+        <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
+        <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
         <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize"></mat-paginator>
     </div>
     `,
@@ -80,16 +79,14 @@ const BASE_QUERY_ARGS = {
 export class ItemSearch {
     /** The LCC selection component */
     @ViewChild(LccSelect) lcc: LccSelect;
+    /** The text search input */
+    @ViewChild(TextSearch) $text: TextSearch;
     /** The type selection component */
     @ViewChild(SctypeSelect) scType: SctypeSelect;
     /** The keyword selection component (advanced) */
     @ViewChild(KeywordSelect) keywords: KeywordSelect;
     /** The funding controls */
     @ViewChild(FundingSearchControls) funding: FundingSearchControls;
-    /** FormControl for $text based search */
-    $text:FormControl = new FormControl();
-    /** Individual words entered into the $text input so results displays can highlight them */
-    highlight:string[] = [];
     /** Holds the current page of search results to pass down to the table/list view */
     dataSource = new MatTableDataSource<ItemIfc>();
 
@@ -116,28 +113,6 @@ export class ItemSearch {
     }
 
     ngAfterViewInit() {
-        // capture input from the $text control and push it into the
-        // criteriaGroup, doing this so we can debounce the input so
-        // we're not running a query per character press
-        this.$text.valueChanges.pipe(
-            debounceTime(500)
-        ).subscribe((v:string) => {
-            let regex = new RegExp('"([\\w\\s^"]+)"|\\b(\\w+)\\b','g'),
-                match, matches = [];
-            while ((match = regex.exec(v)) !== null) {
-                match = match[0];
-                if(match.charAt(0) === '"' && match.charAt(match.length-1) === '"') {
-                    match = match.substring(1,match.length-1);
-                }
-                matches.push(match);
-            }
-            this.highlight = matches;
-            criteriaGroup.setValue({
-                ...criteriaGroup.value,
-                $text: v
-            });
-        });
-
         // roll up all criteria input into a group so we can react to
         // any change to the criteria input.
         let criteriaGroup = new FormGroup({
@@ -145,7 +120,7 @@ export class ItemSearch {
             scType: this.scType.control,
             keywords: this.keywords.control,
             funding: this.funding.controls,
-            $text: new FormControl() // to catch $text values
+            $text: this.$text.control
         });
 
         // when one of several things happen reset to page zero

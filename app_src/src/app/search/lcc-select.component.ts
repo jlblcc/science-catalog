@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { FormControl } from '@angular/forms';
 
 import { Observable } from 'rxjs/Observable';
 import { map } from 'rxjs/operators';
 
+import { SearchService } from './search.service';
 import { LccIfc } from '../../../../src/db/models';
 
 @Component({
@@ -24,14 +24,14 @@ import { LccIfc } from '../../../../src/db/models';
 })
 export class LccSelect {
     lccs:Observable<LccIfc[]>;
-    control:FormControl = new FormControl([]);
+    control:FormControl;
 
-    constructor(private http:HttpClient){}
+    constructor(private search:SearchService){
+        let initial = search.current();
+        this.control = new FormControl(initial ? initial.lcc||[] : []);
+    }
 
     ngOnInit() {
-        this.lccs = this.http.get('/api/lcc',{params:{$orderby:'title'}})
-            .pipe(
-                map((response:any) => response.list as LccIfc[])
-            );
+        this.lccs = this.search.lccs();
     }
 }

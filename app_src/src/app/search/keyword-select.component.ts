@@ -91,7 +91,7 @@ export class KeywordSelect {
                     if(!keywordType) {
                         return observableOf([]);
                     }
-                    return this.search.distinct<string>(`simplified.keywords.keywords.${keywordType.type}`)
+                    return this.search.liveDistinct<string>(`simplified.keywords.keywords.${keywordType.type}`,null,null,true)
                         .pipe(
                             tap((arr:any[]) => arr.length ? this.keywordValuesControl.enable({emitEvent:false}) : this.keywordValuesControl.disable({emitEvent:false}))
                         );

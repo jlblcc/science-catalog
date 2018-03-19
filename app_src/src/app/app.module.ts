@@ -3,6 +3,7 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import {HashLocationStrategy, Location, LocationStrategy} from '@angular/common';
 
 import { MatIconRegistry } from '@angular/material';
 
@@ -30,7 +31,9 @@ import { AppComponent } from './app.component';
     HttpClientModule
   ],
   providers: [
-      MatIconRegistry
+      MatIconRegistry,
+      Location,
+      {provide: LocationStrategy, useClass: HashLocationStrategy}
   ],
   bootstrap: [AppComponent]
 })
