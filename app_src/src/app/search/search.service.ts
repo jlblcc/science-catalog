@@ -25,7 +25,7 @@ export interface FundingSearchCriteria {
     recipientType?: string[];
     recipient?: string;
 }
-export interface KeywordSearchCriteria {
+export interface KeywordCriteria {
     /** The keyword type key */
     typeKey:string;
     /** The keyword type label */
@@ -33,13 +33,19 @@ export interface KeywordSearchCriteria {
     /** The keyword value */
     value:string;
 }
+export interface KeywordSearchCriteria {
+    /** Whether to `and` or `or` the keywords together during search */
+    logicalOperator: string;
+    /** The list of `KeywordCriteria` */
+    criteria: KeywordCriteria[];
+}
 export interface SearchCriteria {
     /** Sciencebase item type */
     scType?: ScType;
     /** List of LCC ids to include */
     lcc?: string[];
     /** List of keyword criteria */
-    keywords?: KeywordSearchCriteria[];
+    keywords?: KeywordSearchCriteria;
     /** text index search input */
     $text?: string;
     /** funding criteria */
@@ -88,9 +94,12 @@ export class SearchService {
             let ids = criteria.lcc.map(id => `'${id}'`);
             $filter += ` and in(_lcc,${ids.join(',')})`;
         }
-        criteria.keywords.forEach(k => {
-           $filter += ` and simplified.keywords.keywords.${k.typeKey} eq '${k.value}'` ;
-        });
+        if(criteria.keywords && criteria.keywords.criteria.length) {
+            let keywordFilter =
+                criteria.keywords.criteria.map(k => `simplified.keywords.keywords.${k.typeKey} eq '${k.value}'`)
+                    .join(` ${criteria.keywords.logicalOperator} `);
+            $filter += ` and (${keywordFilter})`;
+        }
         if(criteria.funding) {
             let f = criteria.funding;
             if(f.fiscalYears && f.fiscalYears.length) {

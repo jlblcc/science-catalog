@@ -10,9 +10,9 @@ import { of as observableOf } from 'rxjs/observable/of';
 
 import { SimplifiedKeywordType } from '../../../../src/db/models';
 
-import { KeywordSearchCriteria, SearchService } from './search.service';
+import { KeywordSearchCriteria, KeywordCriteria, SearchService } from './search.service';
 
-function selectionFound(keywords:KeywordSearchCriteria[],keyword:KeywordSearchCriteria) {
+function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
     return !!keywords.reduce((found,kw) => {
         return found || ((kw.typeKey === keyword.typeKey && kw.value === keyword.value) ? kw : undefined);
     },undefined);
@@ -21,6 +21,10 @@ function selectionFound(keywords:KeywordSearchCriteria[],keyword:KeywordSearchCr
 @Component({
     selector: 'keyword-select',
     template: `
+    <mat-radio-group [formControl]="logicalOperatorControl" *ngIf="control.value.criteria.length > 1">
+      <mat-radio-button value="and">All keywords match</mat-radio-button>
+      <mat-radio-button value="or">Any keyword matches</mat-radio-button>
+    </mat-radio-group>
     <div class="keyword-selection">
         <mat-form-field class="keyword-type">
             <mat-select placeholder="Keyword type" [formControl]="keywordTypesControl">
@@ -34,7 +38,7 @@ function selectionFound(keywords:KeywordSearchCriteria[],keyword:KeywordSearchCr
         </mat-form-field>
     </div>
     <mat-chip-list>
-        <mat-chip *ngFor="let keyword of control.value; index as i" (remove)="removeKeyword(i)">
+        <mat-chip *ngFor="let keyword of control.value.criteria; index as i" (remove)="removeKeyword(i)">
             {{keyword.typeLabel}} : {{keyword.value}}
             <mat-icon matChipRemove fontIcon="fa-times"></mat-icon>
         </mat-chip>
@@ -56,12 +60,16 @@ function selectionFound(keywords:KeywordSearchCriteria[],keyword:KeywordSearchCr
 export class KeywordSelect {
     keywordTypes:Observable<SimplifiedKeywordType[]>;
     keywordTypesControl:FormControl = new FormControl();
+    logicalOperatorControl:FormControl = new FormControl('and');
 
     keywordValues:Observable<string []>
     keywordValuesControl:FormControl = new FormControl();
 
     /** Publishes the keyword filter selection to the outside world */
-    control:FormControl = new FormControl([]);
+    control:FormControl = new FormControl({
+        logicalOperator: 'and',
+        criteria: []
+    });
 
     @ViewChild(MatChipList) keywordChips:MatChipList;
 
@@ -94,15 +102,15 @@ export class KeywordSelect {
                 console.log('keywordValuesControl:change',keywordValue);
                 if(keywordValue) {
                     let keywordType = this.keywordTypesControl.value,
-                        selection:KeywordSearchCriteria = {
+                        selection:KeywordCriteria = {
                             typeKey: keywordType.type,
                             typeLabel: keywordType.label,
                             value: keywordValue
                         };
-                    if(!selectionFound(this.control.value,selection)) {
-                        let newValue = this.control.value.slice(0);
-                        newValue.push(selection);
-                        this.control.setValue(newValue);
+                    if(!selectionFound(this.control.value.criteria,selection)) {
+                        let v = this.control.value;
+                        v.criteria.push(selection);
+                        this.control.setValue(v);
                     }
                 }
                 this.keywordValuesControl.setValue(null,{emitEvent:false}); // clear the selection
@@ -110,11 +118,15 @@ export class KeywordSelect {
                 // remains based on the previously selected keyword type.
                 this.keywordValuesControl.disable({emitEvent:false});
             });
+        this.logicalOperatorControl.valueChanges.subscribe(logicalOperator => {
+            this.control.value.logicalOperator = logicalOperator;
+            this.control.setValue(this.control.value);
+        });
     }
 
     removeKeyword(index) {
-        let newValue = this.control.value.slice(0);
-        newValue.splice(index,1);
-        this.control.setValue(newValue);
+        let v = this.control.value;
+        v.criteria.splice(index,1);
+        this.control.setValue(v);
     }
 }
