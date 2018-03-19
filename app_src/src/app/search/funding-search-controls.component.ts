@@ -94,7 +94,7 @@ export class FundingSearchControls {
 
     constructor(private search:SearchService) {
         let initial = search.initial;
-        this.initialValues = initial ? initial.funding : {};
+        this.initialValues = initial ? initial.funding||{} : {};
         this.match = new FormControl(this.initialValues.match);
         this.lowerAmountInput = new FormControl(this.initialValues.lowerAmount);
         this.upperAmountInput = new FormControl(this.initialValues.upperAmount);

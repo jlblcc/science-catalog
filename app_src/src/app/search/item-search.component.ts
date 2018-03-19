@@ -45,6 +45,7 @@ const BASE_QUERY_ARGS = {
                     <mat-icon fontIcon="fa-table"></mat-icon>
                 </mat-button-toggle>
             </mat-button-toggle-group>
+            <share></share>
         </div>
 
         <lcc-select></lcc-select>

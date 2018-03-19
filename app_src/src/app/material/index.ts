@@ -21,7 +21,8 @@ import { MatIconModule,
          MatChipsModule,
          MatAutocompleteModule,
          MatRadioModule,
-         MatTabsModule } from '@angular/material';
+         MatTabsModule,
+         MatSnackBarModule } from '@angular/material';
 
 @NgModule({
     imports:[
@@ -47,7 +48,8 @@ import { MatIconModule,
         MatChipsModule,
         MatAutocompleteModule,
         MatRadioModule,
-        MatTabsModule
+        MatTabsModule,
+        MatSnackBarModule
     ],
     exports: [
         BrowserModule,
@@ -72,7 +74,8 @@ import { MatIconModule,
         MatChipsModule,
         MatAutocompleteModule,
         MatRadioModule,
-        MatTabsModule
+        MatTabsModule,
+        MatSnackBarModule
     ]
 })
 export class MaterialModule {}

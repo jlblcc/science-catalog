@@ -81,7 +81,7 @@ export class SearchService {
             }
             try {
                 this.initialCriteria = this.deserialize(path);
-                console.log('initial criteria',this.currentCriteria);
+                console.log('initial criteria',this.initialCriteria);
             } catch(e) {
                 console.error(`Error deserializing criteria`,e);
             }
@@ -224,8 +224,6 @@ export class SearchService {
                                criteria.$filter !== this.currentCriteria.$filter ||
                                criteria.$text !== this.currentCriteria.$text) {
                               this.criteriaChanges.next(this.currentCriteria = criteria);
-                              // TODO remove, just logging for testing
-                              console.log('Shareable url',this.getShareableUrl());
                             }
                             return response.list as ItemIfc[]
                         }));
