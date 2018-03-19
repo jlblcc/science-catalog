@@ -4,8 +4,9 @@ import { FormControl } from '@angular/forms';
 import { MatAutocompleteSelectedEvent } from '@angular/material';
 
 import { Observable } from 'rxjs/Observable';
-import { debounceTime, switchMap, startWith, tap } from 'rxjs/operators';
+import { debounceTime, switchMap, startWith, tap, takeUntil } from 'rxjs/operators';
 
+import { MonitorsDestroy } from '../common';
 import { SearchService } from './search.service';
 
 @Component({
@@ -25,7 +26,7 @@ import { SearchService } from './search.service';
         }
     `]
 })
-export class DistinctAutocomplete {
+export class DistinctAutocomplete extends MonitorsDestroy {
     @Input() initialValue:any;
     @Input() placeholder:string;
     @Input() distinctProperty:string;
@@ -35,12 +36,15 @@ export class DistinctAutocomplete {
     typeAhead:FormControl;
     options:Observable<any[]>;
 
-    constructor(private search:SearchService) {}
+    constructor(private search:SearchService) {
+        super();
+    }
 
     ngOnInit() {
         this.control = new FormControl(this.initialValue);
         this.typeAhead = new FormControl(this.initialValue);
         this.options = this.typeAhead.valueChanges.pipe(
+                takeUntil(this.componentDestroyed),
                 debounceTime(500),
                 startWith(this.initialValue),
                 tap(v => {

@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
 import { FormControl } from '@angular/forms';
 
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, takeUntil } from 'rxjs/operators';
 
+import { MonitorsDestroy } from '../common';
 import { SearchService } from './search.service';
 
 @Component({
@@ -18,7 +19,7 @@ import { SearchService } from './search.service';
         }
     `]
 })
-export class TextSearch {
+export class TextSearch extends MonitorsDestroy {
     /** FormControl used to populate the search criteria */
     control:FormControl;
     /** FormControl for $text based search */
@@ -27,6 +28,7 @@ export class TextSearch {
     highlight:string[];
 
     constructor(private search:SearchService){
+        super();
         let initial = search.initial,
             v = initial ? initial.$text : undefined;
         this.updateHighlights(v);
@@ -53,6 +55,7 @@ export class TextSearch {
 
     ngOnInit() {
         this.$text.valueChanges.pipe(
+            takeUntil(this.componentDestroyed),
             debounceTime(500)
         ).subscribe((v:string) => {
             this.updateHighlights(v);

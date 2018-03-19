@@ -1,8 +1,9 @@
 import { Component, ViewChild } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, takeUntil } from 'rxjs/operators';
 
+import { MonitorsDestroy } from '../common';
 import { DistinctAutocomplete } from './distinct-autocomplete.component';
 import { DistinctSelect } from './distinct-select.component';
 import { SearchService, FundingSearchCriteria } from './search.service';
@@ -78,7 +79,7 @@ import { SearchService, FundingSearchCriteria } from './search.service';
         }
     `]
 })
-export class FundingSearchControls {
+export class FundingSearchControls extends MonitorsDestroy {
     initialValues:FundingSearchCriteria;
     controls:FormGroup = new FormGroup({});
 
@@ -93,6 +94,7 @@ export class FundingSearchControls {
     @ViewChild('recipient') recipient:DistinctAutocomplete;
 
     constructor(private search:SearchService) {
+        super();
         let initial = search.initial;
         this.initialValues = initial ? initial.funding||{} : {};
         this.match = new FormControl(this.initialValues.match);
@@ -113,10 +115,16 @@ export class FundingSearchControls {
 
         const lowerAmount = new FormControl();
         this.controls.addControl('lowerAmount', lowerAmount);
-        this.lowerAmountInput.valueChanges.pipe(debounceTime(500)).subscribe(v => lowerAmount.setValue(v));
+        this.lowerAmountInput.valueChanges.pipe(
+                takeUntil(this.componentDestroyed),
+                debounceTime(500)
+            ).subscribe(v => lowerAmount.setValue(v));
 
         const upperAmount = new FormControl();
         this.controls.addControl('upperAmount',upperAmount);
-        this.upperAmountInput.valueChanges.pipe(debounceTime(500)).subscribe(v => upperAmount.setValue(v));
+        this.upperAmountInput.valueChanges.pipe(
+                takeUntil(this.componentDestroyed),
+                debounceTime(500)
+            ).subscribe(v => upperAmount.setValue(v));
     }
 }

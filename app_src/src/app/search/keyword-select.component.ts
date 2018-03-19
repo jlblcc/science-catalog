@@ -4,12 +4,13 @@ import { FormControl } from '@angular/forms';
 import { MatChipList, MatChipEvent } from '@angular/material';
 
 import { Observable } from 'rxjs/Observable';
-import { startWith, switchMap, map, tap } from 'rxjs/operators';
+import { startWith, switchMap, map, tap, takeUntil } from 'rxjs/operators';
 import { merge as mergeObservables } from 'rxjs/observable/merge';
 import { of as observableOf } from 'rxjs/observable/of';
 
 import { SimplifiedKeywordType } from '../../../../src/db/models';
 
+import { MonitorsDestroy } from '../common';
 import { KeywordSearchCriteria, KeywordCriteria, SearchService } from './search.service';
 
 function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
@@ -57,7 +58,7 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
         }
     `]
 })
-export class KeywordSelect {
+export class KeywordSelect extends MonitorsDestroy {
     keywordTypes:Observable<SimplifiedKeywordType[]>;
     keywordTypesControl:FormControl = new FormControl();
     logicalOperatorControl:FormControl;
@@ -71,6 +72,7 @@ export class KeywordSelect {
     @ViewChild(MatChipList) keywordChips:MatChipList;
 
     constructor(private search:SearchService) {
+        super();
         let initial = search.initial,
             logical,criteria;
         if(initial && initial.keywords) {
@@ -107,6 +109,9 @@ export class KeywordSelect {
                 })
             );
         this.keywordValuesControl.valueChanges
+            .pipe(
+                takeUntil(this.componentDestroyed)
+            )
             .subscribe((keywordValue) => {
                 //console.log('keywordValuesControl:change',keywordValue);
                 if(keywordValue) {
@@ -127,10 +132,14 @@ export class KeywordSelect {
                 // remains based on the previously selected keyword type.
                 this.keywordValuesControl.disable({emitEvent:false});
             });
-        this.logicalOperatorControl.valueChanges.subscribe(logicalOperator => {
-            this.control.value.logicalOperator = logicalOperator;
-            this.control.setValue(this.control.value);
-        });
+        this.logicalOperatorControl.valueChanges
+            .pipe(
+                takeUntil(this.componentDestroyed)
+            )
+            .subscribe(logicalOperator => {
+                this.control.value.logicalOperator = logicalOperator;
+                this.control.setValue(this.control.value);
+            });
     }
 
     removeKeyword(index) {

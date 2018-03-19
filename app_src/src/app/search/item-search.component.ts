@@ -9,6 +9,7 @@ import { of as observableOf } from 'rxjs/observable/of';
 
 import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort } from '@angular/material';
 
+import { MonitorsDestroy } from '../common';
 import { LccSelect } from './lcc-select.component';
 import { SctypeSelect } from './sctype-select.component';
 import { TextSearch } from './text-search.component';
@@ -77,7 +78,7 @@ const BASE_QUERY_ARGS = {
     `,
     styleUrls: [ './item-search.component.scss']
 })
-export class ItemSearch {
+export class ItemSearch extends MonitorsDestroy {
     /** The LCC selection component */
     @ViewChild(LccSelect) lcc: LccSelect;
     /** The text search input */
@@ -107,7 +108,9 @@ export class ItemSearch {
 
     statisticsExpanded:boolean = false;
 
-    constructor(public search:SearchService) {}
+    constructor(public search:SearchService) {
+        super();
+    }
 
     ngOnInit() {
         this.search.paginator = this.paginator;
@@ -129,7 +132,11 @@ export class ItemSearch {
             criteriaGroup.valueChanges, // criteria changed
             this.resultsListType.valueChange.asObservable(), // view changed between table/list
             this.sortChanges // sort order changed
-        ).subscribe(() => this.paginator.pageIndex = 0);
+        )
+        .pipe(
+            takeUntil(this.componentDestroyed)
+        )
+        .subscribe(() => this.paginator.pageIndex = 0);
 
         // when one of several things happen re-execute the query
         mergeObservables(
@@ -137,11 +144,12 @@ export class ItemSearch {
             this.paginator.page, // page navigation
             this.sortChanges // sort property/direction change
         ).pipe(
-          switchMap(() => this.search.search(criteriaGroup.value as SearchCriteria)),
-          catchError(() => {
-              this.search.searchRunning = false;
-              return observableOf([]);
-          })
+            takeUntil(this.componentDestroyed),
+            switchMap(() => this.search.search(criteriaGroup.value as SearchCriteria)),
+            catchError(() => {
+                this.search.searchRunning = false;
+                return observableOf([]);
+            })
         ).subscribe(items => this.dataSource.data = items);
 
         let sortSubscription;
@@ -149,7 +157,10 @@ export class ItemSearch {
         // the view is toggled between table/list (switching who's controlling
         // how the results are sorted (the table column headers or control in list view)
         this.sorterChanges
-          .pipe(distinctUntilChanged()) // only do this once per view change
+          .pipe(
+              takeUntil(this.componentDestroyed),
+              distinctUntilChanged()
+          ) // only do this once per view change
           .subscribe((sorter:MatSort) => {
               this.search.currentSorter = sorter;
               if(sortSubscription) {
@@ -160,6 +171,7 @@ export class ItemSearch {
               }
               sortSubscription = sorter.sortChange.asObservable()
                   .pipe(
+                      takeUntil(this.componentDestroyed),
                       startWith({
                           active: sorter.active,
                           direction: sorter.direction
