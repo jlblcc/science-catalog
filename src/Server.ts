@@ -11,7 +11,8 @@ import { DocumentQuery } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
 import { Item, ItemDoc, SimplifiedIfc,
-         Lcc } from './db/models';
+         Lcc,
+        SyncPipelineProcessorLog } from './db/models';
 
 /** Base resource configuration that disables POST,PUT and DELETE */
 const READONLY = {
@@ -310,6 +311,15 @@ export class Server {
 
         item.initRouter(this.express);
         lcc.initRouter(this.express);
+
+        // TODO remove?
+        let log = new Resource({...READONLY,...{
+            rel: '/api/log',
+            model: SyncPipelineProcessorLog,
+            count: true,
+            $top: 5,
+        }});
+        log.initRouter(this.express);
     }
 }
 

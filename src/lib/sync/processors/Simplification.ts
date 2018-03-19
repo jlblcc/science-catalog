@@ -243,7 +243,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                         console.log('no party?');
                         console.log(item);
                     }
-                    this.simplifyContacts(poc.party.map(ref => ref.contactId),item)
+                    this.simplifyContacts(poc.party.map(ref => ref.contactId),item,poc)
                         .forEach(c => map[poc.role].push(c));
                     return map;
                 },{}),
@@ -329,7 +329,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             funding.forEach(f => {
                 (f.allocation||[]).forEach(a => {
                     if(a[key]) {
-                        let c = this.simplifyContact(a[key],item);
+                        let c = this.simplifyContact(a[key],item,a);
                         if(!duplicateContact(c)) {
                             contacts.push(c);
                         }
@@ -343,13 +343,13 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         return simplified;
     }
 
-    private simplifyContacts(contactIds:string[],item:ItemDoc) {
+    private simplifyContacts(contactIds:string[],item:ItemDoc,context?:any) {
         return contactIds
-            .map(id => this.simplifyContact(id,item))
+            .map(id => this.simplifyContact(id,item,context))
             .filter(c => !!c); // missing contacts happen
     }
 
-    private simplifyContact(contactId:string,item:ItemDoc):SimplifiedContact {
+    private simplifyContact(contactId:string,item:ItemDoc,context?:any):SimplifiedContact {
         let contacts = item.mdJson.contact,
             c = contacts.reduce((found,c) => found||(c.contactId === contactId ? c : undefined),undefined);
         if(!c) {
@@ -362,7 +362,8 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     code: SimplificationCodes.MISSING_CONTACT,
                     data: {
                         contacts: item.mdJson.contact,
-                        missingContactId: contactId
+                        missingContactId: contactId,
+                        context: context
                     }
                 });
             }
@@ -381,7 +382,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         };
         if(c.memberOfOrganization) {
             // missign contacts happen...
-            let orgs = this.simplifyContacts(c.memberOfOrganization,item);
+            let orgs = this.simplifyContacts(c.memberOfOrganization,item,c);
             if(orgs.length) {
                 contact.memberOfOrganization = orgs;
             }
