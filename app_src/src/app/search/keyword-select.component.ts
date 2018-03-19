@@ -60,20 +60,29 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
 export class KeywordSelect {
     keywordTypes:Observable<SimplifiedKeywordType[]>;
     keywordTypesControl:FormControl = new FormControl();
-    logicalOperatorControl:FormControl = new FormControl('and');
+    logicalOperatorControl:FormControl;
 
     keywordValues:Observable<string []>
     keywordValuesControl:FormControl = new FormControl();
 
     /** Publishes the keyword filter selection to the outside world */
-    control:FormControl = new FormControl({
-        logicalOperator: 'and',
-        criteria: []
-    });
+    control:FormControl;
 
     @ViewChild(MatChipList) keywordChips:MatChipList;
 
-    constructor(private search:SearchService) {}
+    constructor(private search:SearchService) {
+        let initial = search.current(),
+            logical,criteria;
+        if(initial && initial.keywords) {
+            logical = initial.keywords.logicalOperator;
+            criteria = initial.keywords.criteria;
+        }
+        this.logicalOperatorControl = new FormControl(logical||'and');
+        this.control = new FormControl({
+            logicalOperator: this.logicalOperatorControl.value,
+            criteria: criteria||[]
+        });
+    }
 
     ngOnInit() {
         this.keywordTypes = this.search.liveDistinct<SimplifiedKeywordType>('simplified.keywords.types')

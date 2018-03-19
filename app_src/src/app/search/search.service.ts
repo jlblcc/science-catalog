@@ -141,20 +141,7 @@ export class SearchService {
             );
     }
 
-    search(criteria:SearchCriteria):Observable<ItemIfc[]> {
-        console.log('SearchService.search',criteria);
-
-        let qargs:any = {
-            ...BASE_QUERY_ARGS,
-            $top: this.pageSize,
-            $skip: this.paginator.pageIndex * this.pageSize,
-            $ellipsis: '300',
-            $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
-        };
-        // if $text search, pass along
-        if(criteria.$text) {
-            qargs.$text = criteria.$text;
-        }
+    private buildFilter(criteria:SearchCriteria):string {
         // build the $filter value
         // require simplified not equal null so that we can avoid picking up
         // items that are currently being sync'ed into the system and have yet
@@ -206,7 +193,24 @@ export class SearchService {
             }
         }
 
-        criteria.$filter = qargs.$filter = $filter;
+        return (criteria.$filter = $filter);
+    }
+
+    search(criteria:SearchCriteria):Observable<ItemIfc[]> {
+        console.log('SearchService.search',criteria);
+        let qargs:any = {
+            ...BASE_QUERY_ARGS,
+            $top: this.pageSize,
+            $skip: this.paginator.pageIndex * this.pageSize,
+            $ellipsis: '300',
+            $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
+        };
+        // if $text search, pass along
+        if(criteria.$text) {
+            qargs.$text = criteria.$text;
+        }
+
+        qargs.$filter = this.buildFilter(criteria);
 
         let page = this.http.get('/api/item',{params:qargs})
                         .pipe(map((response:any) => {
