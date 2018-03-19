@@ -27,7 +27,7 @@ export class TextSearch {
     highlight:string[];
 
     constructor(private search:SearchService){
-        let initial = search.current(),
+        let initial = search.initial,
             v = initial ? initial.$text : undefined;
         this.updateHighlights(v);
         this.control = new FormControl(v);

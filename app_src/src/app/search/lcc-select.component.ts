@@ -27,7 +27,7 @@ export class LccSelect {
     control:FormControl;
 
     constructor(private search:SearchService){
-        let initial = search.current();
+        let initial = search.initial;
         this.control = new FormControl(initial ? initial.lcc||[] : []);
     }
 

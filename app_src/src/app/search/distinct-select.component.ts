@@ -17,15 +17,17 @@ import { SearchService } from './search.service';
     `
 })
 export class DistinctSelect {
+    @Input() initialValue:any[];
     @Input() placeholder:string;
     @Input() distinctProperty:string;
-    control:FormControl = new FormControl();
+    control:FormControl;
 
     options:Observable<any[]>;
 
     constructor(private search:SearchService) {}
 
     ngOnInit() {
+        this.control = new FormControl(this.initialValue);
         this.options = this.search.liveDistinct<any>(this.distinctProperty)
             .pipe(
                 tap((arr:any[]) => arr.length ? this.control.enable({emitEvent:false}) : this.control.disable({emitEvent:false}))

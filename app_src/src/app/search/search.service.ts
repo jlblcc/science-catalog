@@ -59,6 +59,7 @@ export interface SearchCriteria {
 
 @Injectable()
 export class SearchService {
+    private initialCriteria:SearchCriteria;
     private currentCriteria:SearchCriteria;
     private criteriaChanges:Subject<SearchCriteria> = new Subject();
     /** How many items to display per page */
@@ -79,7 +80,7 @@ export class SearchService {
                 path = path.substring(1);
             }
             try {
-                this.currentCriteria = this.deserialize(path);
+                this.initialCriteria = this.deserialize(path);
                 console.log('initial criteria',this.currentCriteria);
             } catch(e) {
                 console.error(`Error deserializing criteria`,e);
@@ -87,7 +88,11 @@ export class SearchService {
         }
     }
 
-    current():SearchCriteria {
+    get initial():SearchCriteria {
+        return this.initialCriteria;
+    }
+
+    get current():SearchCriteria {
         return this.currentCriteria;
     }
 
@@ -108,7 +113,7 @@ export class SearchService {
         let copy = JSON.parse(JSON.stringify(criteria)),
             simplify = (o) => {
                 Object.keys(o).forEach(k => {
-                    if(!o[k] || (o[k] instanceof Array && !o[k].length)) {
+                    if((o[k] === null || o[k] === undefined) || (o[k] instanceof Array && !o[k].length)) {
                         delete o[k];
                     } else if (typeof(o[k]) === 'object') {
                         o[k] = simplify(o[k]);
@@ -261,7 +266,7 @@ export class SearchService {
 
     liveDistinct<T>($select:string,$filter?:string,$contains?:string,startWithCurrent?:boolean):Observable<T []> {
         const switchTo = (criteria:SearchCriteria):Observable<T []> => this._distinct(criteria,$select,$filter,$contains);
-        return startWithCurrent ?
+        return startWithCurrent && this.currentCriteria ?
             this.criteriaChanges.pipe(
                 startWith(this.currentCriteria),
                 switchMap(switchTo)

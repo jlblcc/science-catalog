@@ -71,7 +71,7 @@ export class KeywordSelect {
     @ViewChild(MatChipList) keywordChips:MatChipList;
 
     constructor(private search:SearchService) {
-        let initial = search.current(),
+        let initial = search.initial,
             logical,criteria;
         if(initial && initial.keywords) {
             logical = initial.keywords.logicalOperator;
@@ -94,7 +94,7 @@ export class KeywordSelect {
                 startWith(null),
                 switchMap(() => {
                     let keywordType = this.keywordTypesControl.value;
-                    console.log(`keywordTypesControl:change`, keywordType);
+                    //console.log(`keywordTypesControl:change`, keywordType);
                     this.keywordValuesControl.setValue(null);
                     this.keywordValuesControl.disable();
                     if(!keywordType) {
@@ -108,7 +108,7 @@ export class KeywordSelect {
             );
         this.keywordValuesControl.valueChanges
             .subscribe((keywordValue) => {
-                console.log('keywordValuesControl:change',keywordValue);
+                //console.log('keywordValuesControl:change',keywordValue);
                 if(keywordValue) {
                     let keywordType = this.keywordTypesControl.value,
                         selection:KeywordCriteria = {

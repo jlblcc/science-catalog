@@ -38,7 +38,7 @@ export class SctypeSelect {
     productTT;
 
     constructor(private search:SearchService) {
-        let initial = search.current(),
+        let initial = search.initial,
             scType = initial ? initial.scType : null;
         this.control = new FormControl(scType);
         switch(scType) {

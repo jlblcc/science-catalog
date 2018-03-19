@@ -26,20 +26,23 @@ import { SearchService } from './search.service';
     `]
 })
 export class DistinctAutocomplete {
+    @Input() initialValue:any;
     @Input() placeholder:string;
     @Input() distinctProperty:string;
     @Input() containsMode:boolean = false;
-    control:FormControl = new FormControl();
+    control:FormControl;
 
-    typeAhead:FormControl = new FormControl();
+    typeAhead:FormControl;
     options:Observable<any[]>;
 
     constructor(private search:SearchService) {}
 
     ngOnInit() {
+        this.control = new FormControl(this.initialValue);
+        this.typeAhead = new FormControl(this.initialValue);
         this.options = this.typeAhead.valueChanges.pipe(
                 debounceTime(500),
-                startWith(null),
+                startWith(this.initialValue),
                 tap(v => {
                     if(!v && this.control.value) {
                         this.control.setValue(null);
