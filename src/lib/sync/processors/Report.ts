@@ -6,6 +6,7 @@ import { SyncPipelineProcessorEntry,
 import { fromScienceBaseReport } from './FromScienceBase';
 import { simplificationReport } from './Simplification';
 import { contactsReport } from './Contacts';
+import { lccnetContactAlignmentReport } from './LccnetContactAlignment';
 
 import * as moment from 'moment';
 
@@ -31,6 +32,7 @@ const REPORT_GENERATORS = {
     'FromScienceBase': fromScienceBaseReport,
     'Simplification': simplificationReport,
     'Contacts': contactsReport,
+    'LccnetContactAlignment': lccnetContactAlignmentReport,
 }
 
 const TIME_FMT = 'HH:mm:ss';

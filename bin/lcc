@@ -23,7 +23,8 @@ if(noLccRequredActions.indexOf(command.action) === -1 && !command.lcc) {
     command.help();
 }
 
-function add(id) {
+function add(id,lccnetRef) {
+    console.log('lccnetRef',lccnetRef);
     return new Promise((resolve) => {
         request({
             url: `https://www.sciencebase.gov/catalog/item/${id}`,
@@ -37,6 +38,7 @@ function add(id) {
                 lcc = {
                     _id: new ObjectId(data.id),
                     title: data.title,
+                    lccnet: lccnetRef
                 };
             Lcc.findOneAndUpdate({ _id: lcc._id},lcc,{upsert: true, new: true},(err,o) => {
                 if(err) {
@@ -71,12 +73,12 @@ function remove(id) {
     });
 }
 
-function getAllIds() {
+function getAllFromLccnet() {
     return new Promise((resolve,reject) => {
         request({
-            url: 'https://lccnetwork.org/api/v1/lcc?$select=title,sbid',
+            url: 'https://lccnetwork.org/api/v1/lcc',
             qs: {
-                $select: 'title,sbid',
+                $select: 'id,title,sbid',
             }
         })
         .then(response => resolve(JSON.parse(response).list))
@@ -100,11 +102,24 @@ db().then(() => {
     switch(command.action) {
         case 'add':
             logMsg = 'added';
-            promises = command.lcc.split(',').map(id => add(id));
+            //promises = command.lcc.split(',').map(id => add(id));
+            getAllFromLccnet()
+                .then(lccs => {
+                    let sbids = command.lcc.split(',');
+                    lccs = lccs.filter(lcc => sbids.indexOf(lcc.sbid) !== -1);
+                    awaitLccPromises(lccs.map(lcc => add(lcc.sbid,{
+                        id: lcc.id,
+                        url: lcc._links.drupal_self
+                    })),'added');
+                })
+                .catch(handleError);
             break;
         case 'addAll':
-            getAllIds()
-                .then(lccs => awaitLccPromises(lccs.map(lcc => add(lcc.sbid)),'added'))
+            getAllFromLccnet()
+                .then(lccs => awaitLccPromises(lccs.map(lcc => add(lcc.sbid,{
+                        id: lcc.id,
+                        url: lcc._links.drupal_self
+                    })),'added'))
                 .catch(handleError);
             break;
         case 'remove':
@@ -125,7 +140,7 @@ db().then(() => {
                 .catch(handleError);
             break;
         case 'available':
-            getAllIds()
+            getAllFromLccnet()
             .then(list => {
                 list.forEach(lcc => console.log(`${lcc.sbid} : ${lcc.title}`));
                 process.exit(0);

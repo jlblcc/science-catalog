@@ -29,7 +29,7 @@ export interface ContactsConfig extends SyncPipelineProcessorConfig {
 /**
 * Translates the processor output into a report string.
 *
-* @param results The output of the Contacts SyncPipelineProcessor.
+* @param output The output of the Contacts SyncPipelineProcessor.
 * @returns A string representation.
  */
 export function contactsReport(output:ContactsOutput) {
@@ -56,6 +56,9 @@ const ABBREVIATIONS = {
 
 /**
  * @todo This relies on 'name' always being available for a contact.  It's not technically required for a contact but for the data set is always there.
+ * @todo 'Texas Aandm University'
+ * @todo Generally this needs improvement, the normalize functionality was quick.
+ * @todo "US Fish & Wildife Service"
  */
 export default class Contacts extends SyncPipelineProcessor<ContactsConfig,ContactsOutput> {
     run():Promise<SyncPipelineProcessorResults<ContactsOutput>> {
@@ -104,7 +107,7 @@ export default class Contacts extends SyncPipelineProcessor<ContactsConfig,Conta
                     if(!contacts.length) {
                         return resolve();
                     }
-                    this.processContact(contacts.pop())
+                    this.processContact(contacts.pop(),item)
                         .then(next)
                         .catch(reject);
                 };
@@ -116,29 +119,36 @@ export default class Contacts extends SyncPipelineProcessor<ContactsConfig,Conta
         });
     }
 
-    private processContact(c:any):Promise<any> {
+    private processContact(c:any,item:ItemDoc):Promise<any> {
             this.results.results.total++;
             let { name, positionName, isOrganization, electronicMailAddress } = c,
                 normalized = Contacts.normalize(name),
-                emails = (electronicMailAddress||[]).map(addr => addr.toLowerCase());
+                emails = (electronicMailAddress||[]).map(addr => addr.trim().toLowerCase()),
+                nameLower = name.trim().toLowerCase(),
+                normLower = normalized.toLowerCase(),
+                aliases = nameLower !== normLower ? [nameLower,normLower] : [nameLower];
             return Contact.findOne({
-                name: normalized,
+                aliases: normalized.toLowerCase(),
                 isOrganization: isOrganization
             })
             .then(contact => {
                 return contact ?
                     contact.update({
                         $addToSet: {
-                            aliases: name.trim().toLowerCase(),
-                            electronicMailAddress: { $each: emails }
+                            aliases: { $each: aliases },
+                            electronicMailAddress: { $each: emails },
+                            _lcc: item._lcc,
+                            _item: item._id
                         }
                     }) :
                     (new Contact({
-                        name: normalized,
+                        name: name,
                         positionName: positionName,
                         isOrganization: isOrganization,
-                        aliases: [name.trim().toLowerCase()],
-                        electronicMailAddress: emails
+                        aliases: aliases,
+                        electronicMailAddress: emails,
+                        _lcc: [item._lcc],
+                        _item: [item._id],
                     })).save();
             });
     }

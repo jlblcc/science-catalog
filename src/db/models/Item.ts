@@ -1,6 +1,8 @@
 import { Schema, model, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
+import { LccnetRef, lccnetRefSchema } from './LccNetRef';
+
 /**
  * Science catalog item types.
  */
@@ -63,6 +65,8 @@ export interface SimplifiedContact {
     electronicMailAddress?: string[];
     /** The list of simplified organization contacts a contact is a member of */
     memberOfOrganization?: SimplifiedContact[];
+    /** The contact's reference in lccnetwork (if any) */
+    lccnet?: LccnetRef;
 }
 const contactSchema = new Schema({
     contactId: {type: String, required: true},
@@ -71,6 +75,7 @@ const contactSchema = new Schema({
     contactType: {type: String, required: false},
     isOrganization: {type: Boolean, required: true},
     electronicMailAddress: [{type: String, required: false}],
+    lccnet: {type: lccnetRefSchema, required: false},
 },{_id: false});
 // recursive here
 contactSchema.add({

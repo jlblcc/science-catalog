@@ -380,6 +380,10 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             isOrganization: isOrganization,
             electronicMailAddress: electronicMailAddress && electronicMailAddress.length ? electronicMailAddress : undefined,
         };
+        // if a reference is known for this contact in lccnetwork, copy that over.
+        if(mapped.lccnet) {
+            contact.lccnet = mapped.lccnet;
+        }
         if(c.memberOfOrganization) {
             // missign contacts happen...
             let orgs = this.simplifyContacts(c.memberOfOrganization,item,c);
