@@ -2,6 +2,7 @@ import * as express from 'express';
 
 import Resource = require('odata-resource');
 import * as BodyParser from 'body-parser';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as truncateHtml from 'truncate-html';
 
@@ -13,6 +14,8 @@ import { ObjectId } from 'mongodb';
 import { Item, ItemDoc, SimplifiedIfc,
          Lcc,
         SyncPipelineProcessorLog } from './db/models';
+
+import { BASE_URI, BASE_API_URI } from './uris';
 
 /** Base resource configuration that disables POST,PUT and DELETE */
 const READONLY = {
@@ -80,8 +83,26 @@ export class Server {
     constructor() {
         let app = this.express = express();
         app.use(BodyParser.json());
-        app.use(express.static(path.join(__dirname,'public')));
-        app.get('/',(req,res) => res.redirect('/app'));
+        app.use(`${BASE_URI}`, express.static(path.join(__dirname,'public')));
+        app.get('/',(req,res) => res.redirect(`${BASE_URI}/app`));
+        app.get(`${BASE_URI}`,(req,res) => res.redirect(`${BASE_URI}/app`));
+        // This route returns the list of application source .js/css files
+        // required for the application to function.  Using a simple web service
+        // since Angular changes these paths build to build and they also differ
+        // from development to production builds.  When included elsewhere this
+        // endpoint can be used to dynamically include the necessary content.
+        // files are returned in the order they should be included
+        app.get(`${BASE_URI}/app-src`,(req,res) => {
+            fs.readdir(path.join(__dirname,'public/app'),(err,items) => {
+                if(err) {
+                    return Resource.sendError(res,500,`directory listing`,err);
+                }
+                const order = ['inline','polyfills','scripts','styles','vendor','main'],
+                      pfx = (f) => f.substring(0,f.indexOf('.'));
+                res.send(items.filter(i => /\.(js|css)$/.test(i)).sort((a,b) => order.indexOf(pfx(a)) - order.indexOf(pfx(b))));
+            });
+
+        });
         this.init();
     }
 
@@ -90,7 +111,7 @@ export class Server {
      */
     private init() {
         let item = new ItemResource({...READONLY,...{
-            rel: '/api/item',
+            rel: `${BASE_API_URI}/item`,
             model: Item,
             // query arg defaults
             $top: 25,
@@ -304,7 +325,7 @@ export class Server {
         });
 
         let lcc = new Resource({...READONLY,...{
-            rel: '/api/lcc',
+            rel: `${BASE_API_URI}/lcc`,
             model: Lcc,
             count: true
         }})
@@ -318,7 +339,7 @@ export class Server {
 
         // TODO remove?
         let log = new Resource({...READONLY,...{
-            rel: '/api/log',
+            rel: `${BASE_API_URI}/log`,
             model: SyncPipelineProcessorLog,
             count: true,
             $top: 5,

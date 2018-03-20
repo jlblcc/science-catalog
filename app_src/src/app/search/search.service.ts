@@ -8,6 +8,8 @@ import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import { map, switchMap, startWith, filter } from 'rxjs/operators';
 
+import { ConfigService } from '../common';
+
 import { ScType, ItemIfc, LccIfc } from '../../../../src/db/models';
 
 import * as pako from 'pako';
@@ -73,7 +75,7 @@ export class SearchService {
     /** The sort control for the current Item[List|Table] */
     currentSorter:MatSort;
 
-    constructor(private http:HttpClient,private location:Location) {
+    constructor(private http:HttpClient,private location:Location,private config:ConfigService) {
         let path = location.path();
         if(path) {
             if(path.charAt(0) === '/') {
@@ -140,7 +142,7 @@ export class SearchService {
     }
 
     lccs():Observable<LccIfc []> {
-        return this.http.get('/api/lcc',{params:{$orderby:'title'}})
+        return this.http.get(this.config.qualifyApiUrl('/lcc'),{params:{$orderby:'title'}})
             .pipe(
                 map((response:any) => response.list as LccIfc[])
             );
@@ -217,7 +219,7 @@ export class SearchService {
 
         qargs.$filter = this.buildFilter(criteria);
 
-        let page = this.http.get('/api/item',{params:qargs})
+        let page = this.http.get(this.config.qualifyApiUrl('/item'),{params:qargs})
                         .pipe(map((response:any) => {
                             this.searchRunning = false;
                             if(!this.currentCriteria ||
@@ -231,7 +233,7 @@ export class SearchService {
         // if this is page 0 run a count and then fetch the page contents
         // so we can update the pager, otherwise just fetch the page.
         return !qargs.$skip ?
-          this.http.get('/api/item/count',{params:{...qargs,$top:99999}})
+          this.http.get(this.config.qualifyApiUrl('/item/count'),{params:{...qargs,$top:99999}})
               .pipe(
                   switchMap((response) => {
                       console.log(`Total results ${response}`);
@@ -255,7 +257,7 @@ export class SearchService {
         if($contains) {
             params.$contains = $contains;
         }
-        return this.http.get<T []>('/api/item/distinct',{ params: params });
+        return this.http.get<T []>(this.config.qualifyApiUrl('/item/distinct'),{ params: params });
     }
 
     distinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
@@ -286,7 +288,7 @@ export class SearchService {
                 if(c.$text) {
                     params.$text = c.$text;
                 }
-                return this.http.get<any>('/api/item/summaryStatistics',{params:params});
+                return this.http.get<any>(this.config.qualifyApiUrl('/item/summaryStatistics'),{params:params});
             })
         );
     }

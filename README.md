@@ -52,3 +52,17 @@ The initial pipeline step, `FromScienceBase`, is the most important in that it s
   "config": {}
 }]
 ```
+
+## Example Apache reverse proxy configuration
+
+Added to `VirtualHost` configuration
+
+```
+ProxyRequests Off
+ProxyVia Off
+ProxyPass /science-catalog http://localhost:8989/science-catalog
+ProxyPassReverse /science-catalog http://localhost:8989/science-catalog
+ProxyPreserveHost On
+```
+
+_Note:_ To keep things simple the root of functionality on the science-catalog app server is prefixed with `/science-catalog` so proxied URLs can remain consistent.

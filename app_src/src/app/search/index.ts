@@ -4,6 +4,8 @@ import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../material';
 import { ClipboardModule } from 'ngx-clipboard';
 
+import { ScienceCatalogCommonModule } from '../common';
+
 import { ItemIcon } from './item-icon.component';
 import { SctypeSelect } from './sctype-select.component';
 import { TextSearch } from './text-search.component';
@@ -30,7 +32,8 @@ import { SearchService } from './search.service';
     imports: [
         CommonModule,
         MaterialModule,
-        ClipboardModule
+        ClipboardModule,
+        ScienceCatalogCommonModule
     ],
     declarations:[
         ItemIcon, Share,
