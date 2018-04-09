@@ -455,6 +455,13 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                                 let sbid = (productAssociation.resourceCitation.identifier||[]).reduce((found,ident) => {
                                     return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
                                 },undefined);
+                                // some instances the gov.sciencebase.catalog reference is found in the metadataCitation
+                                // rather than the resourceCitation (don't understand the difference).
+                                if(!sbid && productAssociation.metadataCitation) {
+                                    (productAssociation.metadataCitation.identifier||[]).reduce((found,ident) => {
+                                        return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
+                                    },undefined)
+                                }
                                 if(sbid) {
                                     productIds.push(sbid);
                                 } else {
