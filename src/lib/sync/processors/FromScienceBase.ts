@@ -63,7 +63,7 @@ export class ItemCounts {
 };
 
 const DEFAULT_ITEM_PAGE_SIZE = 20;
-const DEFAULT_PAUSE_BETWEEN_LCC = 45000;
+const DEFAULT_PAUSE_BETWEEN_LCC = 60000;
 
 /**
  * FromScienceBase configuration options.
@@ -458,7 +458,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                                 // some instances the gov.sciencebase.catalog reference is found in the metadataCitation
                                 // rather than the resourceCitation (don't understand the difference).
                                 if(!sbid && productAssociation.metadataCitation) {
-                                    (productAssociation.metadataCitation.identifier||[]).reduce((found,ident) => {
+                                    sbid = (productAssociation.metadataCitation.identifier||[]).reduce((found,ident) => {
                                         return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
                                     },undefined)
                                 }
