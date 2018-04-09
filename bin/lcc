@@ -141,11 +141,11 @@ db().then(() => {
             break;
         case 'available':
             getAllFromLccnet()
-            .then(list => {
-                list.forEach(lcc => console.log(`${lcc.sbid} : ${lcc.title}`));
-                process.exit(0);
-            })
-            .catch(handleError);
+                .then(list => {
+                    list.forEach(lcc => console.log(`${lcc.sbid} : ${lcc.title}`));
+                    process.exit(0);
+                })
+                .catch(handleError);
             break;
     }
     if(promises) {

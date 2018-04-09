@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+
+let db = require('../dist/db').db,
+    SyncPipelineProcessorEntry = require('../dist/db/models/SyncPipelineProcessorEntry').SyncPipelineProcessorEntry,
+    handleError = (err) => {
+        console.error(err);
+        process.exit(1);
+    };
+
+process.on('uncaughtException', handleError);
+
+db().then(() => {
+    SyncPipelineProcessorEntry.find({processorId: 'Report'})
+        .exec()
+        .then(report => {
+            report = report.length ? report[0] : undefined;
+            if(report && report.results && report.results.report) {
+                console.log(report.results.report);
+            }
+            process.exit(0);
+        })
+        .catch(handleError);
+});
