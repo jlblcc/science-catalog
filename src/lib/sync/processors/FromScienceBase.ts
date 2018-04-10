@@ -6,6 +6,7 @@ import { ObjectId } from 'mongodb';
 
 import * as request from 'request-promise-native';
 import * as crypto from 'crypto';
+import * as https from 'https';
 
 const UPSERT_OPTIONS = {
     upsert: true,
@@ -64,6 +65,8 @@ export class ItemCounts {
 
 const DEFAULT_ITEM_PAGE_SIZE = 20;
 const DEFAULT_PAUSE_BETWEEN_LCC = 60000;
+const DEFAULT_REQUEST_LIMIT = 200;
+const DEFAULT_RETRY_AFTER = 2*DEFAULT_PAUSE_BETWEEN_LCC;
 
 /**
  * FromScienceBase configuration options.
@@ -71,10 +74,14 @@ const DEFAULT_PAUSE_BETWEEN_LCC = 60000;
 export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
     /** How many items to fetch from sciencebase at a time when syncing projects/products (default 20) */
     pageSize?:number;
-    /** How long to pause (milliseconds) beween syncing LCCs (default 45000).  This option exists to avoid
+    /** How long to pause (milliseconds) beween syncing LCCs (default 60000).  This option exists to avoid
         putting too much sustained pressure on ScienceBase.  If too many requests arrive too close together
         the ScienceBase API will return a 429 which terminates the sync process. */
     pauseBetweenLcc?:number;
+    /** How many sequential requests to run before pausing (`retryAter`) for a period of time to stay beneath rat limiting (default 200) */
+    requestLimit?:number;
+    /** How long to pause after receiving a 429 (Too many requests) or whenever the request limit is hit (unless received a 'retry-after' header) (default 120000) */
+    retryAfter?:number;
     /** Whether items should be forcibly updated with the most recent mdJson even if no change is detected */
     force?:boolean;
     /** FOR TESTING ONLY: Used for testing to randomly modify incoming items so their has changes */
@@ -147,7 +154,30 @@ export function fromScienceBaseReport(results:ItemCounts[]):string {
  * @todo Test `If-Modified-Since` request for `mdJson` document.
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
+    requestCount:number = 0;
+    waitingOnRateLimit:boolean = false;
+    waitingOnRequestLimit:boolean = false;
+    _agent:https.Agent;
+
+    get requestLimit() { return (this.config.requestLimit||DEFAULT_REQUEST_LIMIT); }
+    get retryAfter() { return (this.config.retryAfter||DEFAULT_RETRY_AFTER); }
     get pageSize() { return (this.config.pageSize||DEFAULT_ITEM_PAGE_SIZE); }
+
+    get agent():https.Agent {
+        if(!this._agent) {
+            this._agent = new https.Agent({
+                keepAlive: true,
+                maxSockets: 5
+            });
+        }
+        return this._agent;
+    }
+    destroyAgent() {
+        if(this._agent) {
+            this._agent.destroy();
+        }
+        this._agent = null;
+    }
 
     run():Promise<SyncPipelineProcessorResults<ItemCounts[]>> {
         this.results.results = [];
@@ -175,10 +205,54 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                             if(pause) {
                                 this.log.debug(`Pausing ${pause/1000} seconds between LCC syncs.`);
                             }
+                            this.destroyAgent();
                             setTimeout(() => this.lccSync(lcc).then(next).catch(reject),pause);
                         }).catch(reject);
                 };
             next();
+        });
+    }
+
+    private request(input:any,isRetry?:boolean):Promise<any> {
+        input = typeof(input) === 'string' ? { url: input } : input;
+        return new Promise((resolve,reject) => {
+            const go = () => {
+                this.requestCount++;
+                input.agent = this.agent;
+                request(input)
+                    .then(resolve)
+                    .catch(err => {
+                        if(!isRetry && (err.statusCode === 429 || err.statusCode === 503)) {
+                            this.destroyAgent();
+                            const headers = err.response.headers,
+                                  wait = headers['retry-after'] ? ((parseInt(headers['retry-after'])+1)*60) : this.retryAfter;
+                            this.log.debug(`ScienceBase responded with ${err.statusCode} (at ${this.requestCount} requests) will retry once after ${wait/1000} seconds`);
+                            this.waitingOnRateLimit = true;
+                            return setTimeout(() => {
+                                this.waitingOnRateLimit = false;
+                                this.request(input,true)
+                            },wait);
+                        }
+                        reject(err);
+                    });
+            };
+            if(this.waitingOnRateLimit) {
+                const wait = this.retryAfter;
+                this.log.debug(`Another request received a rate limit respoonse will wait ${wait/1000} seconds before making request`);
+                setTimeout(() => {
+                    go();
+                },wait);
+            } else if (this.waitingOnRequestLimit || ((this.requestCount+1)%this.requestLimit === 0)) {
+                this.waitingOnRequestLimit = true;
+                const wait = this.retryAfter;
+                this.log.debug(`Next request will be an interval of ${this.requestLimit} waiting ${wait/1000} seconds before making request`);
+                setTimeout(() => {
+                    this.waitingOnRequestLimit = false;
+                    go();
+                },wait);
+            } else {
+                go();
+            }
         });
     }
 
@@ -243,7 +317,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     response = JSON.parse(response);
                     let next = () => {
                             if(response.nextlink && response.nextlink.url) {
-                                request(response.nextlink.url).then(importOnePage).catch(reject);
+                                this.request(response.nextlink.url).then(importOnePage).catch(reject);
                             } else {
                                 resolve();
                             }
@@ -261,7 +335,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     }
                 };
                 // get the ball rolling
-                request({
+                this.request({
                     url: `https://www.sciencebase.gov/catalog/items`,
                     qs: {
                         fields: 'title,files',
@@ -314,7 +388,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 counts.pages++;
                 let ids = pages.pop();
                 this.log.debug
-                request({
+                this.request({
                     url: `https://www.sciencebase.gov/catalog/items`,
                     qs: {
                         fields: 'title,files',
@@ -416,7 +490,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
             if(!mdJsonUrl) { // project not suitable for import TODO detect if this document was previously sync'ed in.
                 return resolve(null,FromScienceBaseLogCodes.ITEM_IGNORED);
             }
-            request(mdJsonUrl)
+            this.request(mdJsonUrl)
                 .then((json => {
                     if(this.config.randMod) {
                         // this is strictly for testing purposes ~25% of the time
