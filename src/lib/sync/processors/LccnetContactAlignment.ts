@@ -1,4 +1,5 @@
-import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
+import { SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
+import { LccnetReadProcessor, LccnetReadProcessorConfig } from './LccnetReadProcessor';
 
 import { Contact, ContactDoc } from '../../../db/models';
 import Contacts from './Contacts';
@@ -13,15 +14,16 @@ import * as request from 'request-promise-native';
  */
 export class LccnetContactAlignmentOutput {
     total = 0;
+    totalLccnetOrganizations = 0;
     mappedOrganizations = 0;
+    totalLccnetPeople = 0;
     mappedPeople = 0;
 }
 
 /**
  * Configuration for the LccnetContactAlignment procesor.
  */
-export interface LccnetContactAlignmentConfig extends SyncPipelineProcessorConfig {
-    lccnetwork: string;
+export interface LccnetContactAlignmentConfig extends LccnetReadProcessorConfig {
 }
 
 /**
@@ -40,7 +42,7 @@ export function lccnetContactAlignmentReport(output:LccnetContactAlignmentOutput
  *
  * @todo add Logging
  */
-export default class LccnetContactAlignment extends SyncPipelineProcessor<LccnetContactAlignmentConfig,LccnetContactAlignmentOutput> {
+export default class LccnetContactAlignment extends LccnetReadProcessor<LccnetContactAlignmentConfig,LccnetContactAlignmentOutput> {
     private lccnetPeople:any[];
     private lccnetPeopleMap:any;
     private lccnetOrgs:any[];
@@ -52,6 +54,7 @@ export default class LccnetContactAlignment extends SyncPipelineProcessor<Lccnet
             this.crawlLccnet('/api/v1/person?$select=id,email,_links,lccs,orgs,archived&$include_archived&$top=500')
                 .then(people => {
                     this.lccnetPeople = people;
+                    this.results.results.totalLccnetPeople = people.length;
                     this.lccnetPeopleMap = people.reduce((map,p) => {
                             if(p.email) {
                                 map[p.email.toLowerCase()] = p;
@@ -61,6 +64,7 @@ export default class LccnetContactAlignment extends SyncPipelineProcessor<Lccnet
                     return this.crawlLccnet('/api/v1/organization?$select=id,name,aliases,email_domains,_links&$top=500')
                 })
                 .then(orgs => {
+                    this.results.results.totalLccnetOrganizations = orgs.length;
                     orgs.forEach(o => {
                         o.aliases = o.aliases||[];
                         o.aliases.push(o.name);
@@ -127,36 +131,6 @@ export default class LccnetContactAlignment extends SyncPipelineProcessor<Lccnet
                 resolve();
             }
 
-        });
-    }
-
-
-    private crawlLccnet(path:string):Promise<any[]> {
-        return new Promise((resolve,reject) => {
-            let results = [],
-                next = (url:string) => {
-                    request(url)
-                        .then((response:any) => {
-                            response = JSON.parse(response);
-                            if(response.list) {
-                                results = results.concat(response.list);
-                            }
-                            if(response._links && response._links.next) {
-                                next(response._links.next);
-                            } else {
-                                // generate an lccnetRef for each contact up front
-                                results.forEach(o => {
-                                    o.lccnet = {
-                                        id: o.id,
-                                        url: o._links.drupal_self
-                                    };
-                                });
-                                resolve(results);
-                            }
-                        })
-                        .catch(reject);
-                };
-            next(`${this.config.lccnetwork}${path}`);
         });
     }
 }
