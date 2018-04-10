@@ -64,11 +64,14 @@ export default class LccnetContactAlignment extends SyncPipelineProcessor<Lccnet
                     orgs.forEach(o => {
                         o.aliases = o.aliases||[];
                         o.aliases.push(o.name);
-                        o.aliases = o.aliases.map(a => Contacts.normalize(a));
+                        o.aliases = o.aliases.reduce((arr,a) => {
+                            arr = arr.concat(Contacts.normalize(a));
+                            return arr;
+                        },[]);
                     });
                     this.lccnetOrgs = orgs;
                     this.lccnetOrgsMap = orgs.reduce((map,o) => {
-                            o.aliases.forEach(a => map[a.toLowerCase()] = o);
+                            o.aliases.forEach(a => map[a] = o);
                             return map;
                         },{});
                     Contact.find({})

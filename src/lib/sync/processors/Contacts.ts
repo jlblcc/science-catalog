@@ -36,29 +36,39 @@ export function contactsReport(output:ContactsOutput) {
     return `consolidated ${output.total} contacts down to ${output.consolidated}`;
 }
 
-const PREFIXES = {
-    Us: 'U.S.',
-    Uc: 'U.C.',
-    Dc: 'D.C.',
-    Usda: 'USDA',
-    Usfws: 'USFWS',
-    Usgs: 'USGS',
+interface Replacement {
+    regex: RegExp;
+    replace: string;
+}
 
-    Usfs: 'USFS',
-};
-
-const ABBREVIATIONS = {
-    'USFWS' : 'U.S. Fish and Wildlife Service',
-    'USGS' : 'U.S. Geological Survey',
-    'USFS' : 'U.S. Forest Service',
-    'NPS' : 'National Park Service',
-};
+// these are used during normalization to build lists of "equivalent" names
+const REPLACEMENTS:Replacement[] = [
+    {regex: /(.)&(.)/,replace: '$1 and $2'}, // ampersands (also catches "texas a&m university" = "texas a and m university")
+    {regex: /\bdept\b/g, replace: ' department '}, // embedded department
+    {regex: /\s\(\w+\)\s/, replace: ' '}, // embedded nicknames like "william (bill) williams"
+    {regex: /^(dr)\b/, replace: ''}, // titles at the beginning
+    {regex: /\b(dr|phd|inc)$/, replace: ''}, // titles at the end
+    {regex: /^(\w{2,})\s+(\w)\s+(\w{2,})$/, replace: '$1 $3'}, // initials "bill w williams" == "bill williams"
+    {regex: /\s\(\w+\)$/, replace: ''}, // clarifying abbreviation at the end
+    {regex: /\blcc\b/, replace:' landscape conservation cooperative '},
+    {regex: /\bnwr\b/, replace: ' national wildlife refuge '},
+    {regex: /^bc\s/, replace: 'british columbia '}, // prefix only
+    {regex: /\bnoaa\b/, replace: ' national oceanic and atmospheric administration '},
+    {regex: /\bnps\b/, replace: ' national park service '},
+    {regex: /\bus\s?fws\b/, replace: ' us fish and wildlife service '},
+    {regex: /\bus\s?gs\b/, replace: ' us geological survey '},
+    {regex: /\bus\s?da\b/, replace: ' us department of agriculture '},
+    {regex: /\bus\s?fs\b/, replace: ' us forest service '},
+    {regex: /\btnc\b/, replace: ' the nature conservancy '},
+    {regex: /\bu\s?s\b/, replace: ' united states '},
+    {regex: /\buniv\b/, replace: ' university '},
+    {regex: /\buw\b/, replace: ' university of washington '}, // not a big fan
+    {regex: /\bwwu\b/, replace: ' western washington university '}, // not a big fan
+    {regex: /\sunknown$/, replace: ''}, // many orgs have " Unknown" at the end ??
+];
 
 /**
  * @todo This relies on 'name' always being available for a contact.  It's not technically required for a contact but for the data set is always there.
- * @todo 'Texas Aandm University'
- * @todo Generally this needs improvement, the normalize functionality was quick.
- * @todo "US Fish & Wildife Service"
  */
 export default class Contacts extends SyncPipelineProcessor<ContactsConfig,ContactsOutput> {
     run():Promise<SyncPipelineProcessorResults<ContactsOutput>> {
@@ -124,18 +134,13 @@ export default class Contacts extends SyncPipelineProcessor<ContactsConfig,Conta
             let { name, positionName, isOrganization, electronicMailAddress } = c,
                 normalized = Contacts.normalize(name),
                 emails = (electronicMailAddress||[]).map(addr => addr.trim().toLowerCase()),
-                nameLower = name.trim().toLowerCase(),
-                normLower = normalized.toLowerCase(),
-                aliases = nameLower !== normLower ? [nameLower,normLower] : [nameLower];
-            return Contact.findOne({
-                aliases: normalized.toLowerCase(),
-                isOrganization: isOrganization
-            })
-            .then(contact => {
+                nameLower = name.trim().toLowerCase();
+
+            const onFound = (contact) => {
                 return contact ?
                     contact.update({
                         $addToSet: {
-                            aliases: { $each: aliases },
+                            aliases: { $each: normalized },
                             electronicMailAddress: { $each: emails },
                             _lcc: item._lcc,
                             _item: item._id
@@ -145,65 +150,48 @@ export default class Contacts extends SyncPipelineProcessor<ContactsConfig,Conta
                         name: name,
                         positionName: positionName,
                         isOrganization: isOrganization,
-                        aliases: aliases,
+                        aliases: normalized,
                         electronicMailAddress: emails,
                         _lcc: [item._lcc],
                         _item: [item._id],
                     })).save();
+            },
+            byName = () => {
+                return Contact.findOne({
+                    aliases: {$in : normalized},
+                    isOrganization: isOrganization
+                })
+                .then(onFound);
+            };
+            return emails.length ?
+                // if there is an e-mail address then try to match on that and isOrganization
+                // otherwise strictly consolidate by name
+                Contact.findOne({
+                    electronicMailAddress: {$in :emails},
+                    isOrganization: isOrganization
+                }).then(contact => {
+                    if(contact) {
+                        return onFound(contact);
+                    }
+                    return byName();
+                }) :
+                byName();
+    }
+
+    public static normalize(name:string):string[] {
+        let arr = [name.toLowerCase()
+                    .replace(/[\.,'’:;]/g,'') // punctuation
+                    .replace(/[-\/]/g,' ') // separators
+                    .replace(/\s+/g,' ')
+                    .trim()];
+        REPLACEMENTS.forEach(rp => {
+            arr.forEach(n => {
+                if(rp.regex.test(n)) {
+                    arr.push(n.replace(rp.regex,rp.replace)
+                               .replace(/\s+/g,' ').trim()); // to be safe always collapse any spaces and trim
+                }
             });
-    }
-
-    public static normalize(name:string):string {
-        name = name.trim();
-        // if all caps generally leave it alone, aside for some common
-        if(/^[A-Z]$/.test(name)) {
-            return ABBREVIATIONS[name]||name;
-        }
-        name = name
-            .toLowerCase()
-            .replace(/\./g,'') // drop periods from abbreviations
-            .replace(/’/g,'\'') // funny quote
-            .replace('&','and')
-            .replace(/^us fws\s/,'usfws ')
-            .replace(/^us gs\s/,'usgs ')
-            .replace(/\su\ss\s/,' us ')
-            .replace(/\su\sc\s/,' uc ')
-            .replace(/^u\ss\s/,'us ')
-            .replace(/^u\sc\s/,'uc ')
-            .replace(/^([a-z]+)\s?[-\/\:]/,'$1 ') // e.g. USFS- or USFS -
-            .replace(/(\w),\s(\w)/,'$1 - $2') // x, y => x - y
-            .replace(/\s+/g,' ') // collapse multiple spaces
-            .replace(/\sunknown$/,''); // many end in...
-        if(ABBREVIATIONS[name.toUpperCase()]) {
-            return ABBREVIATIONS[name.toUpperCase()]
-        }
-        let normalized = '',
-            i,c,lc;
-        for(i = 0;i < name.length; i++) {
-            c = name.charAt(i);
-            if(typeof(lc) === 'undefined' || lc === ' ' || lc === '(' /*/\b/.test(lc)*/) {
-                normalized += c.toUpperCase();
-            } else {
-                normalized += c;
-            }
-            lc = c;
-        }
-        i = normalized.indexOf(' ');
-        if(i !== -1) {
-            let first = normalized.substring(0,i);
-            if(PREFIXES[first]) {
-                normalized = PREFIXES[first] + normalized.substring(i);
-            }
-        }
-        return normalized
-                .replace(/\sAnd\s/,' and ')
-                .replace(/\sOf\s/,' of ')
-                .replace(/\sUs\s/,' U.S. ')
-                .replace(/\sDc\s/,' D.C. ')
-                .replace(/\sDoi\s/,' DOI ');
-    }
-
-    public static findContactByName(name:string):Promise<ContactDoc> {
-        return Contact.findOne({aliases:name.trim().toLowerCase()}).exec();
+        });
+        return arr;
     }
 }

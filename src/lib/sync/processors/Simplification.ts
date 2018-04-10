@@ -9,6 +9,7 @@ import { Item,
          Contact,
          ContactDoc } from '../../../db/models';
 import { LogAdditions } from '../../log';
+import Contacts from './Contacts';
 import { QueryCursor } from 'mongoose';
 import * as moment from 'moment-timezone';
 
@@ -369,9 +370,10 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             }
             return null;
         }
-        let { name, positionName, isOrganization, electronicMailAddress, contactType } = c;
+        let { name, positionName, isOrganization, electronicMailAddress, contactType } = c,
+            normalized = Contacts.normalize(name);
         let contactMap = isOrganization ? this.orgsMap : this.nonOrgsMap,
-            mapped = contactMap[name.trim().toLowerCase()];
+            mapped = contactMap[normalized[0]]; // any alias should do so use the first.
         let contact:SimplifiedContact = {
             contactId: contactId,
             name: mapped.name, // if this isn't found then we kind of want the pipeline to fail
