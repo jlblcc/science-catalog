@@ -180,7 +180,7 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                                     this.session.delete(`/api/v1/${lccnetType}/${lccnetId}`)
                                                         .then(() => {
                                                             this.results.results[`${scType === ScType.PROJECT ? 'projects' : 'products'}Deleted`]++;
-                                                            this.log.info(`Deleted item ${lccnetId}`,{
+                                                            this.log.info(`Deleted item with lccnet id ${lccnetId}`,{
                                                                 code: scType === ScType.PROJECT ?
                                                                     ItemsToLccnetLogCodes.PROJECT_DELETED :
                                                                     ItemsToLccnetLogCodes.PRODUCT_DELETED
