@@ -111,6 +111,9 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
                 stack: err.stack,
             };
         }
+        return {
+            message: 'Unexpected error'
+        };
     }
 
     /**

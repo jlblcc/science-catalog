@@ -38,11 +38,19 @@ export interface SimplifiedKeywords {
     /** Map of keyword type key to keyword values */
     keywords: StringToStringArrayMap;
 }
-// mongoose cannot validate but TypeScript can
-const keywordsSchema= new Schema({
-    types: { type: Schema.Types.Mixed, required: true},
-    keywords: { type: Schema.Types.Mixed, required: true },
-},{ _id : false });
+
+const keywordsSchema = new Schema({
+    types: [{ type: Schema.Types.Mixed, required: true}], // could be described
+    // required is false because if there are no keywords that can be held onto
+    // mongoose will strip the empty object, then a subsequent update will fail unless
+    // all other code knows to put back an empty simplified.keywords.keywords object
+    // which simply is not an option.
+    keywords: { type: Schema.Types.Mixed, required: false }, // mongoose cannot validate but TypeScript can
+},{
+    _id : false,
+    // if keywords are empty we still want the empty object persisted (doesn't seem to work)
+    minimize: false
+});
 
 /**
  * The basic representation of a simplified contact.  Per the mdJson schema
@@ -198,6 +206,8 @@ export interface ItemIfc {
     mdJson: any;
     /** The simplified version of the `mdJson` document */
     simplified?: SimplifiedIfc;
+    /** Reference to lccnetwork if one exists */
+    lccnet?: LccnetRef;
 }
 
 /**
@@ -227,6 +237,7 @@ const schema = new Schema({
         modified: {type: Date, required: true},
         mdJson: Schema.Types.Mixed,
         simplified: simplifiedSchema,
+        lccnet: {type: lccnetRefSchema, required: false},
     },{
         timestamps: {
             createdAt:'created',

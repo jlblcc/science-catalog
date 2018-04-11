@@ -64,7 +64,7 @@ export class ItemCounts {
 };
 
 const DEFAULT_ITEM_PAGE_SIZE = 20;
-const DEFAULT_PAUSE_BETWEEN_LCC = 60000;
+const DEFAULT_PAUSE_BETWEEN_LCC = 0; //60000;
 const DEFAULT_REQUEST_LIMIT = 200;
 const DEFAULT_RETRY_AFTER = 2*DEFAULT_PAUSE_BETWEEN_LCC;
 
@@ -89,7 +89,7 @@ export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
 }
 
 /**
- * Logging codes used by this processor.
+ * Logging codes used by the FromScienceBase processor.
  */
 export enum FromScienceBaseLogCodes {
     /** An individual lcc sync has started */

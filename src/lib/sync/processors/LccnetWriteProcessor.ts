@@ -9,7 +9,7 @@ import { URL } from 'url';
  */
 export interface LccnetWriteProcessorConfig extends LccnetReadProcessorConfig {
     /** The username used to login to the lccnetwork site */
-    user: string;
+    username: string;
     /** The password used to loginto the lccnetwork site */
     password: string;
 }
@@ -27,7 +27,7 @@ export abstract class LccnetWriteProcessor<C extends LccnetWriteProcessorConfig,
      * @return Promise resolved with the session (also stored in the session instance varibale).
      */
     protected startSession():Promise<LccnetSession> {
-        return (this.session = new LccnetSession(this.config.lccnetwork,this.config.user,this.config.password)).login();
+        return (this.session = new LccnetSession(this.config.lccnetwork,this.config.username,this.config.password)).login();
     }
 }
 
@@ -158,7 +158,7 @@ export class LccnetSession {
         return new Promise((resolve,reject) => {
             const baseUrl_s = this.baseUrl.toString();
             const loginUrl = this.qualify('/user/login');
-            request(loginUrl)
+            return request(loginUrl)
                 .then(response => {
                     const $ = this.parse(response),
                           params:any = {};
@@ -185,12 +185,11 @@ export class LccnetSession {
                     })
                     .then(response => {
                         if(response.statusCode !== 302) {
-                            return reject(response);
+                            throw new Error(`Unexpected response code on login ${response.statusCode}`);
                         }
                         let headers = response.headers;
                         if(!headers['set-cookie']) {
-                            console.error('No set-cookie after login.');
-                            return reject(response);
+                            throw new Error('No set-cookie after login');
                         }
                         this.cookieJar = new cookies.CookieJar();
                         // feels like a workaround but seems only way for it not to complain

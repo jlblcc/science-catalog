@@ -7,6 +7,7 @@ import { fromScienceBaseReport } from './FromScienceBase';
 import { simplificationReport } from './Simplification';
 import { contactsReport } from './Contacts';
 import { lccnetContactAlignmentReport } from './LccnetContactAlignment';
+import { itemsToLccnetReport } from './ItemsToLccnet';
 
 import * as moment from 'moment';
 
@@ -33,6 +34,7 @@ const REPORT_GENERATORS = {
     'Simplification': simplificationReport,
     'Contacts': contactsReport,
     'LccnetContactAlignment': lccnetContactAlignmentReport,
+    'ItemsToLccnet': itemsToLccnetReport,
 }
 
 const TIME_FMT = 'HH:mm:ss';
@@ -62,7 +64,7 @@ export default class Report extends SyncPipelineProcessor<ReportConfig,ReportOut
                         if(REPORT_GENERATORS[entry.processorClass]) {
                             report += indent(REPORT_GENERATORS[entry.processorClass](entry.results));
                         } else {
-                            report += indent(`No report generator for ${entry.processorClass}`);
+                            report += indent(`No report generator for ${entry.processorClass}\n${JSON.stringify(entry.results,null,2)}`);
                         }
                     }
                     if(entry.error) {

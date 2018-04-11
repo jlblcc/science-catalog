@@ -62,8 +62,10 @@ const REPLACEMENTS:Replacement[] = [
     {regex: /\btnc\b/, replace: ' the nature conservancy '},
     {regex: /\bu\s?s\b/, replace: ' united states '},
     {regex: /\buniv\b/, replace: ' university '},
+    /* specific aliases like this should be dealt with on the lccnetwork site
     {regex: /\buw\b/, replace: ' university of washington '}, // not a big fan
     {regex: /\bwwu\b/, replace: ' western washington university '}, // not a big fan
+    */
     {regex: /\sunknown$/, replace: ''}, // many orgs have " Unknown" at the end ??
 ];
 

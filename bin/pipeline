@@ -11,6 +11,11 @@ let command = require('commander'),
 
 process.on('uncaughtException', handleError);
 
+process.on('unhandledRejection', (reason, p) => {
+  console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+  process.exit(1);
+});
+
 command.version('1.0.0')
     .option('-p --pipeline <file>','The pipeline configuration')
     .option('-f --fork','Whether to run the pipeline in process or in separate processes.')
