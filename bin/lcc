@@ -15,7 +15,7 @@ process.on('uncaughtException', handleError);
 
 command.version('1.0.0')
     .option('--lcc <id>', 'The lcc to add or remove.')
-    .option('--action <action>', 'What to do with the LCC (add, remove, list or available. default add)', /^(add|addAll|remove|removeAll|list|available)$/i, 'add')
+    .option('--action <action>', 'What to do with the LCC (add, addAll, remove, removeAll, list or available. default add)', /^(add|addAll|remove|removeAll|list|available)$/i, 'add')
     .parse(process.argv);
 
 const noLccRequredActions = ['list','available','addAll','removeAll'];
