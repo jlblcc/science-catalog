@@ -35,7 +35,7 @@ export const TABLE_COLUMNS = [{
 
         <ng-container matColumnDef="simplified.title">
             <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-title"> Title </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-title"><a target="_blank"[href]="'https://www.sciencebase.gov/catalog/item/'+item._id"><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text></a></mat-cell>
+            <mat-cell *matCellDef="let item" class="item-title"><item-link [item]="item" [highlight]="highlight"></item-link></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.lcc">
@@ -45,7 +45,7 @@ export const TABLE_COLUMNS = [{
 
         <ng-container matColumnDef="simplified.pointOfContact.principalInvestigator.name">
             <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-pi"> Principal investigator </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.pointOfContact.principalInvestigator ? item.simplified.pointOfContact.principalInvestigator[0].name : ''}}</mat-cell>
+            <mat-cell *matCellDef="let item" class="item-pi"><principal-investigators [item]="item"></principal-investigators></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.funding.fiscalYears">

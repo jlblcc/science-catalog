@@ -26,10 +26,11 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
     </div>
     <mat-card *ngFor="let item of dataSource.data">
         <mat-card-title class="item-title">
-            <item-icon [item]="item"></item-icon> <a target="_blank"[href]="'https://www.sciencebase.gov/catalog/item/'+item._id"><highlight-text [text]="item.simplified.title" [highlight]="highlight"></highlight-text></a> ({{item.simplified.lcc | lccTitle}})
+            <item-icon [item]="item"></item-icon>
+            <item-link [item]="item" [highlight]="highlight"></item-link> ({{item.simplified.lcc | lccTitle}})
         </mat-card-title>
         <mat-card-subtitle>
-            <span *ngIf="item.simplified.pointOfContact.principalInvestigator"><label>Principal Investigator:</label> {{item.simplified.pointOfContact.principalInvestigator[0].name}}</span>
+            <span *ngIf="item.simplified.pointOfContact?.principalInvestigator"><label>Principal Investigator:</label> <principal-investigators [item]="item"></principal-investigators></span>
             <span *ngIf="item.simplified.funding && item.simplified.funding.fiscalYears.length"><label>Fiscal Year(s):</label> {{item.simplified.funding.fiscalYears.join(',')}}</span>
         </mat-card-subtitle>
         <mat-card-content>

@@ -33,7 +33,13 @@ export interface LccnetContactAlignmentConfig extends LccnetReadProcessorConfig 
  * @returns A string representation.
  */
 export function lccnetContactAlignmentReport(output:LccnetContactAlignmentOutput) {
-    return '';
+    return `
+Total: ${output.total}
+Total LCCNET Organizations: ${output.totalLccnetOrganizations}
+Mapped Organizations: ${output.mappedOrganizations}
+Total LCCNET People: ${output.totalLccnetPeople}
+Mapped People: ${output.mappedPeople}
+`;
 }
 
 /**

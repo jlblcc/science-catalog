@@ -15,7 +15,7 @@ import { ScType, ItemIfc, LccIfc } from '../../../../src/db/models';
 import * as pako from 'pako';
 
 const BASE_QUERY_ARGS = {
-    $select: 'scType simplified'
+    $select: 'scType simplified lccnet'
 };
 
 export interface FundingSearchCriteria {
