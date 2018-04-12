@@ -247,6 +247,7 @@ const schema = new Schema({
             updatedAt:'modified'
         }
     });
+schema.index({'simplified.abstract':'text','title':'text','simplified.pointOfContact.principalInvestigator.name':'text'});
 
 /**
  * Item model.

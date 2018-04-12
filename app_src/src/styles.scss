@@ -1,5 +1,32 @@
 /* You can add global styles to this file, and also import other style files */
-@import "~@angular/material/prebuilt-themes/deeppurple-amber.css";
+//@import "~@angular/material/prebuilt-themes/deeppurple-amber.css";
+@import '~@angular/material/theming';
+// make sure this happens only once
+@include mat-core();
+
+@import '_material-palette';
+$primary-palette: mat-palette($md-primary);
+$accent-palette: mat-palette($md-accent);
+$warn-palette: mat-palette($md-warn);
+
+//$app-theme: mat-dark-theme($primary-palette, $accent-palette, $warn-palette);
+$app-theme: mat-light-theme($primary-palette, $accent-palette, $warn-palette);
+
+// import any theme mixins from components here
+
+@mixin apply-app-theme($theme) {
+    /*
+    $primary: map-get($theme,primary);
+    $accent: map-get($theme,accent);
+    $warn: map-get($theme,warn);
+    any global styling here
+    */
+
+    // call component mixins here
+}
+
+@include angular-material-theme($app-theme);
+@include apply-app-theme($app-theme);
 
 mark {
     /* not enough lineheight in a mat-line

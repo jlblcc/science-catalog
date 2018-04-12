@@ -45,7 +45,7 @@ export const TABLE_COLUMNS = [{
 
         <ng-container matColumnDef="simplified.pointOfContact.principalInvestigator.name">
             <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-pi"> Principal investigator </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-pi"><principal-investigators [item]="item"></principal-investigators></mat-cell>
+            <mat-cell *matCellDef="let item" class="item-pi"><principal-investigators [item]="item" [highlight]="highlight"></principal-investigators></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.funding.fiscalYears">
