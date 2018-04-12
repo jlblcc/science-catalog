@@ -223,7 +223,10 @@ const simplifiedSchema = new Schema({
     keywords: keywordsSchema,
     contacts: [{type: contactSchema, required: true}],
     // mongoose cannot validate but TypeScript can
-    pointOfContact: {type: Schema.Types.Mixed, required: true },
+    // TODO have set required to false because some mdJson in sciencebase
+    // has broken the JSON schema of mdJson and has no pointOfContact
+    // once that is fixed put required back to true
+    pointOfContact: {type: Schema.Types.Mixed, required: false },
     resourceType: [resourceTypeSchema],
     funding: { type: fundingSchema, required: false },
 },{ _id : false });

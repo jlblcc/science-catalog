@@ -64,9 +64,9 @@ export class ItemCounts {
 };
 
 const DEFAULT_ITEM_PAGE_SIZE = 20;
-const DEFAULT_PAUSE_BETWEEN_LCC = 0; //60000;
+const DEFAULT_PAUSE_BETWEEN_LCC = 30000;
 const DEFAULT_REQUEST_LIMIT = 200;
-const DEFAULT_RETRY_AFTER = 2*DEFAULT_PAUSE_BETWEEN_LCC;
+const DEFAULT_RETRY_AFTER = 120000;
 
 /**
  * FromScienceBase configuration options.
@@ -78,7 +78,7 @@ export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
         putting too much sustained pressure on ScienceBase.  If too many requests arrive too close together
         the ScienceBase API will return a 429 which terminates the sync process. */
     pauseBetweenLcc?:number;
-    /** How many sequential requests to run before pausing (`retryAter`) for a period of time to stay beneath rat limiting (default 200) */
+    /** How many sequential requests to run before pausing (`retryAfter`) for a period of time to stay beneath rat limiting (default 200) */
     requestLimit?:number;
     /** How long to pause after receiving a 429 (Too many requests) or whenever the request limit is hit (unless received a 'retry-after' header) (default 120000) */
     retryAfter?:number;

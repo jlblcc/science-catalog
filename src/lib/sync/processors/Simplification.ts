@@ -238,7 +238,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     keywords: {},
                 }),
             contacts: this.simplifyContacts(mdJson.contact.map(c => c.contactId),item),
-            pointOfContact: mdJson.metadata.resourceInfo.pointOfContact.reduce((map,poc) => {
+            pointOfContact: (mdJson.metadata.resourceInfo.pointOfContact||[]).reduce((map,poc) => {
                     map[poc.role] = map[poc.role] || [];
                     if(!poc.party) {
                         console.log('no party?');

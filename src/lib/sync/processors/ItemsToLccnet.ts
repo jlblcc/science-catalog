@@ -164,8 +164,12 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                                     url: updated._links.drupal_self
                                                 };
                                                 return item.save();
-                                            }).catch(response => {
-                                                reject(new Error(`Lccnet error ${response.statusCode}`));
+                                            }).catch(error => {
+                                                if(error.statusCode) { // lccnet responded with a non 200 status code
+                                                    reject(new Error(`Lccnet error ${error.statusCode}`));
+                                                } else {
+                                                    reject(error);
+                                                }
                                             });
                                 })
                                 .then(() => {

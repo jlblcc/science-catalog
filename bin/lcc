@@ -24,7 +24,6 @@ if(noLccRequredActions.indexOf(command.action) === -1 && !command.lcc) {
 }
 
 function add(id,lccnetRef) {
-    console.log('lccnetRef',lccnetRef);
     return new Promise((resolve) => {
         request({
             url: `https://www.sciencebase.gov/catalog/item/${id}`,
