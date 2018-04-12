@@ -8,7 +8,7 @@ import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import { map, switchMap, startWith, filter } from 'rxjs/operators';
 
-import { ConfigService } from '../common';
+import { ConfigService, CacheService } from '../common';
 
 import { ScType, ItemIfc, LccIfc } from '../../../../src/db/models';
 
@@ -59,6 +59,8 @@ export interface SearchCriteria {
     $filter?: string;
 }
 
+const CACHED_CRITERIA_KEY = 'science-catalog-search-criteria';
+
 @Injectable()
 export class SearchService {
     private initialCriteria:SearchCriteria;
@@ -75,7 +77,10 @@ export class SearchService {
     /** The sort control for the current Item[List|Table] */
     currentSorter:MatSort;
 
-    constructor(private http:HttpClient,private location:Location,private config:ConfigService) {
+    constructor(private http:HttpClient,
+                private location:Location,
+                private config:ConfigService,
+                private cache:CacheService) {
         let path = location.path();
         if(path) {
             if(path.charAt(0) === '/') {
@@ -87,6 +92,8 @@ export class SearchService {
             } catch(e) {
                 console.error(`Error deserializing criteria`,e);
             }
+        } else {
+            this.initialCriteria = this.cache.get(CACHED_CRITERIA_KEY);
         }
     }
 
@@ -108,14 +115,13 @@ export class SearchService {
     }
 
     /**
-     * Take some search criteria and serialize it into a string that can be
-     * re-constituted later.
+     * @returns A copy of `criteria` with all null/empty keys stripped out.
      */
-    private serialize(criteria:SearchCriteria):string {
+    private simplify(criteria:SearchCriteria):SearchCriteria {
         let copy = JSON.parse(JSON.stringify(criteria)),
             simplify = (o) => {
                 Object.keys(o).forEach(k => {
-                    if((o[k] === null || o[k] === undefined) || (o[k] instanceof Array && !o[k].length)) {
+                    if((o[k] === null || o[k] === undefined || o[k] === '') || (o[k] instanceof Array && !o[k].length)) {
                         delete o[k];
                     } else if (typeof(o[k]) === 'object') {
                         o[k] = simplify(o[k]);
@@ -129,10 +135,18 @@ export class SearchService {
         // recursively remove null/empty keys to bring the object size down to
         // the minimum necessary.
         copy = simplify(copy);
+        return copy;
+    }
+
+    /**
+     * Take some search criteria and serialize it into a string that can be
+     * re-constituted later.
+     */
+    private serialize(criteria:SearchCriteria):string {
         // using pako to gzip the result, for small filters is not much
         // space savings but for larger filters it can decrease the char count
         // by hundreds of chars once base 64 encoded
-        let binaryString = pako.deflate(JSON.stringify(copy),{to:'string'});
+        let binaryString = pako.deflate(JSON.stringify(this.simplify(criteria)),{to:'string'});
         return window.btoa(binaryString);
     }
 
@@ -226,6 +240,7 @@ export class SearchService {
                                criteria.$filter !== this.currentCriteria.$filter ||
                                criteria.$text !== this.currentCriteria.$text) {
                               this.criteriaChanges.next(this.currentCriteria = criteria);
+                              this.cache.set(CACHED_CRITERIA_KEY,this.currentCriteria);
                             }
                             return response.list as ItemIfc[]
                         }));
