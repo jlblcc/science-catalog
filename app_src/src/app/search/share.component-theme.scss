@@ -1,0 +1,9 @@
+@import '~@angular/material/theming';
+
+@mixin share-component-theme($theme) {
+    // the share button is already using the accent theme
+    // but the black over that color is kind of oppresive
+    .share-button.mat-mini-fab.mat-accent {
+        color: #fff;
+    }
+}

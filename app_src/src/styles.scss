@@ -13,6 +13,7 @@ $warn-palette: mat-palette($md-warn);
 $app-theme: mat-light-theme($primary-palette, $accent-palette, $warn-palette);
 
 // import any theme mixins from components here
+@import 'src/app/search/share.component-theme.scss';
 
 @mixin apply-app-theme($theme) {
     /*
@@ -23,6 +24,7 @@ $app-theme: mat-light-theme($primary-palette, $accent-palette, $warn-palette);
     */
 
     // call component mixins here
+    @include share-component-theme($theme);
 }
 
 @include angular-material-theme($app-theme);
