@@ -32,6 +32,7 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
         <mat-card-subtitle>
             <span *ngIf="item.simplified.pointOfContact?.principalInvestigator"><label>Principal Investigator:</label> <principal-investigators [item]="item" [highlight]="highlight"></principal-investigators></span>
             <span *ngIf="item.simplified.funding && item.simplified.funding.fiscalYears.length"><label>Fiscal Year(s):</label> {{item.simplified.funding.fiscalYears.join(',')}}</span>
+            <span><label>Date:</label> <item-date [item]="item"></item-date></span>
         </mat-card-subtitle>
         <mat-card-content>
             <highlight-text [text]="item.simplified.abstract" [highlight]="highlight"></highlight-text>

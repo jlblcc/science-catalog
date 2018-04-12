@@ -37,6 +37,7 @@ export enum SimplificationCodes {
     MISSING_KEYWORDS = 'missing_keywords',
     INVALID_FUNDING_TIMEPERIOD = 'invalid_funding_timeperiod',
     NON_USD_FUNDING_ALLOCATION = 'non_usd_funding_allocation',
+    DATE_FORMAT = 'deprecated_date_format',
 }
 
 /**
@@ -110,6 +111,9 @@ export function fiscalYears(period:FiscalTimePeriod | FiscalTimePeriod[]):number
     },[]).sort();
 }
 
+/**
+ * @todo `simplification.dates.sort`
+ */
 export default class Simplification extends SyncPipelineProcessor<SimplificationConfig,SimplificationOutput> {
     // used to capture which contactIds for a given item have had warnings issued to avoid
     // generating multiple log warnings for a given item (a contact may be simplified multiple
@@ -256,15 +260,30 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             // unwanted anomaly
             item.simplified.funding = this.simplifyFunding(item);
         }
-        if(mdJson.metadata.metadataInfo.metadataDate && mdJson.metadata.metadataInfo.metadataDate.length) {
-            item.simplified.dates = mdJson.metadata.metadataInfo.metadataDate.reduce((dates,d) => {
-                    if(d.date && d.dateType) {
-                        // if there isn't a match in the schema then Mongoose will drop
-                        dates[d.dateType] = moment(d.date).tz('UTC').toDate();
+        // this deprecationHandler code is not documented by momentjs
+        const dh = moment.deprecationHandler;
+        let currentDate;
+        moment.deprecationHandler = (err,msg) => {
+            this.log.warn(`[${SimplificationCodes.DATE_FORMAT}][${item._id}] "${currentDate}"`,{...logAdditions,
+                    code: SimplificationCodes.DATE_FORMAT
+                });
+        };
+        const dateReducer = (dates,d) => {
+                if(d.date && d.dateType && !dates[d.dateType]) {
+                    // if there isn't a match in the schema then Mongoose will drop
+                    currentDate = d.date;
+                    if(/^\d{4}$/.test(currentDate)) {
+                        // even though technically just a year is a valid ISO 8601 date moment dislikes them so make them January 1
+                        currentDate = `${currentDate}-01-01`;
                     }
-                    return dates;
-                },{});
-        }
+                    dates[d.dateType] = moment(currentDate).tz('UTC').toDate();
+                }
+                return dates;
+            };
+        item.simplified.dates = (mdJson.metadata.metadataInfo.metadataDate||[]).reduce(dateReducer,{});
+        item.simplified.dates = (mdJson.metadata.resourceInfo.citation.date||[]).reduce(dateReducer,item.simplified.dates);
+        item.simplified.dates.sort = item.simplified.dates.start||item.simplified.dates.publication;//||item.simplified.dates.creation;
+        moment.deprecationHandler = dh;
         return item.save();
     }
 

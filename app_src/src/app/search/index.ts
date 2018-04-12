@@ -18,7 +18,7 @@ import { SummaryStatistics } from './summary-statistics.component';
 import { Share } from './share.component';
 import { ItemLink } from './item-link.component';
 import { PrincipalInvestigators } from './principal-investigators.component';
-
+import { ItemDate } from './item-date.component';
 
 import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
@@ -38,7 +38,7 @@ import { SearchService } from './search.service';
         ScienceCatalogCommonModule
     ],
     declarations:[
-        ItemIcon, ItemLink, PrincipalInvestigators, Share,
+        ItemIcon, ItemLink, PrincipalInvestigators, ItemDate, Share,
         LccSelect, TextSearch, SctypeSelect, KeywordSelect,
         DistinctAutocomplete, DistinctSelect,
         FundingSearchControls,

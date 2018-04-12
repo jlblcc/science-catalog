@@ -145,6 +145,7 @@ const fundingSchema = new Schema({
  * @todo The keys here were built from a distinct query, perhaps it should just be open ended?
  */
 export interface SimplifiedDates {
+    sort?: Date;
     creation?: Date;
     lastUpdate?: Date;
     publication?: Date;
@@ -153,6 +154,7 @@ export interface SimplifiedDates {
     lastRevision?: Date;
 }
 const datesSchema = new Schema({
+    sort: {type: Date, required: false },
     creation: {type: Date, required: false },
     lastUpdate: {type: Date, required: false },
     publication: {type: Date, required: false },

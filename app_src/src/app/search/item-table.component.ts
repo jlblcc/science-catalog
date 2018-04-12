@@ -2,9 +2,12 @@ import { Component, Input, ViewChild } from '@angular/core';
 
 import { MatSort, Sort } from '@angular/material';
 
-export const DEFAULT_SORT_DIRECTION = 'asc';
-export const DEFAULT_ACTIVE_SORT = 'simplified.title';
+export const DEFAULT_SORT_DIRECTION = 'desc';
+export const DEFAULT_ACTIVE_SORT = 'simplified.dates.sort';
 export const TABLE_COLUMNS = [{
+    property: 'simplified.dates.sort',
+    label: 'Sort'
+},{
     property: 'simplified.resourceType',
     label: 'Resource type'
 },{
@@ -28,6 +31,11 @@ export const TABLE_COLUMNS = [{
     selector: 'item-table',
     template: `
     <mat-table [dataSource]="dataSource" matSort>
+        <ng-container matColumnDef="simplified.dates.sort">
+            <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-type"> Date </mat-header-cell>
+            <mat-cell *matCellDef="let item"><item-date [item]="item"></item-date></mat-cell>
+        </ng-container>
+
         <ng-container matColumnDef="simplified.resourceType">
             <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-type"> Resource type </mat-header-cell>
             <mat-cell *matCellDef="let item"><item-icon [item]="item" class="item-type"></item-icon></mat-cell>
