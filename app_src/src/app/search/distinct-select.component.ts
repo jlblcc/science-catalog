@@ -11,12 +11,18 @@ import { SearchService } from './search.service';
     template: `
     <mat-form-field>
         <mat-select [placeholder]="placeholder" [formControl]="control" multiple>
-            <mat-option *ngFor="let o of options | async" [value]="o">{{o}}</mat-option>
+            <mat-option *ngFor="let o of options | async" [value]="o">
+              <span *ngIf="displayPipe === 'resourceType'; else plainText">{{o | resourceType}}</span>
+              <ng-template #plainText>{{o}}</ng-template>
+            </mat-option>
         </mat-select>
     </mat-form-field>
     `
 })
 export class DistinctSelect {
+    // this is not very generic, but this is a small app so...
+    @Input() displayPipe:string;
+
     @Input() initialValue:any[];
     @Input() placeholder:string;
     @Input() distinctProperty:string;

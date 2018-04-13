@@ -15,6 +15,7 @@ import { SctypeSelect } from './sctype-select.component';
 import { TextSearch } from './text-search.component';
 import { KeywordSelect } from './keyword-select.component';
 import { FundingSearchControls } from './funding-search-controls.component';
+import { GeneralAdvancedControls } from './general-advanced-controls.component';
 
 import { ItemIfc } from '../../../../src/db/models';
 
@@ -54,6 +55,7 @@ const BASE_QUERY_ARGS = {
         <mat-expansion-panel class="advanced-search-panel" expanded="false">
             <mat-expansion-panel-header>Advanced search</mat-expansion-panel-header>
             <div class="advanced-search-controls">
+                <general-advanced-controls></general-advanced-controls>
                 <mat-expansion-panel  expanded="true">
                     <mat-expansion-panel-header>Keywords</mat-expansion-panel-header>
                     <keyword-select></keyword-select>
@@ -85,6 +87,8 @@ export class ItemSearch extends MonitorsDestroy {
     @ViewChild(TextSearch) $text: TextSearch;
     /** The type selection component */
     @ViewChild(SctypeSelect) scType: SctypeSelect;
+    /** The general advanced control */
+    @ViewChild(GeneralAdvancedControls) general: GeneralAdvancedControls;
     /** The keyword selection component (advanced) */
     @ViewChild(KeywordSelect) keywords: KeywordSelect;
     /** The funding controls */
@@ -122,6 +126,7 @@ export class ItemSearch extends MonitorsDestroy {
         let criteriaGroup = new FormGroup({
             lcc: this.lcc.control,
             scType: this.scType.control,
+            general: this.general.controls,
             keywords: this.keywords.control,
             funding: this.funding.controls,
             $text: this.$text.control

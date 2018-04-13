@@ -13,6 +13,7 @@ import { LccSelect } from './lcc-select.component';
 import { KeywordSelect } from './keyword-select.component';
 import { DistinctAutocomplete } from './distinct-autocomplete.component';
 import { DistinctSelect } from './distinct-select.component';
+import { GeneralAdvancedControls } from './general-advanced-controls.component';
 import { FundingSearchControls } from './funding-search-controls.component';
 import { SummaryStatistics } from './summary-statistics.component';
 import { Share } from './share.component';
@@ -43,6 +44,7 @@ import { SearchService } from './search.service';
         DistinctAutocomplete, DistinctSelect,
         FundingSearchControls,
         SummaryStatistics,
+        GeneralAdvancedControls,
 
         ItemList, ItemTable,
         HighlightText, HighlightPipe,

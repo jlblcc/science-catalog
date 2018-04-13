@@ -11,7 +11,7 @@ import { SearchService, FundingSearchCriteria } from './search.service';
 @Component({
     selector: 'funding-search-controls',
     template: `
-    <mat-expansion-panel class="funding" expanded="true">
+    <mat-expansion-panel class="funding" expanded="false">
         <mat-expansion-panel-header>Funding</mat-expansion-panel-header>
             <div class="general-controls">
                 <distinct-select #fiscalYears

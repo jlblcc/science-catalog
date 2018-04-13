@@ -44,11 +44,17 @@ export interface KeywordSearchCriteria {
     /** The list of `KeywordCriteria` */
     criteria: KeywordCriteria[];
 }
+export interface GeneralAdvancedCriteria {
+    /** List of resource types */
+    resourceType?: string[];
+}
 export interface SearchCriteria {
     /** Sciencebase item type */
     scType?: ScType;
     /** List of LCC ids to include */
     lcc?: string[];
+    /** General advanced criteria */
+    general?: GeneralAdvancedCriteria;
     /** List of keyword criteria */
     keywords?: KeywordSearchCriteria;
     /** text index search input */
@@ -175,6 +181,15 @@ export class SearchService {
             let ids = criteria.lcc.map(id => `'${id}'`);
             $filter += ` and in(_lcc,${ids.join(',')})`;
         }
+        
+        if(criteria.general) {
+            const general = criteria.general;
+            if(general.resourceType && general.resourceType.length) {
+                const rTypesQuoted = general.resourceType.map(rt => `'${rt}'`);
+                $filter += ` and (in(simplified.resourceType.type,${rTypesQuoted.join(',')}))`;
+            }
+        }
+
         if(criteria.keywords && criteria.keywords.criteria.length) {
             let keywordFilter =
                 criteria.keywords.criteria.map(k => `simplified.keywords.keywords.${k.typeKey} eq '${k.value}'`)
