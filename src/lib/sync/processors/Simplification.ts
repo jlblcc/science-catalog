@@ -8,6 +8,7 @@ import { Item,
          SimplifiedFunding,
          Contact,
          ContactDoc } from '../../../db/models';
+import FromScienceBase from './FromScienceBase';
 import { LogAdditions } from '../../log';
 import Contacts from './Contacts';
 import { QueryCursor } from 'mongoose';
@@ -24,8 +25,6 @@ export class SimplificationOutput {
  * Configuration for the simplification processor.
  */
 export interface SimplificationConfig extends SyncPipelineProcessorConfig {
-    /** If the process should forcibly re-simplify all documents */
-    force?: boolean;
 }
 
 /**
@@ -132,43 +131,26 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             this.loadContacts()
                 .then(() => {
                     this.results.results = new SimplificationOutput();
-                    let criteria =
-                        (this.config.force || !this.procEntry.lastComplete) ?
-                            // either first run or asked to do all
-                            {} :
-                            {$or:[{
-                                // changed since last sync
-                                modified: {$gt: this.procEntry.lastComplete}
-                            },{
-                                // or don't have simplified documents
-                                // this shouldn't be necessary since mongoose should
-                                // set modified to created so new documents should
-                                // be picked up above
-                                simplified: {$exists: false }
-                            }]};
-                    let cursor:QueryCursor<ItemDoc> = Item
-                            .find(criteria)
-                            .populate(['_lcc'])
-                            .cursor(),
-                        next = () => {
-                            cursor.next()
-                                .then((item:ItemDoc) => {
-                                    if(!item) {
-                                        return resolve();
-                                    }
-                                    this.simplify(item)
-                                        .then((i:ItemDoc) => {
-                                            this.log.info(`[${SimplificationCodes.SIMPLIFIED}][${i._id}] "${i.title}"`,{
-                                                _lcc: i._lcc,
-                                                _item: i._id,
-                                                code: SimplificationCodes.SIMPLIFIED
-                                            });
-                                            this.results.results.total++;
-                                            next();
-                                        }).catch(reject);
-                                }).catch(reject);
-                        };
-                    next();
+                    const itemSimplifyComplete = (i:ItemDoc) => {
+                                    this.log.info(`[${SimplificationCodes.SIMPLIFIED}][${i._id}] "${i.title}"`,{
+                                        _lcc: i._lcc,
+                                        _item: i._id,
+                                        code: SimplificationCodes.SIMPLIFIED
+                                    });
+                                    this.results.results.total++;
+                                    return Promise.resolve();
+                            },
+                            simplify = (i:ItemDoc) => {
+                                return this.simplify(i).then(itemSimplifyComplete);
+                            };
+                    // simplify products and then projects because there is a dependency (via combinedResourceType)
+                    // in that direction.  always simplify the entire catalog since there are interdependencies
+                    // between items and we cannot be certain what might have changed in related entities
+                    let productCursor:QueryCursor<ItemDoc> = Item.find({scType:ScType.PRODUCT}).populate(['_lcc']).cursor(),
+                        projectCursor:QueryCursor<ItemDoc> = Item.find({scType:ScType.PROJECT}).populate(['_lcc']).cursor();
+                    productCursor.eachAsync(simplify)
+                        .then(() => projectCursor.eachAsync(simplify).then(resolve))
+                        .catch(reject);
                 })
                 .catch(reject);
         });
@@ -253,6 +235,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     return map;
                 },{}),
             resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
+            combinedResourceType: mdJson.metadata.resourceInfo.resourceType
         };
         if(item.scType === ScType.PROJECT) {
             // there is one product that has funding but the requirements say
@@ -284,6 +267,48 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         item.simplified.dates = (mdJson.metadata.resourceInfo.citation.date||[]).reduce(dateReducer,item.simplified.dates);
         item.simplified.dates.sort = item.simplified.dates.start||item.simplified.dates.publication;//||item.simplified.dates.creation;
         moment.deprecationHandler = dh;
+        // if simplifying a project go and relate it to any child products
+        if(item.scType === ScType.PROJECT) {
+            const productIds = FromScienceBase.findProductIds(item.mdJson);
+            if(productIds.length) {
+                // TODO log the association has been made?
+                return new Promise((resolve,reject) => {
+                    Item.find({_id:{$in:productIds}})
+                        .exec()
+                        .then(items => {
+                            if(items.length) {
+                                items.forEach(i => i._project = item._id);
+                                item._products = items.map(i => i._id);
+                                // build a combined list of resource types for the project that
+                                // includes those of its children.
+                                const combinedRt = item.simplified.combinedResourceType,
+                                      hasRt = (rt) => {
+                                          return combinedRt.reduce((has,t) =>
+                                            has||(t.type === rt.type && t.name === rt.name ? true : false),
+                                            false);
+                                      };
+                                items.forEach(i => {
+                                    i.simplified.combinedResourceType.forEach(rt => {
+                                        if(!hasRt(rt)) {
+                                            combinedRt.push(rt);
+                                        }
+                                    });
+                                });
+                                item.simplified.combinedResourceType = combinedRt;
+                                Promise
+                                    .all(items.map(i => i.save()))
+                                    .then(() => {
+                                        item.save().then(resolve).catch(reject);
+                                    })
+                                    .catch(reject);
+                            } else {
+                                item.save().then(resolve).catch(reject);
+                            }
+                        })
+                        .catch(reject);
+                    });
+            }
+        }
         return item.save();
     }
 

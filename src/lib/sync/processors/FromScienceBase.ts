@@ -140,6 +140,10 @@ export function fromScienceBaseReport(results:ItemCounts[]):string {
     },'');
 }
 
+class ProductAssociationError extends Error {
+    productAssociation:any;
+}
+
 /**
  * Handles synchronization of sciencebase items for LCCs.
  *
@@ -524,24 +528,14 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     };
 
                     if(itemType === ScType.PROJECT && productIds) {
-                        (mdJson.metadata.associatedResource||[]).filter(r => r.associationType === 'product')
-                            .forEach(productAssociation => {
-                                let sbid = (productAssociation.resourceCitation.identifier||[]).reduce((found,ident) => {
-                                    return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
-                                },undefined);
-                                // some instances the gov.sciencebase.catalog reference is found in the metadataCitation
-                                // rather than the resourceCitation (don't understand the difference).
-                                if(!sbid && productAssociation.metadataCitation) {
-                                    sbid = (productAssociation.metadataCitation.identifier||[]).reduce((found,ident) => {
-                                        return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
-                                    },undefined)
-                                }
-                                if(sbid) {
-                                    productIds.push(sbid);
-                                } else {
-                                    this.log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID}][${item.id}] "${item.title}"`,{...logAdditions,code: FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID,data:productAssociation});
-                                }
-                            });
+                        try {
+                            // will throw an exception if found productAssociation but
+                            // could not find science base id so we can log it.
+                            FromScienceBase.findProductIds(mdJson,true).forEach(sbid => productIds.push(sbid));
+                        } catch (productError) {
+                            const paError = productError as ProductAssociationError;
+                            this.log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID}][${item.id}] "${item.title}"`,{...logAdditions,code: FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID,data:paError.productAssociation});
+                        }
                     }
 
                     Item.findById(catalog_item._id,(err,existing) => {
@@ -564,5 +558,30 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 }))
                 .catch(reject);
         });
+    }
+
+    static findProductIds(mdJson:any,complain?:boolean):string[] {
+        const productIds = [];
+        (mdJson.metadata.associatedResource||[]).filter(r => r.associationType === 'product')
+            .forEach(productAssociation => {
+                let sbid = (productAssociation.resourceCitation.identifier||[]).reduce((found,ident) => {
+                    return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
+                },undefined);
+                // some instances the gov.sciencebase.catalog reference is found in the metadataCitation
+                // rather than the resourceCitation (don't understand the difference).
+                if(!sbid && productAssociation.metadataCitation) {
+                    sbid = (productAssociation.metadataCitation.identifier||[]).reduce((found,ident) => {
+                        return found||(ident.namespace === 'gov.sciencebase.catalog' ? ident.identifier : undefined);
+                    },undefined)
+                }
+                if(sbid) {
+                    productIds.push(sbid);
+                } else if(complain) {
+                    const err = new ProductAssociationError();
+                    err.productAssociation = productAssociation;
+                    throw err;
+                }
+            });
+            return productIds;
     }
 }

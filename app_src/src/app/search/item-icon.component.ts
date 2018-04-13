@@ -11,10 +11,40 @@ import { ItemIfc } from '../../../../src/db/models';
         [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
         matTooltip="{{rt.type | resourceType:rt.name}}"
         matTooltipPosition="right"></mat-icon>
-    `
+    <span *ngIf="extraResourceTypes.length" class="extra-rtypes">
+    <mat-icon *ngFor="let rt of extraResourceTypes"
+        [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
+        matTooltip="Product type {{rt.type | resourceType:rt.name}}"
+        matTooltipPosition="right"></mat-icon>
+    </span>
+    `,
+    styles:[`
+        .extra-rtypes:before { content: '[' }
+        .extra-rtypes:after { content: ']' }
+        .extra-rtypes > mat-icon:last-of-type {
+            width: auto;
+        }
+    `]
 })
 export class ItemIcon {
     @Input() item:ItemIfc;
+    extraResourceTypes:any[] = [];
+
+    ngOnInit() {
+        const simplified = this.item.simplified;
+        if(simplified.resourceType.length !== simplified.combinedResourceType.length) {
+            const hasRt = (rt) => {
+                return simplified.resourceType.reduce((has,t) =>
+                  has||(t.type === rt.type && t.name === rt.name ? true : false),
+                  false);
+            };
+            simplified.combinedResourceType.forEach(rt => {
+                if(!hasRt(rt)) {
+                    this.extraResourceTypes.push(rt);
+                }
+            });
+        }
+    }
 
     // built from a distinct query on mdJson.metadata.resourceInfo.resourceType.type
     // so is not future proof

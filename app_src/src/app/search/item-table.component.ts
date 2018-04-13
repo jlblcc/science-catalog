@@ -8,7 +8,7 @@ export const TABLE_COLUMNS = [{
     property: 'simplified.dates.sort',
     label: 'Sort'
 },{
-    property: 'simplified.resourceType',
+    property: 'simplified.combinedResourceType',
     label: 'Resource type'
 },{
     property: 'simplified.title',
@@ -36,7 +36,7 @@ export const TABLE_COLUMNS = [{
             <mat-cell *matCellDef="let item"><item-date [item]="item"></item-date></mat-cell>
         </ng-container>
 
-        <ng-container matColumnDef="simplified.resourceType">
+        <ng-container matColumnDef="simplified.combinedResourceType">
             <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-type"> Resource type </mat-header-cell>
             <mat-cell *matCellDef="let item"><item-icon [item]="item" class="item-type"></item-icon></mat-cell>
         </ng-container>

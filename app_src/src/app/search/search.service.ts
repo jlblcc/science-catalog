@@ -181,12 +181,12 @@ export class SearchService {
             let ids = criteria.lcc.map(id => `'${id}'`);
             $filter += ` and in(_lcc,${ids.join(',')})`;
         }
-        
+
         if(criteria.general) {
             const general = criteria.general;
             if(general.resourceType && general.resourceType.length) {
                 const rTypesQuoted = general.resourceType.map(rt => `'${rt}'`);
-                $filter += ` and (in(simplified.resourceType.type,${rTypesQuoted.join(',')}))`;
+                $filter += ` and (in(simplified.combinedResourceType.type,${rTypesQuoted.join(',')}))`;
             }
         }
 

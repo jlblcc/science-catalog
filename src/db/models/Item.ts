@@ -182,6 +182,8 @@ export interface SimplifiedIfc {
     pointOfContact: SimplifiedContactsMap;
     /** The list of string resourceTypes (extracted from `metadata.resourceInfo.resourceType.type`) */
     resourceType: ResourceType[];
+    /** The resourceType of this item combined with that of any of its children (projects will contain its product resource types in addition to its own) */
+    combinedResourceType: ResourceType[];
     /** The simplified funding information */
     funding?: SimplifiedFunding;
 }
@@ -208,6 +210,10 @@ export interface ItemIfc {
     mdJson: any;
     /** The simplified version of the `mdJson` document */
     simplified?: SimplifiedIfc;
+    /** If scType is 'product' the parent project item */
+    _project?: any;
+    /** If scType is 'project' the child product items (if any) */
+    _products?: any[];
     /** Reference to lccnetwork if one exists */
     lccnet?: LccnetRef;
 }
@@ -230,6 +236,7 @@ const simplifiedSchema = new Schema({
     // once that is fixed put required back to true
     pointOfContact: {type: Schema.Types.Mixed, required: false },
     resourceType: [resourceTypeSchema],
+    combinedResourceType: [resourceTypeSchema],
     funding: { type: fundingSchema, required: false },
 },{ _id : false });
 
@@ -242,6 +249,8 @@ const schema = new Schema({
         modified: {type: Date, required: true},
         mdJson: Schema.Types.Mixed,
         simplified: simplifiedSchema,
+        _project: {type: Schema.Types.ObjectId, ref: 'Item', required: false},
+        _products: [{type: Schema.Types.ObjectId, ref: 'Item', required: false}],
         lccnet: {type: lccnetRefSchema, required: false},
     },{
         timestamps: {

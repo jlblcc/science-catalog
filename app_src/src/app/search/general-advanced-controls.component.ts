@@ -13,7 +13,7 @@ import { SearchService, GeneralAdvancedCriteria } from './search.service';
         <distinct-select #resourceType
                          placeholder="Resource type"
                          displayPipe="resourceType"
-                         distinctProperty="simplified.resourceType.type"
+                         distinctProperty="simplified.combinedResourceType.type"
                          [initialValue]="search.initial.resourceType"></distinct-select>
     </mat-expansion-panel>
     `
