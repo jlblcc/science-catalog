@@ -249,7 +249,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 },wait);
             } else if (this.waitingOnRequestLimit || ((this.requestCount+1)%this.requestLimit === 0)) {
                 const wait = this.retryAfter;
-                if(!this.waitingOnRateLimit) {
+                if(!this.waitingOnRequestLimit) {
                     this.waitingOnRequestLimit = true;
                     this.log.debug(`Next request will be an interval of ${this.requestLimit} waiting ${wait/1000} seconds before making request`);
                 }
