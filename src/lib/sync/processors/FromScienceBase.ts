@@ -335,7 +335,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     if(promises.length) {
                         // wait for them to complete
                         Promise.all(promises)
-                            .then(() => setTimeout(() => next())) // clear call stack
+                            .then(() => setTimeout(next)) // clear call stack
                             .catch(reject);
                     } else {
                         next();
@@ -390,11 +390,10 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
 
             let next = () => {
                 if(!pages.length) {
-                    resolve();
+                    return resolve();
                 }
                 counts.pages++;
                 let ids = pages.pop();
-                this.log.debug
                 this.request({
                     url: `https://www.sciencebase.gov/catalog/items`,
                     qs: {
@@ -424,10 +423,10 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     }
                     if(promises.length) {
                         Promise.all(promises)
-                            .then(() => setTimeout(() => next())) // clear call stack
+                            .then(() => setTimeout(next)) // clear call stack
                             .catch(reject);
                     } else {
-                        resolve();
+                        setTimeout(next);
                     }
                 }))
                 .catch(reject);
