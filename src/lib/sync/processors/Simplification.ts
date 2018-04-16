@@ -107,7 +107,7 @@ export function fiscalYears(period:FiscalTimePeriod | FiscalTimePeriod[]):number
     return yearRanges.reduce((years,range) => {
         range.filter(y => years.indexOf(y) === -1).forEach(y => years.push(y));
         return years;
-    },[]).sort();
+    },[]).sort().reverse();
 }
 
 /**

@@ -42,7 +42,7 @@ describe('Simplification',() => {
             endDateTime: '2016-10-01T04:59:59.999Z'
         }]);
         expect(years).to.be.instanceof(Array).with.length(3);
-        [2015, 2016, 2017].forEach((y,i) => expect(years[i]).to.equal(y))
+        [2017, 2016, 2015].forEach((y,i) => expect(years[i]).to.equal(y))
 
         years = fiscalYears([{
             startDateTime: '2014-10-01T05:00:00.000Z',
@@ -52,7 +52,7 @@ describe('Simplification',() => {
             endDateTime: '2016-10-01T04:59:59.999Z'
         }]);
         expect(years).to.be.instanceof(Array).with.length(4);
-        [2015, 2016, 2017,2018].forEach((y,i) => expect(years[i]).to.equal(y))
+        [2018, 2017, 2016,2015].forEach((y,i) => expect(years[i]).to.equal(y))
     });
 
     it('fiscalYears (negative)',() => {

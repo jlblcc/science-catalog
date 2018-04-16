@@ -14,7 +14,7 @@ import { SearchService, GeneralAdvancedCriteria } from './search.service';
                          placeholder="Resource type"
                          displayPipe="resourceType"
                          distinctProperty="simplified.combinedResourceType.type"
-                         [initialValue]="search.initial.resourceType"></distinct-select>
+                         [initialValue]="initialValue.resourceType"></distinct-select>
     </mat-expansion-panel>
     `
 
@@ -27,7 +27,8 @@ export class GeneralAdvancedControls extends MonitorsDestroy {
 
     constructor(private search:SearchService) {
         super();
-        this.initialValue = search.initial.general;
+        let initial = search.initial;
+        this.initialValue = initial ? initial.general||{} : {};
     }
 
     ngAfterViewInit() {

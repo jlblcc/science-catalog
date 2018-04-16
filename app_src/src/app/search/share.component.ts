@@ -10,7 +10,7 @@ import { ClipboardService } from 'ngx-clipboard';
     selector: 'share',
     template: `
     <button class="share-button" mat-mini-fab matTooltip="Share this search result" matTooltipPosition="left" (click)="share()">
-        <mat-icon fontIcon="fa-share"></mat-icon>
+        <mat-icon fontIcon="fa-link"></mat-icon>
      </button>
     `,
     providers:[ClipboardService]
