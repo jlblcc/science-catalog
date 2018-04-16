@@ -156,6 +156,7 @@ class ProductAssociationError extends Error {
  * @todo Handle deleted items from sciencebase
  * @todo Why are the numbers for `randModded` and `updated` not the same when `randMod` is enabled?
  * @todo Test `If-Modified-Since` request for `mdJson` document.
+ * @todo review synchronous async code to avoid stack over flow
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     requestCount:number = 0;
@@ -247,9 +248,11 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     go();
                 },wait);
             } else if (this.waitingOnRequestLimit || ((this.requestCount+1)%this.requestLimit === 0)) {
-                this.waitingOnRequestLimit = true;
                 const wait = this.retryAfter;
-                this.log.debug(`Next request will be an interval of ${this.requestLimit} waiting ${wait/1000} seconds before making request`);
+                if(!this.waitingOnRateLimit) {
+                    this.waitingOnRequestLimit = true;
+                    this.log.debug(`Next request will be an interval of ${this.requestLimit} waiting ${wait/1000} seconds before making request`);
+                }
                 setTimeout(() => {
                     this.waitingOnRequestLimit = false;
                     go();
@@ -332,7 +335,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     if(promises.length) {
                         // wait for them to complete
                         Promise.all(promises)
-                            .then(next)
+                            .then(() => setTimeout(next)) // clear call stack
                             .catch(reject);
                     } else {
                         next();
@@ -421,7 +424,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     }
                     if(promises.length) {
                         Promise.all(promises)
-                            .then(next)
+                            .then(() => setTimeout(next)) // clear call stack
                             .catch(reject);
                     } else {
                         resolve();

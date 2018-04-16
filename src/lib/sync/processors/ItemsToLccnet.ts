@@ -188,11 +188,10 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                                                 code: scType === ScType.PROJECT ?
                                                                     ItemsToLccnetLogCodes.PROJECT_DELETED :
                                                                     ItemsToLccnetLogCodes.PRODUCT_DELETED
-                                                            })
-                                                            next();
+                                                            });
+                                                            setTimeout(next);
                                                         }).catch(reject);
                                                 }
-
                                             };
                                     next();
                                 });
