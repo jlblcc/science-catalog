@@ -335,7 +335,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     if(promises.length) {
                         // wait for them to complete
                         Promise.all(promises)
-                            .then(() => setTimeout(next)) // clear call stack
+                            .then(() => setTimeout(() => next())) // clear call stack
                             .catch(reject);
                     } else {
                         next();
@@ -424,7 +424,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     }
                     if(promises.length) {
                         Promise.all(promises)
-                            .then(() => setTimeout(next)) // clear call stack
+                            .then(() => setTimeout(() => next())) // clear call stack
                             .catch(reject);
                     } else {
                         resolve();

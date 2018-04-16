@@ -189,7 +189,7 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                                                     ItemsToLccnetLogCodes.PROJECT_DELETED :
                                                                     ItemsToLccnetLogCodes.PRODUCT_DELETED
                                                             });
-                                                            setTimeout(next);
+                                                            setTimeout(() => next());
                                                         }).catch(reject);
                                                 }
                                             };
