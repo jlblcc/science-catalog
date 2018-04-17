@@ -110,6 +110,8 @@ export enum FromScienceBaseLogCodes {
     ITEM_IGNORED = 'item_ignored',
     /** An error occured while an item was being syned */
     ITEM_ERROR = 'item_error',
+    /** mdJson is associated with an item but sciencebase returned a 404 not found for its contents */
+    ITEM_MDJSON_404 = 'item_mdjson_404',
     /** An lcc's project sync has started */
     PROJECT_SYNC_STARTED = 'project_sync_started',
     /** An lcc's project sync has completed */
@@ -258,7 +260,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     go();
                 },wait);
             } else {
-                go();
+                setImmediate(go);
             }
         });
     }
@@ -335,10 +337,10 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     if(promises.length) {
                         // wait for them to complete
                         Promise.all(promises)
-                            .then(() => setTimeout(next)) // clear call stack
+                            .then(() => setImmediate(next)) // clear call stack
                             .catch(reject);
                     } else {
-                        next();
+                        setImmediate(next);
                     }
                 };
                 // get the ball rolling
@@ -423,10 +425,10 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     }
                     if(promises.length) {
                         Promise.all(promises)
-                            .then(() => setTimeout(next)) // clear call stack
+                            .then(() => setImmediate(next)) // clear call stack
                             .catch(reject);
                     } else {
-                        setTimeout(next);
+                        setImmediate(next);
                     }
                 }))
                 .catch(reject);
@@ -450,8 +452,12 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 _lcc: lcc._id,
                 _item: item.id
             },
-            resolve = (o,code:FromScienceBaseLogCodes) => {
-                this.log.info(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code});
+            resolve = (o,code:FromScienceBaseLogCodes,error?:boolean) => {
+                if(error) {
+                    this.log.error(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code});
+                } else {
+                    this.log.info(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code});
+                }
                 switch(itemType) {
                     case ScType.PROJECT:
                         counts.projects++;
@@ -474,6 +480,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         counts.unchanged++;
                         break;
                     case FromScienceBaseLogCodes.ITEM_IGNORED:
+                    case FromScienceBaseLogCodes.ITEM_MDJSON_404:
                         counts.ignored++;
                         break;
                     default:
@@ -485,7 +492,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 counts.error = true;
                 this.log.error(`[${item.id}] "${item.title}"`,{...logAdditions,
                     code: FromScienceBaseLogCodes.ITEM_ERROR,
-                    data: err
+                    data: this.constructErrorForStorage(err)
                 });
                 _reject(err);
             };
@@ -556,9 +563,15 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         } else {
                             resolve(existing,FromScienceBaseLogCodes.ITEM_UNCHANGED);
                         }
+                        resolve(existing,FromScienceBaseLogCodes.ITEM_UNCHANGED);
                     });
                 }))
-                .catch(reject);
+                .catch((errResponse) => {
+                    if(errResponse.statusCode === 404) {
+                        return resolve(null,FromScienceBaseLogCodes.ITEM_MDJSON_404,true);
+                    }
+                    reject(errResponse)
+                });
         });
     }
 
