@@ -563,7 +563,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         } else {
                             resolve(existing,FromScienceBaseLogCodes.ITEM_UNCHANGED);
                         }
-                        resolve(existing,FromScienceBaseLogCodes.ITEM_UNCHANGED);
                     });
                 }))
                 .catch((errResponse) => {
