@@ -31,12 +31,21 @@ export interface SimplificationConfig extends SyncPipelineProcessorConfig {
  * Logging codes for the Simplification SyncPipelineProcessor
  */
 export enum SimplificationCodes {
+    /** An item has been simplified */
     SIMPLIFIED = 'simplified',
+    /** An item has a contact reference that is not found in its own contacts */
     MISSING_CONTACT = 'missing_contact',
+    /** `mdJson.metadata.resourceInfo.keyword` is not set */
     MISSING_KEYWORDS = 'missing_keywords',
+    /** An item has an invalid funding time period */
     INVALID_FUNDING_TIMEPERIOD = 'invalid_funding_timeperiod',
+    /** A funding allocation is not in USD and so has been excluded */
     NON_USD_FUNDING_ALLOCATION = 'non_usd_funding_allocation',
+    /** Invalid date format (should not be used, moment does not consider just year to be an ISO 8601 valid date though it is).
+        Year only dates have been special cased and assume January 1 of the given year */
     DATE_FORMAT = 'deprecated_date_format',
+    /** A project points to another project via the product relationship */
+    PROJECT_AS_PRODUCT = 'project_as_product',
 }
 
 /**
@@ -276,6 +285,17 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     Item.find({_id:{$in:productIds}})
                         .exec()
                         .then(items => {
+                            // some projects appear to point to themselves as products, make sure no projects were found
+                            // amount the list
+                            items = items.filter(i => {
+                                    if(i.scType === ScType.PROJECT) {
+                                        this.log.warn(`[${SimplificationCodes.PROJECT_AS_PRODUCT}][${item._id}] "${i._id}"`,{...logAdditions,
+                                                code: SimplificationCodes.PROJECT_AS_PRODUCT
+                                            });
+                                        return false;
+                                    }
+                                    return true;
+                                });
                             if(items.length) {
                                 items.forEach(i => i._project = item._id);
                                 item._products = items.map(i => i._id);
