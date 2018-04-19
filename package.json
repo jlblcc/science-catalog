@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "build-watch": "tsc --watch",
-    "build-all": "npm run-script build; cd app_src; npm run-script build; cd ..",
+    "build-all": "npm run-script build; npm run-script doc; cd app_src; npm run-script build; npm run-script doc; cd ..",
     "server-watch": "tsc --watch & nodemon -w ./dist --ignore 'public/*' --preserve-symlinks dist",
     "doc": "typedoc --mode modules --out ./dist/public/server_doc src",
     "test": "tsc && mocha --timeout 5000 dist/**/*.spec.js",
