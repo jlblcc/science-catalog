@@ -6,6 +6,7 @@ import { Item,
          SimplifiedKeywords,
          SimplifiedContact,
          SimplifiedFunding,
+         SimplifiedDates,
          Contact,
          ContactDoc } from '../../../db/models';
 import FromScienceBase from './FromScienceBase';
@@ -252,30 +253,10 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             // unwanted anomaly
             item.simplified.funding = this.simplifyFunding(item);
         }
-        // this deprecationHandler code is not documented by momentjs
-        const dh = moment.deprecationHandler;
-        let currentDate;
-        moment.deprecationHandler = (err,msg) => {
-            this.log.warn(`[${SimplificationCodes.DATE_FORMAT}][${item._id}] "${currentDate}"`,{...logAdditions,
-                    code: SimplificationCodes.DATE_FORMAT
-                });
-        };
-        const dateReducer = (dates,d) => {
-                if(d.date && d.dateType && !dates[d.dateType]) {
-                    // if there isn't a match in the schema then Mongoose will drop
-                    currentDate = d.date;
-                    if(/^\d{4}$/.test(currentDate)) {
-                        // even though technically just a year is a valid ISO 8601 date moment dislikes them so make them January 1
-                        currentDate = `${currentDate}-01-01`;
-                    }
-                    dates[d.dateType] = moment(currentDate).tz('UTC').toDate();
-                }
-                return dates;
-            };
-        item.simplified.dates = (mdJson.metadata.metadataInfo.metadataDate||[]).reduce(dateReducer,{});
-        item.simplified.dates = (mdJson.metadata.resourceInfo.citation.date||[]).reduce(dateReducer,item.simplified.dates);
+        item.simplified.dates = this.simplifyDates(item);
+        // pick a date that the UI can sort on.
         item.simplified.dates.sort = item.simplified.dates.start||item.simplified.dates.publication;//||item.simplified.dates.creation;
-        moment.deprecationHandler = dh;
+
         // if simplifying a project go and relate it to any child products
         if(item.scType === ScType.PROJECT) {
             const productIds = FromScienceBase.findProductIds(item.mdJson);
@@ -285,8 +266,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     Item.find({_id:{$in:productIds}})
                         .exec()
                         .then(items => {
-                            // some projects appear to point to themselves as products, make sure no projects were found
-                            // amount the list
+                            // some projects appear to point to themselves as products, make sure no projects were found in the list
                             items = items.filter(i => {
                                     if(i.scType === ScType.PROJECT) {
                                         this.log.warn(`[${SimplificationCodes.PROJECT_AS_PRODUCT}][${item._id}] "${i._id}"`,{...logAdditions,
@@ -330,6 +310,49 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             }
         }
         return item.save();
+    }
+
+    private simplifyDates(item:ItemDoc):SimplifiedDates {
+        const mdJson = item.mdJson,
+            timePeriod = mdJson.metadata.resourceInfo.timePeriod,
+            logAdditions:LogAdditions = {
+                _item: item._id,
+                _lcc: item._lcc.id
+            },
+            dates:SimplifiedDates = {},
+            dh = moment.deprecationHandler; // this deprecationHandler code is not documented by momentjs
+        let currentDate;
+        // will catch bad "deprecated" date warnings if they happen
+        moment.deprecationHandler = (err,msg) => {
+            this.log.warn(`[${SimplificationCodes.DATE_FORMAT}][${item._id}] "${currentDate}"`,{...logAdditions,
+                    code: SimplificationCodes.DATE_FORMAT
+                });
+        };
+        const toDate = (dateString:string):Date => {
+                currentDate = dateString;
+                if(/^\d{4}$/.test(currentDate)) {
+                    // even though technically just a year is a valid ISO 8601 date moment dislikes them so make them January 1
+                    currentDate = `${currentDate}-01-01`;
+                }
+                return moment(currentDate).tz('UTC').toDate();
+            };
+        if(timePeriod) {
+            if(timePeriod.startDateTime) {
+                dates.start = toDate(timePeriod.startDateTime);
+            }
+            if(timePeriod.endDateTime) {
+                dates.end = toDate(timePeriod.endDateTime);
+            }
+        }
+        // do not use mdJson.metadata.metadataDate, those dates are not about the underlying item
+        (mdJson.metadata.resourceInfo.citation.date||[]).forEach(d => {
+            if(d.date && d.dateType && !dates[d.dateType]) {
+                // if there isn't a match in the schema then Mongoose will drop
+                dates[d.dateType] = toDate(d.date);
+            }
+        });
+        moment.deprecationHandler = dh; // put back the old deprecation handler (or at least unset this context specific one)
+        return dates;
     }
 
     private simplifyFunding(item:ItemDoc):SimplifiedFunding {
