@@ -6,7 +6,7 @@ export const DEFAULT_SORT_DIRECTION = 'desc';
 export const DEFAULT_ACTIVE_SORT = 'simplified.dates.sort';
 export const TABLE_COLUMNS = [{
     property: 'simplified.dates.sort',
-    label: 'Sort'
+    label: 'Date'
 },{
     property: 'simplified.combinedResourceType',
     label: 'Resource type'
