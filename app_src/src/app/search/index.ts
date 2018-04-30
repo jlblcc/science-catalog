@@ -17,6 +17,7 @@ import { GeneralAdvancedControls } from './general-advanced-controls.component';
 import { FundingSearchControls } from './funding-search-controls.component';
 import { SummaryStatistics } from './summary-statistics.component';
 import { Share } from './share.component';
+import { Reset } from './reset.component';
 import { ItemLink } from './item-link.component';
 import { PrincipalInvestigators } from './principal-investigators.component';
 import { ItemDate } from './item-date.component';
@@ -39,7 +40,7 @@ import { SearchService } from './search.service';
         ScienceCatalogCommonModule
     ],
     declarations:[
-        ItemIcon, ItemLink, PrincipalInvestigators, ItemDate, Share,
+        ItemIcon, ItemLink, PrincipalInvestigators, ItemDate, Share, Reset,
         LccSelect, TextSearch, SctypeSelect, KeywordSelect,
         DistinctAutocomplete, DistinctSelect,
         FundingSearchControls,

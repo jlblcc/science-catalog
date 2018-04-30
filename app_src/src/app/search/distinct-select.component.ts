@@ -4,7 +4,7 @@ import { FormControl } from '@angular/forms';
 import { Observable } from 'rxjs/Observable';
 import { tap } from 'rxjs/operators';
 
-import { SearchService } from './search.service';
+import { SearchService, SearchControl } from './search.service';
 
 @Component({
     selector: 'distinct-select',
@@ -19,7 +19,7 @@ import { SearchService } from './search.service';
     </mat-form-field>
     `
 })
-export class DistinctSelect {
+export class DistinctSelect implements SearchControl {
     // this is not very generic, but this is a small app so...
     @Input() displayPipe:string;
 
@@ -30,7 +30,13 @@ export class DistinctSelect {
 
     options:Observable<any[]>;
 
-    constructor(private search:SearchService) {}
+    constructor(private search:SearchService) {
+        search.register(this);
+    }
+
+    reset() {
+        this.control.setValue(null,{emitEvent:false});
+    }
 
     ngOnInit() {
         this.control = new FormControl(this.initialValue);

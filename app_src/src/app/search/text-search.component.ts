@@ -4,7 +4,7 @@ import { FormControl } from '@angular/forms';
 import { debounceTime, takeUntil } from 'rxjs/operators';
 
 import { MonitorsDestroy } from '../common';
-import { SearchService } from './search.service';
+import { SearchService, SearchControl } from './search.service';
 
 @Component({
     selector: 'text-search',
@@ -19,7 +19,7 @@ import { SearchService } from './search.service';
         }
     `]
 })
-export class TextSearch extends MonitorsDestroy {
+export class TextSearch extends MonitorsDestroy implements SearchControl {
     /** FormControl used to populate the search criteria */
     control:FormControl;
     /** FormControl for $text based search */
@@ -34,6 +34,13 @@ export class TextSearch extends MonitorsDestroy {
         this.updateHighlights(v);
         this.control = new FormControl(v);
         this.$text = new FormControl(v);
+        search.register(this);
+    }
+
+    reset() {
+        this.control.setValue(null,{emitEvent:false});
+        this.$text.setValue('',{emitEvent:false});
+        this.updateHighlights(null);
     }
 
     private updateHighlights(v) {

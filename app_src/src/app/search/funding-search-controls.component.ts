@@ -6,7 +6,7 @@ import { debounceTime, takeUntil } from 'rxjs/operators';
 import { MonitorsDestroy } from '../common';
 import { DistinctAutocomplete } from './distinct-autocomplete.component';
 import { DistinctSelect } from './distinct-select.component';
-import { SearchService, FundingSearchCriteria } from './search.service';
+import { SearchService, FundingSearchCriteria, SearchControl } from './search.service';
 
 @Component({
     selector: 'funding-search-controls',
@@ -79,7 +79,7 @@ import { SearchService, FundingSearchCriteria } from './search.service';
         }
     `]
 })
-export class FundingSearchControls extends MonitorsDestroy {
+export class FundingSearchControls extends MonitorsDestroy implements SearchControl {
     initialValues:FundingSearchCriteria;
     controls:FormGroup = new FormGroup({});
 
@@ -100,6 +100,13 @@ export class FundingSearchControls extends MonitorsDestroy {
         this.match = new FormControl(this.initialValues.match);
         this.lowerAmountInput = new FormControl(this.initialValues.lowerAmount);
         this.upperAmountInput = new FormControl(this.initialValues.upperAmount);
+        search.register(this);
+    }
+
+    reset() {
+        this.match.setValue(null,{emitEvent:false});
+        this.lowerAmountInput.setValue(null,{emitEvent:false});
+        this.upperAmountInput.setValue(null,{emitEvent:false});
     }
 
     ngAfterViewInit() {

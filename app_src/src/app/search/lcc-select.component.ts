@@ -4,7 +4,7 @@ import { FormControl } from '@angular/forms';
 import { Observable } from 'rxjs/Observable';
 import { map } from 'rxjs/operators';
 
-import { SearchService } from './search.service';
+import { SearchService, SearchControl } from './search.service';
 import { LccIfc } from '../../../../src/db/models';
 
 @Component({
@@ -22,16 +22,21 @@ import { LccIfc } from '../../../../src/db/models';
         }
     `]
 })
-export class LccSelect {
+export class LccSelect implements SearchControl {
     lccs:Observable<LccIfc[]>;
     control:FormControl;
 
     constructor(private search:SearchService){
         let initial = search.initial;
         this.control = new FormControl(initial ? initial.lcc||[] : []);
+        search.register(this);
     }
 
     ngOnInit() {
         this.lccs = this.search.lccs();
+    }
+
+    reset() {
+        this.control.setValue(null,{emitEvent:false});
     }
 }

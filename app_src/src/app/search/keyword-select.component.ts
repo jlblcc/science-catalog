@@ -11,7 +11,7 @@ import { of as observableOf } from 'rxjs/observable/of';
 import { SimplifiedKeywordType } from '../../../../src/db/models';
 
 import { MonitorsDestroy } from '../common';
-import { KeywordSearchCriteria, KeywordCriteria, SearchService } from './search.service';
+import { KeywordSearchCriteria, KeywordCriteria, SearchService, SearchControl } from './search.service';
 
 function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
     return !!keywords.reduce((found,kw) => {
@@ -58,7 +58,7 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
         }
     `]
 })
-export class KeywordSelect extends MonitorsDestroy {
+export class KeywordSelect extends MonitorsDestroy implements SearchControl {
     keywordTypes:Observable<SimplifiedKeywordType[]>;
     keywordTypesControl:FormControl = new FormControl();
     logicalOperatorControl:FormControl;
@@ -84,6 +84,15 @@ export class KeywordSelect extends MonitorsDestroy {
             logicalOperator: this.logicalOperatorControl.value,
             criteria: criteria||[]
         });
+        search.register(this);
+    }
+
+    reset() {
+        this.logicalOperatorControl.setValue('and',{emitEvent:false});
+        this.control.setValue({
+            logicalOperator: 'and',
+            criteria: []
+        },{emitEvent:false});
     }
 
     ngOnInit() {

@@ -7,7 +7,7 @@ import { Observable } from 'rxjs/Observable';
 import { debounceTime, switchMap, startWith, tap, takeUntil } from 'rxjs/operators';
 
 import { MonitorsDestroy } from '../common';
-import { SearchService } from './search.service';
+import { SearchService, SearchControl } from './search.service';
 
 @Component({
     selector: 'distinct-autocomplete',
@@ -26,7 +26,7 @@ import { SearchService } from './search.service';
         }
     `]
 })
-export class DistinctAutocomplete extends MonitorsDestroy {
+export class DistinctAutocomplete extends MonitorsDestroy implements SearchControl {
     @Input() initialValue:any;
     @Input() placeholder:string;
     @Input() distinctProperty:string;
@@ -38,6 +38,12 @@ export class DistinctAutocomplete extends MonitorsDestroy {
 
     constructor(private search:SearchService) {
         super();
+        search.register(this);
+    }
+
+    reset() {
+        this.control.setValue(null,{emitEvent:false});
+        this.typeAhead.setValue(null,{emitEvent:false});
     }
 
     ngOnInit() {

@@ -47,6 +47,7 @@ const BASE_QUERY_ARGS = {
                     <mat-icon fontIcon="fa-table"></mat-icon>
                 </mat-button-toggle>
             </mat-button-toggle-group>
+            <reset></reset>
             <share></share>
         </div>
 
@@ -136,7 +137,7 @@ export class ItemSearch extends MonitorsDestroy {
         mergeObservables(
             criteriaGroup.valueChanges, // criteria changed
             this.resultsListType.valueChange.asObservable(), // view changed between table/list
-            this.sortChanges // sort order changed
+            this.sortChanges, // sort order changed
         )
         .pipe(
             takeUntil(this.componentDestroyed)
@@ -147,7 +148,8 @@ export class ItemSearch extends MonitorsDestroy {
         mergeObservables(
             criteriaGroup.valueChanges, // criteria changed
             this.paginator.page, // page navigation
-            this.sortChanges // sort property/direction change
+            this.sortChanges, // sort property/direction change
+            this.search.searchReset // search criteria reset
         ).pipe(
             takeUntil(this.componentDestroyed),
             switchMap(() => this.search.search(criteriaGroup.value as SearchCriteria)),

@@ -18,6 +18,19 @@ const BASE_QUERY_ARGS = {
     $select: 'scType simplified lccnet'
 };
 
+/**
+ * Basic interface all search controls should implement.  All search controls
+ * must register themselves with the `SearchService` via its `register` method.
+ */
+export interface SearchControl {
+    /**
+     * Reset the control state.  Implementation should not emit any form events
+     * since many controls will be reset at the same time there should not be a
+     * flurry of updates.
+     */
+    reset():void;
+}
+
 export interface FundingSearchCriteria {
     fiscalYears?: number [];
     awardId?: string;
@@ -72,6 +85,7 @@ export class SearchService {
     private initialCriteria:SearchCriteria;
     private currentCriteria:SearchCriteria;
     private criteriaChanges:Subject<SearchCriteria> = new Subject();
+    private controls:SearchControl[] = [];
     /** How many items to display per page */
     readonly pageSize = 10;
     /** How many items are in the last search result */
@@ -82,6 +96,8 @@ export class SearchService {
     paginator:MatPaginator;
     /** The sort control for the current Item[List|Table] */
     currentSorter:MatSort;
+    /** Will emit whenever the search controls are reset */
+    searchReset:Subject<void> = new Subject();
 
     constructor(private http:HttpClient,
                 private location:Location,
@@ -101,6 +117,17 @@ export class SearchService {
         } else {
             this.initialCriteria = this.cache.get(CACHED_CRITERIA_KEY);
         }
+    }
+
+    register(control:SearchControl):void {
+        if(this.controls.indexOf(control) === -1) {
+            this.controls.push(control);
+        }
+    }
+
+    reset():void {
+        this.controls.forEach(c => c.reset());
+        this.searchReset.next();
     }
 
     get initial():SearchCriteria {
@@ -177,7 +204,7 @@ export class SearchService {
         if(criteria.scType) {
             $filter += ` and scType eq '${criteria.scType}'`;
         }
-        if(criteria.lcc.length) {
+        if(criteria.lcc && criteria.lcc.length) {
             let ids = criteria.lcc.map(id => `'${id}'`);
             $filter += ` and in(_lcc,${ids.join(',')})`;
         }

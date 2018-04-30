@@ -3,7 +3,7 @@ import { FormControl } from '@angular/forms';
 
 import { MatButtonToggleChange } from '@angular/material';
 
-import { SearchService } from './search.service';
+import { SearchService, SearchControl } from './search.service';
 
 @Component({
     selector: 'sctype-select',
@@ -30,7 +30,7 @@ import { SearchService } from './search.service';
     </mat-button-toggle-group>
     `
 })
-export class SctypeSelect {
+export class SctypeSelect implements SearchControl {
     control:FormControl;
     includeProject;
     projectTT;
@@ -41,6 +41,11 @@ export class SctypeSelect {
         let initial = search.initial,
             scType = initial ? initial.scType : null;
         this.control = new FormControl(scType);
+        this.init(scType);
+        search.register(this);
+    }
+
+    private init(scType) {
         switch(scType) {
             case 'project':
                 this.includeProject = true;
@@ -57,6 +62,11 @@ export class SctypeSelect {
         }
         this.projectTT = `${this.includeProject ? 'Exclude' : 'Include'} projects`;
         this.productTT = `${this.includeProduct ? 'Exclude' : 'Include'} products`;
+    }
+
+    reset() {
+        this.control.setValue(null,{emitEvent:false});
+        this.init(null);
     }
 
     toggle(change:MatButtonToggleChange) {
