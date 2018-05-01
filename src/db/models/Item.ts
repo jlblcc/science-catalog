@@ -111,6 +111,37 @@ const resourceTypeSchema = new Schema({
     name: { type: String, required: false },
 },{_id: false});
 
+
+export interface SimplifiedFundingAllocation {
+    /** The fiscal years of the allocation */
+    fiscalYears?: number[];
+    /** The allocation amount */
+    amount: number;
+    /** The allocation source */
+    source?: SimplifiedContact;
+    /** The allocation recipient */
+    recipient?: SimplifiedContact;
+    /** The award id */
+    awardId?: string;
+}
+const fundingAllocationSchema = new Schema({
+    fiscalYears: [{ type: Number, required: false }],
+    amount: { type: Number, required: true },
+    source: { type: contactSchema, required: false },
+    recipient: { type: contactSchema, required: false },
+    awardId: { type: String, required: false },
+},{_id: false});
+export interface SimplifiedFundingAllocations {
+    /** non-matching allocations */
+    nonMatching?: SimplifiedFundingAllocation[];
+    /** matching allocations */
+    matching?: SimplifiedFundingAllocation[];
+}
+const fundingAllocationsSchema = new Schema({
+    nonMatching: [{type:fundingAllocationSchema, required: false}],
+    matching: [{type:fundingAllocationSchema, required: false}],
+},{_id: false});
+
 /**
  * Simplified/processed information about funding (built from `metadata.funding[]`).
  * https://mdtools.adiwg.org/#viewer-page?v=2-6
@@ -129,6 +160,8 @@ export interface SimplifiedFunding {
     sources?: SimplifiedContact[];
     /** Funding recipient contacts */
     recipients?: SimplifiedContact[];
+    /** Funding information re-organized by allocation/type */
+    allocations?: SimplifiedFundingAllocations;
 }
 const fundingSchema = new Schema({
     amount: {type: Number, required: true},
@@ -137,8 +170,8 @@ const fundingSchema = new Schema({
     matching: {type: Boolean, required: true},
     sources: [{type: contactSchema, required: false}],
     recipients: [{type: contactSchema, required: false}],
+    allocations: {type: fundingAllocationsSchema, required: false},
 },{_id: false});
-
 
 /**
  * Simplified dates of interest.
@@ -180,8 +213,8 @@ export interface SimplifiedIfc {
     keywords: SimplifiedKeywords;
     /** The list of simplified contacts (built from `metadata.contact`) */
     contacts: SimplifiedContact[];
-    /** The list of simplified contacts (built from `metadata.resourceInfo.pointOfContact` and `metadata.contact`) */
-    pointOfContact: SimplifiedContactsMap;
+    /** The list of simplified contacts (built from `metadata.resourceInfo.citation.responsibleParty` and `metadata.contact`) */
+    responsibleParty: SimplifiedContactsMap;
     /** The list of string resourceTypes (extracted from `metadata.resourceInfo.resourceType.type`) */
     resourceType: ResourceType[];
     /** The resourceType of this item combined with that of any of its children (projects will contain its product resource types in addition to its own) */
@@ -234,10 +267,7 @@ const simplifiedSchema = new Schema({
     keywords: keywordsSchema,
     contacts: [{type: contactSchema, required: true}],
     // mongoose cannot validate but TypeScript can
-    // TODO have set required to false because some mdJson in sciencebase
-    // has broken the JSON schema of mdJson and has no pointOfContact
-    // once that is fixed put required back to true
-    pointOfContact: {type: Schema.Types.Mixed, required: false },
+    responsibleParty: {type: Schema.Types.Mixed, required: false },
     resourceType: [resourceTypeSchema],
     combinedResourceType: [resourceTypeSchema],
     funding: { type: fundingSchema, required: false },
@@ -261,7 +291,7 @@ const schema = new Schema({
             updatedAt:'modified'
         }
     });
-schema.index({'simplified.abstract':'text','title':'text','simplified.pointOfContact.principalInvestigator.name':'text'});
+schema.index({'simplified.abstract':'text','title':'text','simplified.responsibleParty.principalInvestigator.name':'text'});
 
 /**
  * Item model.

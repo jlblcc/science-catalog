@@ -45,8 +45,8 @@ export class PrincipalInvestigators {
     @Input() highlight:string[];
 
     ngOnInit() {
-        if(this.item.simplified.pointOfContact) { // check should not be necessary but it has happened
-            this.investigators = (this.item.simplified.pointOfContact.principalInvestigator||[]).map(pi => {
+        if(this.item.simplified.responsibleParty) { // check should not be necessary but it has happened
+            this.investigators = (this.item.simplified.responsibleParty.principalInvestigator||[]).map(pi => {
                 const inv:Investigator = {
                     text: pi.name,
                     title: pi.name

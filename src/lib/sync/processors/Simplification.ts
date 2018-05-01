@@ -6,6 +6,7 @@ import { Item,
          SimplifiedKeywords,
          SimplifiedContact,
          SimplifiedFunding,
+         SimplifiedFundingAllocations, SimplifiedFundingAllocation,
          SimplifiedDates,
          Contact,
          ContactDoc } from '../../../db/models';
@@ -111,8 +112,6 @@ export function fiscalYears(period:FiscalTimePeriod | FiscalTimePeriod[]):number
     let yearRanges = (period instanceof Array ? period : [period]).map(p => _fiscalYears(p));
     if(!yearRanges.length) {
         return [];
-    } else if (yearRanges.length === 1) {
-        return yearRanges[0];
     }
     return yearRanges.reduce((years,range) => {
         range.filter(y => years.indexOf(y) === -1).forEach(y => years.push(y));
@@ -251,14 +250,15 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     keywords: {},
                 }),
             contacts: this.simplifyContacts(mdJson.contact.map(c => c.contactId),item),
-            pointOfContact: (mdJson.metadata.resourceInfo.pointOfContact||[]).reduce((map,poc) => {
+            responsibleParty: (mdJson.metadata.resourceInfo.citation.responsibleParty||[]).reduce((map,poc) => {
                     map[poc.role] = map[poc.role] || [];
                     this.simplifyContacts(poc.party.map(ref => ref.contactId),item,poc)
                         .forEach(c => map[poc.role].push(c));
                     return map;
                 },{}),
             resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
-            combinedResourceType: mdJson.metadata.resourceInfo.resourceType
+            combinedResourceType: mdJson.metadata.resourceInfo.resourceType,
+            lccnet: item.simplified ? item.simplified.lccnet : undefined, // keep if set previously
         };
         if(item.scType === ScType.PROJECT) {
             // there is one product that has funding but the requirements say
@@ -380,67 +380,94 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                 _item: item._id,
                 _lcc: item._lcc.id
             },
-            simplified:SimplifiedFunding = {
-                amount: funding.reduce((total,f) => {
-                                    return total + (f.allocation||[]).reduce((aSum,a) => {
-                                            if(a.currency && a.currency !== 'USD') {
-                                                this.log.warn(`[${SimplificationCodes.NON_USD_FUNDING_ALLOCATION}][${item._id}]`,{...logAdditions,
-                                                        code: SimplificationCodes.NON_USD_FUNDING_ALLOCATION,
-                                                        data: a
-                                                    });
-                                                return aSum;
-                                            }
-                                            return aSum+(a.amount||0);
-                                        },0);
-                                },0),
-                matching: funding.reduce((matching,f) => {
-                                    return matching||(f.allocation||[]).reduce((m,a) => m||(a.matching ? true : false),false)
-                                },false)
-            };
-        // calculate fiscal years
-        try {
-            let timePeriods = funding
-                .filter(f => !!f.timePeriod) // only those with timePeriods
-                .map(f => f.timePeriod) as FiscalTimePeriod[];
-            simplified.fiscalYears = fiscalYears(timePeriods);
-        } catch (fiscalError) {
-            // happens if someone has defined an invalid start/end range (bad data)
-            this.log.warn(`[${SimplificationCodes.INVALID_FUNDING_TIMEPERIOD}][${item._id}]`,{...logAdditions,
-                    code: SimplificationCodes.INVALID_FUNDING_TIMEPERIOD,
-                    data: {
-                        error: this.constructErrorForStorage(fiscalError),
-                        funding: mdJson.metadata.funding
-                    }
-                });
-        }
-        // look for awardIds (funding[].allocation[].sourceAllocationId)
-        simplified.awardIds = funding.reduce((ids,f) => {
-                (f.allocation||[]).forEach((a) => {
-                    if(a.sourceAllocationId && ids.indexOf(a.sourceAllocationId) === -1) {
-                        ids.push(a.sourceAllocationId);
-                    }
-                });
-                return ids;
-            },[]);
-
-        // generate funding sources/recipients
-        const simplifyContacts = (key) => {
-            const contacts:SimplifiedContact[] = [],
-                duplicateContact = (c) => contacts.reduce((found,ec) => found||(this.equalContacts(c,ec) ? true : false),false);
-            funding.forEach(f => {
-                (f.allocation||[]).forEach(a => {
-                    if(a[key]) {
-                        let c = this.simplifyContact(a[key],item,a);
-                        if(!duplicateContact(c)) {
-                            contacts.push(c);
+            allAllocations:any[] = funding.reduce((arr,f) => { // returning wrapper of { matching: boolean: allocation: SimplifiedFundingAllocation }
+                    let fYears:number[];
+                    if(f.timePeriod) {
+                        try {
+                            fYears = fiscalYears(f.timePeriod as FiscalTimePeriod);
+                        } catch(fiscalError) {
+                            // happens if someone has defined an invalid start/end range (bad data)
+                            this.log.warn(`[${SimplificationCodes.INVALID_FUNDING_TIMEPERIOD}][${item._id}]`,{...logAdditions,
+                                    code: SimplificationCodes.INVALID_FUNDING_TIMEPERIOD,
+                                    data: {
+                                        error: this.constructErrorForStorage(fiscalError),
+                                        funding: mdJson.metadata.funding
+                                    }
+                                });
                         }
                     }
-                });
-            });
-            return contacts;
+                    (f.allocation||[]).forEach(a => {
+                        const alloc:SimplifiedFundingAllocation = {
+                            fiscalYears: fYears,
+                            amount: a.amount||0,
+                            awardId: a.sourceAllocationId
+                        };
+                        if(a.currency && a.currency !== 'USD') {
+                            this.log.warn(`[${SimplificationCodes.NON_USD_FUNDING_ALLOCATION}][${item._id}]`,{...logAdditions,
+                                    code: SimplificationCodes.NON_USD_FUNDING_ALLOCATION,
+                                    data: a
+                                });
+                            alloc.amount = 0;
+                        }
+                        if(a.sourceId) {
+                            alloc.source = this.simplifyContact(a.sourceId,item,a);
+                        }
+                        if(a.recipientId) {
+                            alloc.recipient = this.simplifyContact(a.recipientId,item,a);
+                        }
+                        arr.push({
+                            matching: a.matching||false,
+                            allocation: alloc
+                        })
+                    });
+                    return arr;
+                },[]),
+            sortAllocations = (allocs:SimplifiedFundingAllocation[]):SimplifiedFundingAllocation[] => {
+                    let maxYear:any[] = allocs.map(a => {
+                        return {
+                            y: (a.fiscalYears||[]).reduce((max,y) => y > max ? y : max, 0),
+                            a: a
+                        }
+                    });
+                    return maxYear.sort((a,b) => (b.y - a.y)).map(wrap => wrap.a);
+                },
+            allocations:SimplifiedFundingAllocations = {
+                nonMatching: sortAllocations(allAllocations.filter(wrap => !wrap.matching).map(wrap => wrap.allocation)),
+                matching: sortAllocations(allAllocations.filter(wrap => wrap.matching).map(wrap => wrap.allocation))
+            },
+            allAllocationsUnwrapped = allAllocations.map(wrap => wrap.allocation),
+            duplicateContact = (c,contacts) => contacts.reduce((found,ec) => found||(this.equalContacts(c,ec) ? true : false),false);
+        const simplified:SimplifiedFunding = {
+            amount: allAllocationsUnwrapped.reduce((sum,a) => (sum+a.amount),0),
+            fiscalYears: allAllocationsUnwrapped.reduce((years,a) => {
+                    (a.fiscalYears||[]).forEach(y => {
+                        if(years.indexOf(y) == -1) {
+                            years.push(y);
+                        }
+                    })
+                    return years;
+                },[]).sort().reverse(),
+            awardIds: allAllocationsUnwrapped.reduce((arr,a) => {
+                    if(a.awardId && arr.indexOf(a.awardId) === -1) {
+                        arr.push(a.awardId);
+                    }
+                    return arr;
+                },[]),
+            matching: allocations.matching.length ? true : false,
+            sources: allAllocationsUnwrapped.reduce((arr,a) => {
+                    if(a.source && !duplicateContact(a.source,arr)) {
+                        arr.push(a.source);
+                    }
+                    return arr;
+                },[]),
+            recipients: allAllocationsUnwrapped.reduce((arr,a) => {
+                    if(a.recipient && !duplicateContact(a.recipient,arr)) {
+                        arr.push(a.recipient);
+                    }
+                    return arr;
+                },[]),
+            allocations: allocations
         };
-        simplified.sources = simplifyContacts('sourceId');
-        simplified.recipients = simplifyContacts('recipientId');
         return simplified;
     }
 

@@ -13,8 +13,8 @@ describe('Simplification',() => {
             endDateTime: '2014-09-30'
         });
         expect(years).to.be.instanceof(Array).with.length(2);
-        expect(years[0]).to.equal(2013);
-        expect(years[1]).to.equal(2014);
+        expect(years[0]).to.equal(2014);
+        expect(years[1]).to.equal(2013);
 
         years = fiscalYears(null);
         expect(years).to.be.instanceof(Array).with.length(0);

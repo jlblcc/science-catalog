@@ -20,8 +20,8 @@ export class ItemLink {
 
     ngOnInit() {
         this._title = this.item.simplified.title;
-        if(this.item.lccnet && this.item.lccnet.url) {
-            this._href = this.item.lccnet.url;
+        if(this.item.simplified && this.item.simplified.lccnet) {
+            this._href = this.item.simplified.lccnet.url;
             this._target = this.target || '';
         } else {
             this._target = this.target || '_blank';
