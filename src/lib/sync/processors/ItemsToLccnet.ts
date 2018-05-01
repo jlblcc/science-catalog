@@ -47,6 +47,8 @@ export enum ItemsToLccnetLogCodes {
     ITEM_NOT_SIMPLIFIED = 'item_not_simplified',
     /** An item refers to an lcc not in lccnetwork (should never happen) */
     LCCNET_MISSING_LCC = 'lccnet_missing_lcc',
+    /** An update or create failed due to a non-200 rc */
+    LCCNET_NON200_RC = 'lccnet_non200_rc',
 }
 
 /**
@@ -79,11 +81,10 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                     },{});
                                 return this.syncType(ScType.PROJECT,lccMap)
                                            .then(() => {
-                                               this.syncType(ScType.PRODUCT,lccMap)
-                                                 .then(() => {
-                                                     resolve(this.results);
-                                                 });
-
+                                               return this.syncType(ScType.PRODUCT,lccMap)
+                                                         .then(() => {
+                                                             resolve(this.results);
+                                                         });
                                            });
                             });
                 })
@@ -113,7 +114,8 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                   sbids = Object.keys(sbidToItem);
                             // dealing with items serially to avoid overloading lccnet
                             Item.find({scType:scType})
-                                .cursor().eachAsync(item => {
+                                .cursor()
+                                .eachAsync(item => {
                                     const logAdditions:LogAdditions = {
                                         _lcc: item._lcc,
                                         _item: item._id
@@ -153,20 +155,29 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                                 }
                                                 const whatHappened = sbidIndex === -1 ? 'Created' : 'Updated';
                                                 this.results.results[`${scType === ScType.PROJECT ? 'projects' : 'products'}${whatHappened}`]++;
-                                                this.log.info(`${whatHappened} item with lccnet id ${updated.id}`,{
+                                                this.log.info(`${whatHappened} item with lccnet id ${sbid}/${updated.id}`,{
                                                     ...logAdditions,
                                                     code: scType === ScType.PROJECT ?
                                                         (sbidIndex === -1 ? ItemsToLccnetLogCodes.PROJECT_CREATED : ItemsToLccnetLogCodes.PROJECT_UPDATED) :
                                                         (sbidIndex === -1 ? ItemsToLccnetLogCodes.PRODUCT_CREATED : ItemsToLccnetLogCodes.PRODUCT_UPDATED)
                                                 });
-                                                item.lccnet = {
+                                                item.simplified.lccnet = {
                                                     id: updated.id,
                                                     url: updated._links.drupal_self
                                                 };
                                                 return item.save();
                                             }).catch(error => {
                                                 if(error.statusCode) { // lccnet responded with a non 200 status code
-                                                    reject(new Error(`Lccnet error ${error.statusCode}`));
+                                                    this.log.error(`Received non 200 status ${error.statusCode}`,{
+                                                        ...logAdditions,
+                                                        code: ItemsToLccnetLogCodes.LCCNET_NON200_RC,
+                                                        data: {
+                                                            item: lccnetItem,
+                                                            updates: lccnetUpdate
+                                                        }
+                                                    }).then(() => {
+                                                        reject(new Error(`Lccnet error ${error.statusCode}`));
+                                                    });
                                                 } else {
                                                     reject(error);
                                                 }
@@ -194,7 +205,8 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                                 }
                                             };
                                     next();
-                                });
+                                })
+                                .catch(reject);
                         });
         });
     }

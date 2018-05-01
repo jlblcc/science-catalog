@@ -174,6 +174,8 @@ export interface SimplifiedIfc {
     dates?: SimplifiedDates;
     /** The item abstract (`metadata.resourceInfo.abstract`) */
     abstract: string;
+    /** The item status array translated from camel to title case */
+    status: string[];
     /** The item keywords (built from `metadata.resourceInfo.keyword`) */
     keywords: SimplifiedKeywords;
     /** The list of simplified contacts (built from `metadata.contact`) */
@@ -186,6 +188,8 @@ export interface SimplifiedIfc {
     combinedResourceType: ResourceType[];
     /** The simplified funding information */
     funding?: SimplifiedFunding;
+    /** Reference to lccnetwork if one exists */
+    lccnet?: LccnetRef;
 }
 
 /**
@@ -214,8 +218,6 @@ export interface ItemIfc {
     _project?: any;
     /** If scType is 'project' the child product items (if any) */
     _products?: any[];
-    /** Reference to lccnetwork if one exists */
-    lccnet?: LccnetRef;
 }
 
 /**
@@ -228,6 +230,7 @@ const simplifiedSchema = new Schema({
     lcc: {type: String, required: true},
     dates: {type: datesSchema, required: false},
     abstract: {type: String, required: true },
+    status: [{type:String, required: true}],
     keywords: keywordsSchema,
     contacts: [{type: contactSchema, required: true}],
     // mongoose cannot validate but TypeScript can
@@ -238,6 +241,7 @@ const simplifiedSchema = new Schema({
     resourceType: [resourceTypeSchema],
     combinedResourceType: [resourceTypeSchema],
     funding: { type: fundingSchema, required: false },
+    lccnet: {type: lccnetRefSchema, required: false},
 },{ _id : false });
 
 const schema = new Schema({
@@ -251,7 +255,6 @@ const schema = new Schema({
         simplified: simplifiedSchema,
         _project: {type: Schema.Types.ObjectId, ref: 'Item', required: false},
         _products: [{type: Schema.Types.ObjectId, ref: 'Item', required: false}],
-        lccnet: {type: lccnetRefSchema, required: false},
     },{
         timestamps: {
             createdAt:'created',

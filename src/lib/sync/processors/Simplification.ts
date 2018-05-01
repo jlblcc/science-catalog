@@ -120,6 +120,22 @@ export function fiscalYears(period:FiscalTimePeriod | FiscalTimePeriod[]):number
     },[]).sort().reverse();
 }
 
+// thisThatTheOther -> This that the other
+export function camelToTitleCase(s:string):string {
+    let title = '',i,c;
+    for(i = 0; i < s.length; i++) {
+        c = s.charAt(i);
+        if(i === 0) {
+            title += c.toUpperCase();
+        } else if (/[A-Z]/.test(c)) {
+            title += ` ${c.toLowerCase()}`;
+        } else {
+            title += c;
+        }
+    }
+    return title;
+}
+
 /**
  * @todo `simplification.dates.sort`
  */
@@ -210,6 +226,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             title: mdJson.metadata.resourceInfo.citation.title,
             lcc: lcc.title,
             abstract: mdJson.metadata.resourceInfo.abstract,
+            status: mdJson.metadata.resourceInfo.status.map(s => camelToTitleCase(s)),
             keywords: (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
                     if(k.keywordType) {
                         let typeLabel = k.keywordType,
@@ -236,10 +253,6 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             contacts: this.simplifyContacts(mdJson.contact.map(c => c.contactId),item),
             pointOfContact: (mdJson.metadata.resourceInfo.pointOfContact||[]).reduce((map,poc) => {
                     map[poc.role] = map[poc.role] || [];
-                    if(!poc.party) {
-                        console.log('no party?');
-                        console.log(item);
-                    }
                     this.simplifyContacts(poc.party.map(ref => ref.contactId),item,poc)
                         .forEach(c => map[poc.role].push(c));
                     return map;
