@@ -74,10 +74,14 @@ export interface FiscalTimePeriod {
  * @param d An ISO8601 formatted date string.
  * @returns The fiscal year for `d` or null.
  */
-export function fiscalYear(d:string):number {
+export function fiscalYear(d:string,end?:boolean):number {
     if(d) {
         let m = moment(d).tz('UTC');
         // if >= october next year
+        if(end && m.month() === 9 && m.date() === 1) {
+            // end on Oct 1 not considered the next fiscal year
+            return m.year();
+        }
         return m.year() + (m.month() >= 9 ? 1 : 0);
     }
     return null;
@@ -89,7 +93,7 @@ function _fiscalYears(period:FiscalTimePeriod) {
         years:number[] = [];
     if(start) {
         let startYear = fiscalYear(start),
-            endYear = fiscalYear(end);
+            endYear = fiscalYear(end,true);
         if(endYear && endYear < startYear) {
             throw new Error(`Invalid date range ${start} - ${end}`)
         } else if (!endYear) {

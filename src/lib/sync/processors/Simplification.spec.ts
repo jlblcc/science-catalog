@@ -33,6 +33,19 @@ describe('Simplification',() => {
         expect(years[0]).to.equal(2014);
     });
 
+    it('fiscalYears endOnOct1',() => {
+        let years = fiscalYears([{
+            startDateTime: '2015-10-01T04:00:00.000Z',
+            endDateTime: '2016-10-01T03:59:59.999Z'
+        },{
+            startDateTime: '2016-10-01T04:00:00.000Z',
+            endDateTime: '2017-10-01T03:59:59.999Z'
+        }]);
+        expect(years).to.be.instanceof(Array).with.length(2);
+        [2017,2016].forEach((y,i) => expect(years[i]).to.equal(y));
+        // the test below is redundant with this one.
+    });
+
     it('fiscalYears (array)',() => {
         let years = fiscalYears([{
             startDateTime: '2014-10-01T05:00:00.000Z',
@@ -41,8 +54,8 @@ describe('Simplification',() => {
             startDateTime: '2015-10-01T05:00:00.000Z',
             endDateTime: '2016-10-01T04:59:59.999Z'
         }]);
-        expect(years).to.be.instanceof(Array).with.length(3);
-        [2017, 2016, 2015].forEach((y,i) => expect(years[i]).to.equal(y))
+        expect(years).to.be.instanceof(Array).with.length(2);
+        [2016, 2015].forEach((y,i) => expect(years[i]).to.equal(y))
 
         years = fiscalYears([{
             startDateTime: '2014-10-01T05:00:00.000Z',
