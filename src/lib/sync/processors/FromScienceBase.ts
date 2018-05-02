@@ -547,6 +547,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         scType: itemType,
                         hash: sha1.digest('hex'),
                         mdJson: mdJson,
+                        files: item.files
                     };
 
                     if(itemType === ScType.PROJECT && productIds) {

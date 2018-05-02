@@ -245,6 +245,8 @@ export interface ItemIfc {
     modified: Date;
     /** The `mdJson` document */
     mdJson: any;
+    /** The files field associatd with the item from sciencebase */
+    files: any[];
     /** The simplified version of the `mdJson` document */
     simplified?: SimplifiedIfc;
     /** If scType is 'product' the parent project item */
@@ -282,6 +284,7 @@ const schema = new Schema({
         created: {type: Date, required: true},
         modified: {type: Date, required: true},
         mdJson: Schema.Types.Mixed,
+        files: [Schema.Types.Mixed],
         simplified: simplifiedSchema,
         _project: {type: Schema.Types.ObjectId, ref: 'Item', required: false},
         _products: [{type: Schema.Types.ObjectId, ref: 'Item', required: false}],
