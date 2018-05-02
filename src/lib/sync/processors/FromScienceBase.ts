@@ -240,6 +240,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                                 this.request(input,true)
                             },wait);
                         } else if (!isRetry && err.name === 'RequestError') {
+                            this.destroyAgent();
                             const wait = this.retryAfter;
                             this.log.debug(`ScienceBase RequestError "${err.message}" will retry once after ${wait/1000} seconds.`);
                             this.waitingOnRetry = true;
