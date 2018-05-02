@@ -27,8 +27,8 @@ const READONLY = {
 declare function emit(k, v);
 
 class ItemResource extends Resource<ItemDoc> {
-    private _findQuery(req:Request) {
-        let query = this.initQuery(this.getModel().find(),req);
+    private _findQuery(req:Request):DocumentQuery<ItemDoc[],ItemDoc> {
+        let query = this.initQuery(this.getModel().find(),req) as DocumentQuery<ItemDoc[],ItemDoc>;
         if(req.query.$text) {
             query.and([{$text: {$search: req.query.$text}}]);
         }
@@ -61,6 +61,21 @@ class ItemResource extends Resource<ItemDoc> {
                     return o;
                 } : null;
             this._findListResponse(req,res,items,postMapper);
+        });
+    }
+
+    findById(req:Request,res:Response,next?:Resource.NEXT) {
+        const query = this.initQuery(this.getModel().findById(req._resourceId),req) as DocumentQuery<ItemDoc,ItemDoc>;
+        if(typeof(req.query.$expand_relationships) !== 'undefined') {
+            query.populate('_products','simplified');
+            query.populate('_projects','simplified');
+        }
+        query.exec((err,obj) => {
+            if(err || !obj) {
+                Resource.sendError(res,404,'not found',err);
+            } else {
+                this.singleResponse(req,res,obj,null,next);
+            }
         });
     }
 
