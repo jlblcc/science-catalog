@@ -595,7 +595,9 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 }
                 if(sbid) {
                     if(/^[a-zA-Z,0-9]+$/.test(sbid)) {
-                        productIds.push(sbid);
+                        if(productIds.indexOf(sbid) !== -1) { // duplicates apparently happen
+                            productIds.push(sbid);
+                        }
                     } else if (log) {
                         log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID}][${item.id}] "${item.title}" "${sbid}"`,{
                             ...logAdditions,
