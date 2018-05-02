@@ -95,7 +95,7 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
                     this.procEntry.error = null;
                     this.procEntry.results = output.results;
                     this.procEntry.save(onSave);
-                }).catch((err:Error) => {
+                }).catch((err) => {
                     this.procEntry.lastComplete = new Date();
                     this.procEntry.results = null;
                     this.procEntry.error = this.constructErrorForStorage(err);

@@ -224,6 +224,13 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         });
     }
 
+    private retryPause(why:string):Promise<void> {
+        if(why) {
+            this.log.debug(`${why} (pausing ${this.retryAfter/1000} seconds)`);
+        }
+        return new Promise(resolve => setTimeout(resolve,this.retryAfter));
+    }
+
     private request(input:any,retryAttempt?:number):Promise<any> {
         input = typeof(input) === 'string' ? { url: input } : input;
         return new Promise((resolve,reject) => {
@@ -237,16 +244,16 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                              ((err.statusCode === 429 || err.statusCode === 503) || err.name === 'RequestError') ) {
                             retryAttempt = retryAttempt||0;
                             retryAttempt++;
-                            const baseLogMessage = err.name === 'RequestError' ?
-                                    `ScienceBase responded with request error "${err.message}"` :
-                                    `ScienceBase responded with response code ${err.statusCode}`;
-                            this.log.debug(`${baseLogMessage} will make retry attempt #${retryAttempt} after ${this.retryAfter/1000} seconds.`);
                             this.waitingOnRetry = true;
                             this.destroyAgent();
-                            setTimeout(() => {
-                                this.waitingOnRetry = false;
-                                this.request(input,retryAttempt);
-                            },this.retryAfter);
+                            return this.retryPause(
+                                err.name === 'RequestError' ?
+                                    `ScienceBase responded with request error "${err.message}" [retry attempt #${retryAttempt}]` :
+                                    `ScienceBase responded with response code ${err.statusCode} [retry attempt #${retryAttempt}]`
+                                ).then(() => {
+                                    this.waitingOnRetry = false;
+                                    return this.request(input,retryAttempt).then(resolve).catch(reject);
+                                });
                         } else {
                             reject(err);
                         }
@@ -254,18 +261,17 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
             };
             if(this.waitingOnRetry) {
                 this.log.debug(`Waiting on retry, will wait ${this.retryAfter/1000} seconds before making request`);
-                setTimeout(() => {
-                    go();
-                },this.retryAfter);
+                return this.retryPause('Waiting on retry').then(go);
             } else if (this.waitingOnRequestLimit || ((this.requestCount+1)%this.requestLimit === 0)) {
+                let why = null;
                 if(!this.waitingOnRequestLimit) {
                     this.waitingOnRequestLimit = true;
-                    this.log.debug(`Next request will be an interval of ${this.requestLimit} waiting ${this.retryAfter/1000} seconds before making request`);
+                    why = `Next request will be an interval of ${this.requestLimit}`;
                 }
-                setTimeout(() => {
-                    this.waitingOnRequestLimit = false;
-                    go();
-                },this.retryAfter);
+                return this.retryPause(why).then(() => {
+                            this.waitingOnRequestLimit = false;
+                            go();
+                        });
             } else {
                 setImmediate(go);
             }
