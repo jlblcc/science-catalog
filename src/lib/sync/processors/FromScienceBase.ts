@@ -67,6 +67,7 @@ const DEFAULT_ITEM_PAGE_SIZE = 20;
 const DEFAULT_PAUSE_BETWEEN_LCC = 30000;
 const DEFAULT_REQUEST_LIMIT = 200;
 const DEFAULT_RETRY_AFTER = 120000;
+const DEFAULT_MAX_RETRIES = 5;
 
 /**
  * FromScienceBase configuration options.
@@ -82,6 +83,8 @@ export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
     requestLimit?:number;
     /** How long to pause after receiving a 429 (Too many requests) or whenever the request limit is hit (unless received a 'retry-after' header) (default 120000) */
     retryAfter?:number;
+    /** The maximum number of times to retry a request that meets specific circumstances */
+    maxRetries?:number;
     /** Whether items should be forcibly updated with the most recent mdJson even if no change is detected */
     force?:boolean;
     /** FOR TESTING ONLY: Used for testing to randomly modify incoming items so their has changes */
@@ -169,6 +172,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
     get requestLimit() { return (this.config.requestLimit||DEFAULT_REQUEST_LIMIT); }
     get retryAfter() { return (this.config.retryAfter||DEFAULT_RETRY_AFTER); }
     get pageSize() { return (this.config.pageSize||DEFAULT_ITEM_PAGE_SIZE); }
+    get maxRetries() { return (this.config.maxRetries||DEFAULT_MAX_RETRIES); }
 
     get agent():https.Agent {
         if(!this._agent) {
@@ -220,7 +224,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         });
     }
 
-    private request(input:any,isRetry?:boolean):Promise<any> {
+    private request(input:any,retryAttempt?:number):Promise<any> {
         input = typeof(input) === 'string' ? { url: input } : input;
         return new Promise((resolve,reject) => {
             const go = () => {
@@ -229,45 +233,39 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 request(input)
                     .then(resolve)
                     .catch(err => {
-                        if(!isRetry && (err.statusCode === 429 || err.statusCode === 503)) {
-                            this.destroyAgent();
-                            const headers = err.response.headers,
-                                  wait = headers['retry-after'] ? ((parseInt(headers['retry-after'])+1)*60) : this.retryAfter;
-                            this.log.debug(`ScienceBase responded with ${err.statusCode} (at ${this.requestCount} requests) will retry once after ${wait/1000} seconds`);
+                        if ( (!retryAttempt || (retryAttempt < (this.maxRetries+1))) &&
+                             ((err.statusCode === 429 || err.statusCode === 503) || err.name === 'RequestError') ) {
+                            retryAttempt = retryAttempt||0;
+                            retryAttempt++;
+                            const baseLogMessage = err.name === 'RequestError' ?
+                                    `ScienceBase responded with request error "${err.message}"` :
+                                    `ScienceBase responded with response code ${err.statusCode}`;
+                            this.log.debug(`${baseLogMessage} will make retry attempt #${retryAttempt} after ${this.retryAfter/1000} seconds.`);
                             this.waitingOnRetry = true;
-                            return setTimeout(() => {
-                                this.waitingOnRetry = false;
-                                this.request(input,true)
-                            },wait);
-                        } else if (!isRetry && err.name === 'RequestError') {
                             this.destroyAgent();
-                            const wait = this.retryAfter;
-                            this.log.debug(`ScienceBase RequestError "${err.message}" will retry once after ${wait/1000} seconds.`);
-                            this.waitingOnRetry = true;
-                            return setTimeout(() => {
+                            setTimeout(() => {
                                 this.waitingOnRetry = false;
-                                this.request(input,true);
-                            },wait);
+                                this.request(input,retryAttempt);
+                            },this.retryAfter);
+                        } else {
+                            reject(err);
                         }
-                        reject(err);
                     });
             };
             if(this.waitingOnRetry) {
-                const wait = this.retryAfter;
-                this.log.debug(`Waiting on retry, will wait ${wait/1000} seconds before making request`);
+                this.log.debug(`Waiting on retry, will wait ${this.retryAfter/1000} seconds before making request`);
                 setTimeout(() => {
                     go();
-                },wait);
+                },this.retryAfter);
             } else if (this.waitingOnRequestLimit || ((this.requestCount+1)%this.requestLimit === 0)) {
-                const wait = this.retryAfter;
                 if(!this.waitingOnRequestLimit) {
                     this.waitingOnRequestLimit = true;
-                    this.log.debug(`Next request will be an interval of ${this.requestLimit} waiting ${wait/1000} seconds before making request`);
+                    this.log.debug(`Next request will be an interval of ${this.requestLimit} waiting ${this.retryAfter/1000} seconds before making request`);
                 }
                 setTimeout(() => {
                     this.waitingOnRequestLimit = false;
                     go();
-                },wait);
+                },this.retryAfter);
             } else {
                 setImmediate(go);
             }
