@@ -11,7 +11,7 @@ interface Investigator {
     template: `
     <ul>
         <li *ngFor="let i of investigators">
-            <a *ngIf="i.href; else plainText" [href]="i.href" [title]="i.title" [matTooltip]="i.title"><highlight-text [text]="i.text" [highlight]="highlight"></highlight-text></a>
+            <a *ngIf="i.href; else plainText" [href]="i.href" [matTooltip]="i.title"><highlight-text [text]="i.text" [highlight]="highlight"></highlight-text></a>
             <ng-template #plainText>
                 <div [matTooltip]="i.title"><highlight-text [text]="i.text" [highlight]="highlight"></highlight-text></div>
             </ng-template>
