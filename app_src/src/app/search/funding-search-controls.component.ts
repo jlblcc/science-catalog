@@ -24,9 +24,9 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
                                        containsMode="true"
                                        [initialValue]="initialValues.awardId"></distinct-autocomplete>
                 <mat-radio-group [formControl]="match">
+                         <mat-radio-button [value]="null">All</mat-radio-button>
+                         <mat-radio-button [value]="false">Agency Funcing</mat-radio-button>
                          <mat-radio-button [value]="true">Matching/In-Kind</mat-radio-button>
-                         <mat-radio-button [value]="false">Not Matching/In-Kind</mat-radio-button>
-                         <mat-radio-button [value]="null">Either</mat-radio-button>
                 </mat-radio-group>
             </div>
             <div class="source-recipient-pair">
