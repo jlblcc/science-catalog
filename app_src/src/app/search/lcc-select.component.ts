@@ -11,7 +11,7 @@ import { LccIfc } from '../../../../src/db/models';
     selector: 'lcc-select',
     template: `
     <mat-form-field>
-        <mat-select placeholder="LCC(s)" [formControl]="control" multiple>
+        <mat-select placeholder="Filter by LCC(s)" [formControl]="control" multiple>
             <mat-option *ngFor="let lcc of lccs | async" [value]="lcc._id">{{lcc.title | lccTitle}}</mat-option>
         </mat-select>
     </mat-form-field>

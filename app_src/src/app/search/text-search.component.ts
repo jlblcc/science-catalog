@@ -10,7 +10,7 @@ import { SearchService, SearchControl } from './search.service';
     selector: 'text-search',
     template: `
     <mat-form-field class="text-search">
-        <input matInput placeholder="Title/Description/PI" [formControl]="$text" />
+        <input matInput placeholder="Title/Description/Principal Investigator" [formControl]="$text" />
     </mat-form-field>
     `,
     styles: [`
