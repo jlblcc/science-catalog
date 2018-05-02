@@ -1,6 +1,6 @@
 import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
 import { Lcc, LccDoc, Item, ItemDoc, ScType } from '../../../db/models';
-import { LogAdditions } from '../../log';
+import { Logger, LogAdditions } from '../../log';
 import { QueryCursor } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
@@ -121,6 +121,8 @@ export enum FromScienceBaseLogCodes {
     PROJECT_SYNC_COMPLETED = 'project_sync_completed',
     /** A project to product association is missing the science base id */
     ASSOC_PRODUCT_MISSING_SBID = 'assoc_product_missing_sbid',
+    /** A project to product association appears to have a bad science base id */
+    ASSOC_PRODUCT_INVALID_SBID = 'assoc_product_invalid_sbid',
     /** An lcc's product sync has started */
     PRODUCT_SYNC_STARTED = 'product_sync_started',
     /** An lcc's product sync has completed */
@@ -143,10 +145,6 @@ export function fromScienceBaseReport(results:ItemCounts[]):string {
             .forEach(k => lccSync += `\n  ${k} = ${counts[k]}`);
         return report+lccSync+"\n\n";
     },'');
-}
-
-class ProductAssociationError extends Error {
-    productAssociation:any;
 }
 
 /**
@@ -551,14 +549,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     };
 
                     if(itemType === ScType.PROJECT && productIds) {
-                        try {
-                            // will throw an exception if found productAssociation but
-                            // could not find science base id so we can log it.
-                            FromScienceBase.findProductIds(mdJson,true).forEach(sbid => productIds.push(sbid));
-                        } catch (productError) {
-                            const paError = productError as ProductAssociationError;
-                            this.log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID}][${item.id}] "${item.title}"`,{...logAdditions,code: FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID,data:paError.productAssociation});
-                        }
+                        FromScienceBase.findProductIds(mdJson,item,this.log,logAdditions).forEach(sbid => productIds.push(sbid));
                     }
 
                     Item.findById(catalog_item._id,(err,existing) => {
@@ -588,7 +579,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         });
     }
 
-    static findProductIds(mdJson:any,complain?:boolean):string[] {
+    static findProductIds(mdJson:any,item?:any,log?:Logger,logAdditions?:LogAdditions):string[] {
         const productIds = [];
         (mdJson.metadata.associatedResource||[]).filter(r => r.associationType === 'product')
             .forEach(productAssociation => {
@@ -603,11 +594,21 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     },undefined)
                 }
                 if(sbid) {
-                    productIds.push(sbid);
-                } else if(complain) {
-                    const err = new ProductAssociationError();
-                    err.productAssociation = productAssociation;
-                    throw err;
+                    if(/^[a-zA-Z,0-9]+$/.test(sbid)) {
+                        productIds.push(sbid);
+                    } else if (log) {
+                        log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID}][${item.id}] "${item.title}" "${sbid}"`,{
+                            ...logAdditions,
+                            code: FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID,
+                            data:productAssociation
+                        });
+                    }
+                } else if (log) {
+                    log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID}][${item.id}] "${item.title}"`,{
+                        ...logAdditions,
+                        code: FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID,
+                        data:productAssociation
+                    });
                 }
             });
             return productIds;

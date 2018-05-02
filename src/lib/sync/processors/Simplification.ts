@@ -279,6 +279,11 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             const productIds = FromScienceBase.findProductIds(item.mdJson);
             if(productIds.length) {
                 // TODO log the association has been made?
+productIds.forEach(pid => {
+    if(pid.indexOf('?') !== -1) {
+        console.log(`question? ${pid} ${item._id}`);
+    }
+})
                 return new Promise((resolve,reject) => {
                     Item.find({_id:{$in:productIds}})
                         .exec()
