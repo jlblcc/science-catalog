@@ -162,7 +162,7 @@ class ProductAssociationError extends Error {
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     requestCount:number = 0;
-    waitingOnRateLimit:boolean = false;
+    waitingOnRetry:boolean = false;
     waitingOnRequestLimit:boolean = false;
     _agent:https.Agent;
 
@@ -234,18 +234,26 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                             const headers = err.response.headers,
                                   wait = headers['retry-after'] ? ((parseInt(headers['retry-after'])+1)*60) : this.retryAfter;
                             this.log.debug(`ScienceBase responded with ${err.statusCode} (at ${this.requestCount} requests) will retry once after ${wait/1000} seconds`);
-                            this.waitingOnRateLimit = true;
+                            this.waitingOnRetry = true;
                             return setTimeout(() => {
-                                this.waitingOnRateLimit = false;
+                                this.waitingOnRetry = false;
                                 this.request(input,true)
+                            },wait);
+                        } else if (!isRetry && err.name === 'RequestError') {
+                            const wait = this.retryAfter;
+                            this.log.debug(`ScienceBase RequestError "${err.message}" will retry once after ${wait/1000} seconds.`);
+                            this.waitingOnRetry = true;
+                            setTimeout(() => {
+                                this.waitingOnRetry = false;
+                                this.request(input,true);
                             },wait);
                         }
                         reject(err);
                     });
             };
-            if(this.waitingOnRateLimit) {
+            if(this.waitingOnRetry) {
                 const wait = this.retryAfter;
-                this.log.debug(`Another request received a rate limit respoonse will wait ${wait/1000} seconds before making request`);
+                this.log.debug(`Waiting on retry, will wait ${wait/1000} seconds before making request`);
                 setTimeout(() => {
                     go();
                 },wait);
