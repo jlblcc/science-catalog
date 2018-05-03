@@ -228,8 +228,9 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
     private request(input:any,retryAttempt?:number):Promise<any> {
         input = typeof(input) === 'string' ? { url: input } : input;
         return new Promise((resolve,reject) => {
+            this.requestCount++;
             const go = () => {
-                this.requestCount++;
+
                 input.agent = this.agent;
                 request(input)
                     .then(resolve)
@@ -253,11 +254,11 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         }
                     });
             };
-console.log(`abtm ${this.requestCount+1} mod:${(this.requestCount+1)%this.requestLimit} worl:${this.waitingOnRequestLimit}`);
+console.log(`abtm ${this.requestCount} mod:${(this.requestCount)%this.requestLimit} worl:${this.waitingOnRequestLimit}`);
             if(this.waitingOnRetry) {
                 this.log.debug(`Waiting on retry, will wait ${this.retryAfter/1000} seconds before making request`);
                 return this.retryPause('Waiting on retry').then(go);
-            } else if (this.waitingOnRequestLimit || ((this.requestCount+1)%this.requestLimit === 0)) {
+            } else if (this.waitingOnRequestLimit || ((this.requestCount)%this.requestLimit === 0)) {
                 let why = null;
                 if(!this.waitingOnRequestLimit) {
                     this.waitingOnRequestLimit = true;
