@@ -67,8 +67,8 @@ class ItemResource extends Resource<ItemDoc> {
     findById(req:Request,res:Response,next?:Resource.NEXT) {
         const query = this.initQuery(this.getModel().findById(req._resourceId),req) as DocumentQuery<ItemDoc,ItemDoc>;
         if(typeof(req.query.$expand_relationships) !== 'undefined') {
-            query.populate('_products','simplified');
-            query.populate('_project','simplified');
+            query.populate('_products','simplified files');
+            query.populate('_project','simplified files');
         }
         query.exec((err,obj) => {
             if(err || !obj) {

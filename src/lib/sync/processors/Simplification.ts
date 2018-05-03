@@ -37,6 +37,8 @@ export enum SimplificationCodes {
     SIMPLIFIED = 'simplified',
     /** An item has a contact reference that is not found in its own contacts */
     MISSING_CONTACT = 'missing_contact',
+    /** An item has a recursive contact reference */
+    RECURSIVE_CONTACT = 'recursive_contact',
     /** `mdJson.metadata.resourceInfo.keyword` is not set */
     MISSING_KEYWORDS = 'missing_keywords',
     /** An item has an invalid funding time period */
@@ -278,12 +280,6 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         if(item.scType === ScType.PROJECT) {
             const productIds = FromScienceBase.findProductIds(item.mdJson);
             if(productIds.length) {
-                // TODO log the association has been made?
-productIds.forEach(pid => {
-    if(pid.indexOf('?') !== -1) {
-        console.log(`question? ${pid} ${item._id}`);
-    }
-})
                 return new Promise((resolve,reject) => {
                     Item.find({_id:{$in:productIds}})
                         .exec()
@@ -487,6 +483,18 @@ productIds.forEach(pid => {
     }
 
     private simplifyContact(contactId:string,item:ItemDoc,context?:any):SimplifiedContact {
+        if(context && context.contactId === contactId) {
+            this.log.warn(`[${SimplificationCodes.MISSING_CONTACT}][${item._id}] "${contactId}"`,{
+                _item: item._id,
+                _lcc: item._lcc._id,
+                code: SimplificationCodes.RECURSIVE_CONTACT,
+                data: {
+                    contacts: item.mdJson.contact,
+                    context: context
+                }
+            });
+            return null;
+        }
         let contacts = item.mdJson.contact,
             c = contacts.reduce((found,c) => found||(c.contactId === contactId ? c : undefined),undefined);
         if(!c) {
@@ -523,7 +531,7 @@ productIds.forEach(pid => {
             contact.lccnet = mapped.lccnet;
         }
         if(c.memberOfOrganization) {
-            // missign contacts happen...
+            // missing contacts happen...
             let orgs = this.simplifyContacts(c.memberOfOrganization,item,c);
             if(orgs.length) {
                 contact.memberOfOrganization = orgs;
@@ -539,43 +547,4 @@ productIds.forEach(pid => {
             c1.isOrganization === c2.isOrganization;
         // not comparing electronicMailAddress or memberOfOrganization arrays
     }
-    /*
-db.Item.distinct('mdJson.contact.contactType')
-[
-	"Academic",
-	"Federal",
-	"NGO",
-	"Research",
-	"lcc",
-	"academic",
-	"federal",
-	"Cooperator/Partner",
-	"consortium",
-	"Native/Tribal",
-	"Private",
-	"Foundation",
-	"LCC",
-	"Nonprofit",
-	"Province",
-	"State",
-	"Unknown",
-	"nonProfit",
-	"Principal Investigator",
-	"Consortium",
-	"Lead Organization",
-	"state",
-	"Contact",
-	"local",
-	"private",
-	"Co-Investigator",
-	"foundation",
-	"Point of Contact",
-	"Author",
-	"research",
-	"Funding Agency",
-	"Local",
-	"Distributor",
-	"tribal"
-]
-     */
 }
