@@ -360,7 +360,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         filter: 'tagslq=tags.name:"LCC Network Science Catalog" AND tags.type:"Harvest Set"',
                         filter1: `ancestors=${lcc._id}`,
                         sort: 'lastUpdated',
-                        order: 'desc',
+                        order: 'asc',
                         format: 'json',
                         max: this.pageSize
                     }

@@ -211,6 +211,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
     }
 
     private simplify(item:ItemDoc):Promise<ItemDoc> {
+        // RTE's in here are not caught in the promise chain...
         // reset warnedContactIds for each document
         this.warnedContactIds = [];
 
