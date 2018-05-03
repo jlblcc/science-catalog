@@ -155,11 +155,7 @@ export function fromScienceBaseReport(results:ItemCounts[]):string {
  *
  * It produces on output `ItemCount[]`.
  *
- * @todo Support dangling `products`
  * @todo Handle deleted items from sciencebase
- * @todo Why are the numbers for `randModded` and `updated` not the same when `randMod` is enabled?
- * @todo Test `If-Modified-Since` request for `mdJson` document.
- * @todo review synchronous async code to avoid stack over flow
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     requestCount:number = 0;
@@ -257,6 +253,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         }
                     });
             };
+console.log('abtm ${this.requestCount+1} mod:${(this.requestCount+1)%this.requestLimit} worl:${this.waitingOnRequestLimit}');
             if(this.waitingOnRetry) {
                 this.log.debug(`Waiting on retry, will wait ${this.retryAfter/1000} seconds before making request`);
                 return this.retryPause('Waiting on retry').then(go);
@@ -316,11 +313,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 .then(() => this.lccItemSync(lcc,counts,ScType.PRODUCT))
                 .then(resolve)
                 .catch(reject);
-            /*
-            this.lccProjectSync(lcc,counts)
-                .then(productIds => this.lccProductSync(lcc,counts,productIds))
-                .then(resolve)
-                .catch(reject);*/
         });
     }
 
@@ -379,144 +371,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         });
     }
 
-    /*
-    private lccProductSync(lcc:LccDoc,counts:ItemCounts,productIds:string[]):Promise<void> {
-        return new Promise((_resolve,reject) => {
-            let logAdditions:LogAdditions = {
-                _lcc: lcc._id
-            };
-            this.log.info(`Product Sync Started [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_STARTED});
-            let productIds:string[] = [],
-                resolve = () => {
-                    this.log.info(`Product Sync Completed [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_COMPLETED});
-                    _resolve()
-                },
-                importOnePage = (response) => {
-                    counts.pages++;
-                    response = JSON.parse(response);
-                    let next = () => {
-                            if(response.nextlink && response.nextlink.url) {
-                                this.request(response.nextlink.url).then(importOnePage).catch(reject);
-                            } else {
-                                resolve();
-                            }
-                        },
-                        items = response.items,
-                        promises = items.map(i => this.productSync(i,lcc,counts));
-                    counts.total += items.length;
-                    if(promises.length) {
-                        // wait for them to complete
-                        Promise.all(promises)
-                            .then(() => setImmediate(next)) // clear call stack
-                            .catch(reject);
-                    } else {
-                        setImmediate(next);
-                    }
-                };
-                // get the ball rolling
-                this.request({
-                    url: `https://www.sciencebase.gov/catalog/items`,
-                    qs: {
-                        fields: 'title,files',
-                        lq: 'browseCategories:"Data" AND NOT browseCategories:"Project"',
-                        filter: 'tagslq=tags.name:"LCC Network Science Catalog" AND tags.type:"Harvest Set"',
-                        filter1: `ancestors=${lcc._id}`,
-                        sort: 'lastUpdated',
-                        order: 'desc',
-                        format: 'json',
-                        max: this.pageSize
-                    }
-                })
-                .then(importOnePage)
-                .catch(reject);
-        });
-    }
-
-
-    private lccProductSync(lcc:LccDoc,counts:ItemCounts,productIds:string[]):Promise<any> {
-        return new Promise((_resolve,reject) => {
-            let logAdditions:LogAdditions = {
-                    _lcc: lcc._id
-                },
-                initialItemCount = counts.total,
-                initialItemIgnored = counts.ignored,
-                resolve = () => {
-                    * can't do this see comparison of requested ids to returned ids check/warning below
-                    let productsConsidered = counts.total - initialItemCount;
-                    // sanity check
-                    if(productsConsidered !== productIds.length) {
-                        throw new Error(`Mismatch between the number of products considered (${productsConsidered}) and the number of product ids to consider (${productIds.length})`);
-                    }*
-                    this.log.info(`Product Sync Completed [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_COMPLETED});
-                    _resolve();
-                };
-            this.log.info(`Product Sync Started (${productIds.length}) [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_STARTED});
-            if(!productIds.length) {
-                return resolve();
-            }
-            // break productIds into pages
-            let pages = [], start = 0, max = this.pageSize, c;
-            while((c = productIds.slice(start,(start+max))) && c.length) {
-                pages.push(c);
-                start += max;
-            }
-
-            let next = () => {
-                if(!pages.length) {
-                    return resolve();
-                }
-                counts.pages++;
-                let ids = pages.pop();
-                this.request({
-                    url: `https://www.sciencebase.gov/catalog/items`,
-                    qs: {
-                        fields: 'title,files',
-                        filter: 'ids='+ids.join(','),
-                        filter0: 'tags=LCC Network Science Catalog',
-                        sort: 'lastUpdated',
-                        order: 'desc',
-                        format: 'json',
-                    }
-                })
-                .then((response => {
-                    response = JSON.parse(response);
-                    let items = response.items,
-                        promises = items.map(i => this.productSync(i,lcc,counts));
-                    counts.total += items.length;
-                    if(items.length !== ids.length) {
-                        // this may or may not be an issue, the difference could be explained by either
-                        // the ids not matching the tags criteria or being "secured" and not publicly accessible
-                        let returnedIds = items.map(i => i.id),
-                            missingIds = ids.filter(i => returnedIds.indexOf(i) === -1);
-                        this.log.warn(`Missing product ids [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_MISSING_PRODUCTS,data: {
-                            requestedIds: ids,
-                            returnedIds: returnedIds,
-                            missingIds: missingIds
-                        }});
-                    }
-                    if(promises.length) {
-                        Promise.all(promises)
-                            .then(() => setImmediate(next)) // clear call stack
-                            .catch(reject);
-                    } else {
-                        setImmediate(next);
-                    }
-                }))
-                .catch(reject);
-            };
-            next(); // get the product sync going
-        });
-    }
-
-    private projectSync(item:any,lcc:LccDoc,counts:ItemCounts,productIds:string[]) {
-        return this.itemSync(item,lcc,counts,ScType.PROJECT,productIds);
-    }
-
-    private productSync(item:any,lcc:LccDoc,counts:ItemCounts) {
-        return this.itemSync(item,lcc,counts,ScType.PRODUCT);
-    }*/
-
-    //private itemSync(item:any,lcc:LccDoc,counts:ItemCounts,itemType:ScType,productIds?:string[]) {
     private itemSync(item:any,lcc:LccDoc,counts:ItemCounts,itemType:ScType) {
         return new Promise((_resolve,_reject) => {
             let logAdditions:LogAdditions = {
@@ -608,10 +462,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         files: item.files
                     };
 
-                    /*
-                    if(itemType === ScType.PROJECT && productIds) {
-                        FromScienceBase.findProductIds(mdJson,item,this.log,logAdditions).forEach(sbid => productIds.push(sbid));
-                    }*/
                     if(itemType === ScType.PROJECT) {
                         // just look at associations to log warnings
                         FromScienceBase.findProductIds(mdJson,item,this.log,logAdditions);
