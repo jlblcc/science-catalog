@@ -230,7 +230,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         return new Promise((resolve,reject) => {
             this.requestCount++;
             const go = () => {
-
                 input.agent = this.agent;
                 request(input)
                     .then(resolve)
@@ -254,7 +253,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         }
                     });
             };
-console.log(`abtm ${this.requestCount} mod:${(this.requestCount)%this.requestLimit} worl:${this.waitingOnRequestLimit}`);
             if(this.waitingOnRetry) {
                 this.log.debug(`Waiting on retry, will wait ${this.retryAfter/1000} seconds before making request`);
                 return this.retryPause('Waiting on retry').then(go);
