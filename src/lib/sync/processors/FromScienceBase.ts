@@ -312,25 +312,29 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         _reject(err);
                     });
                 };
+            this.lccItemSync(lcc,counts,ScType.PROJECT)
+                .then(() => this.lccItemSync(lcc,counts,ScType.PRODUCT))
+                .then(resolve)
+                .catch(reject);
+            /*
             this.lccProjectSync(lcc,counts)
                 .then(productIds => this.lccProductSync(lcc,counts,productIds))
                 .then(resolve)
-                .catch(reject);
+                .catch(reject);*/
         });
     }
 
-
-
-    private lccProjectSync(lcc:LccDoc,counts:ItemCounts):Promise<string[]> {
+    private lccItemSync(lcc:LccDoc,counts:ItemCounts,itemType:ScType):Promise<void> {
         return new Promise((_resolve,reject) => {
             let logAdditions:LogAdditions = {
-                _lcc: lcc._id
-            };
-            this.log.info(`Project Sync Started [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PROJECT_SYNC_STARTED});
-            let productIds:string[] = [],
-                resolve = () => {
-                    this.log.info(`Project Sync Completed [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PROJECT_SYNC_COMPLETED});
-                    _resolve(productIds)
+                    _lcc: lcc._id
+                },
+                startLogCode = itemType === ScType.PROJECT ? FromScienceBaseLogCodes.PROJECT_SYNC_STARTED : FromScienceBaseLogCodes.PRODUCT_SYNC_STARTED,
+                endLogCode = itemType === ScType.PROJECT ? FromScienceBaseLogCodes.PROJECT_SYNC_COMPLETED : FromScienceBaseLogCodes.PRODUCT_SYNC_COMPLETED;
+            this.log.info(`[${startLogCode}][${lcc._id}] "${lcc.title}"`,{...logAdditions,code:startLogCode});
+            let resolve = () => {
+                    this.log.info(`[${endLogCode}][${lcc._id}] "${lcc.title}"`,{...logAdditions,code:endLogCode});
+                    _resolve()
                 },
                 importOnePage = (response) => {
                     counts.pages++;
@@ -343,7 +347,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                             }
                         },
                         items = response.items,
-                        promises = items.map(i => this.projectSync(i,lcc,counts,productIds));
+                        promises = items.map(i => this.itemSync(i,lcc,counts,itemType));
                     counts.total += items.length;
                     if(promises.length) {
                         // wait for them to complete
@@ -359,9 +363,11 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     url: `https://www.sciencebase.gov/catalog/items`,
                     qs: {
                         fields: 'title,files',
-                        filter0: `browseCategory=Project`,
-                        filter1: 'tags=LCC Network Science Catalog',
-                        filter2: `ancestors=${lcc._id}`,
+                        lq: itemType === ScType.PROJECT ?
+                            'browseCategories:"Data" AND browseCategories:"Project"':
+                            'browseCategories:"Data" AND NOT browseCategories:"Project"',
+                        filter: 'tagslq=tags.name:"LCC Network Science Catalog" AND tags.type:"Harvest Set"',
+                        filter1: `ancestors=${lcc._id}`,
                         sort: 'lastUpdated',
                         order: 'desc',
                         format: 'json',
@@ -373,6 +379,60 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         });
     }
 
+    /*
+    private lccProductSync(lcc:LccDoc,counts:ItemCounts,productIds:string[]):Promise<void> {
+        return new Promise((_resolve,reject) => {
+            let logAdditions:LogAdditions = {
+                _lcc: lcc._id
+            };
+            this.log.info(`Product Sync Started [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_STARTED});
+            let productIds:string[] = [],
+                resolve = () => {
+                    this.log.info(`Product Sync Completed [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_COMPLETED});
+                    _resolve()
+                },
+                importOnePage = (response) => {
+                    counts.pages++;
+                    response = JSON.parse(response);
+                    let next = () => {
+                            if(response.nextlink && response.nextlink.url) {
+                                this.request(response.nextlink.url).then(importOnePage).catch(reject);
+                            } else {
+                                resolve();
+                            }
+                        },
+                        items = response.items,
+                        promises = items.map(i => this.productSync(i,lcc,counts));
+                    counts.total += items.length;
+                    if(promises.length) {
+                        // wait for them to complete
+                        Promise.all(promises)
+                            .then(() => setImmediate(next)) // clear call stack
+                            .catch(reject);
+                    } else {
+                        setImmediate(next);
+                    }
+                };
+                // get the ball rolling
+                this.request({
+                    url: `https://www.sciencebase.gov/catalog/items`,
+                    qs: {
+                        fields: 'title,files',
+                        lq: 'browseCategories:"Data" AND NOT browseCategories:"Project"',
+                        filter: 'tagslq=tags.name:"LCC Network Science Catalog" AND tags.type:"Harvest Set"',
+                        filter1: `ancestors=${lcc._id}`,
+                        sort: 'lastUpdated',
+                        order: 'desc',
+                        format: 'json',
+                        max: this.pageSize
+                    }
+                })
+                .then(importOnePage)
+                .catch(reject);
+        });
+    }
+
+
     private lccProductSync(lcc:LccDoc,counts:ItemCounts,productIds:string[]):Promise<any> {
         return new Promise((_resolve,reject) => {
             let logAdditions:LogAdditions = {
@@ -381,12 +441,12 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 initialItemCount = counts.total,
                 initialItemIgnored = counts.ignored,
                 resolve = () => {
-                    /* can't do this see comparison of requested ids to returned ids check/warning below
+                    * can't do this see comparison of requested ids to returned ids check/warning below
                     let productsConsidered = counts.total - initialItemCount;
                     // sanity check
                     if(productsConsidered !== productIds.length) {
                         throw new Error(`Mismatch between the number of products considered (${productsConsidered}) and the number of product ids to consider (${productIds.length})`);
-                    }*/
+                    }*
                     this.log.info(`Product Sync Completed [${lcc._id}] "${lcc.title}"`,{...logAdditions,code:FromScienceBaseLogCodes.PRODUCT_SYNC_COMPLETED});
                     _resolve();
                 };
@@ -448,16 +508,16 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
         });
     }
 
-
     private projectSync(item:any,lcc:LccDoc,counts:ItemCounts,productIds:string[]) {
         return this.itemSync(item,lcc,counts,ScType.PROJECT,productIds);
     }
 
     private productSync(item:any,lcc:LccDoc,counts:ItemCounts) {
         return this.itemSync(item,lcc,counts,ScType.PRODUCT);
-    }
+    }*/
 
-    private itemSync(item:any,lcc:LccDoc,counts:ItemCounts,itemType:ScType,productIds?:string[]) {
+    //private itemSync(item:any,lcc:LccDoc,counts:ItemCounts,itemType:ScType,productIds?:string[]) {
+    private itemSync(item:any,lcc:LccDoc,counts:ItemCounts,itemType:ScType) {
         return new Promise((_resolve,_reject) => {
             let logAdditions:LogAdditions = {
                 _lcc: lcc._id,
@@ -465,9 +525,9 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
             },
             resolve = (o,code:FromScienceBaseLogCodes,error?:boolean) => {
                 if(error) {
-                    this.log.error(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code});
+                    this.log.error(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code,data:itemType});
                 } else {
-                    this.log.info(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code});
+                    this.log.info(`[${code}][${item.id}] "${item.title}"`,{...logAdditions,code: code,data:itemType});
                 }
                 switch(itemType) {
                     case ScType.PROJECT:
@@ -548,8 +608,13 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         files: item.files
                     };
 
+                    /*
                     if(itemType === ScType.PROJECT && productIds) {
                         FromScienceBase.findProductIds(mdJson,item,this.log,logAdditions).forEach(sbid => productIds.push(sbid));
+                    }*/
+                    if(itemType === ScType.PROJECT) {
+                        // just look at associations to log warnings
+                        FromScienceBase.findProductIds(mdJson,item,this.log,logAdditions);
                     }
 
                     Item.findById(catalog_item._id,(err,existing) => {
@@ -599,14 +664,14 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                             productIds.push(sbid);
                         }
                     } else if (log) {
-                        log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID}][${item.id}] "${item.title}" "${sbid}"`,{
+                        log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID}][${item.id}] "${productAssociation.resourceCitation.title}" "${sbid}"`,{
                             ...logAdditions,
                             code: FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID,
                             data:productAssociation
                         });
                     }
                 } else if (log) {
-                    log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID}][${item.id}] "${item.title}"`,{
+                    log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID}][${item.id}] "${productAssociation.resourceCitation.title}"`,{
                         ...logAdditions,
                         code: FromScienceBaseLogCodes.ASSOC_PRODUCT_MISSING_SBID,
                         data:productAssociation
