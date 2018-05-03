@@ -253,7 +253,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         }
                     });
             };
-console.log('abtm ${this.requestCount+1} mod:${(this.requestCount+1)%this.requestLimit} worl:${this.waitingOnRequestLimit}');
+console.log(`abtm ${this.requestCount+1} mod:${(this.requestCount+1)%this.requestLimit} worl:${this.waitingOnRequestLimit}`);
             if(this.waitingOnRetry) {
                 this.log.debug(`Waiting on retry, will wait ${this.retryAfter/1000} seconds before making request`);
                 return this.retryPause('Waiting on retry').then(go);
