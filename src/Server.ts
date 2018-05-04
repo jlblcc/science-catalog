@@ -13,7 +13,8 @@ import { ObjectId } from 'mongodb';
 
 import { Item, ItemDoc, SimplifiedIfc,
          Lcc,
-        SyncPipelineProcessorLog } from './db/models';
+         SyncPipelineProcessorEntry,
+         SyncPipelineProcessorLog } from './db/models';
 
 import { BASE_URI, BASE_API_URI } from './uris';
 
@@ -349,8 +350,14 @@ export class Server {
             key: '_lcc'
         });
 
+        let pipeline = new Resource({...READONLY,...{
+            rel: `${BASE_API_URI}/pipeline`,
+            model:SyncPipelineProcessorEntry
+        }});
+
         item.initRouter(this.express);
         lcc.initRouter(this.express);
+        pipeline.initRouter(this.express);
 
         // TODO remove?
         let log = new Resource({...READONLY,...{

@@ -29,6 +29,7 @@ import { LccTitlePipe } from './lcc-title.pipe';
 import { ResourceTypePipe } from './resource-type.pipe';
 
 import { ItemSearch } from './item-search.component';
+import { SyncStatus } from './sync-status.component';
 
 import { SearchService } from './search.service';
 
@@ -46,6 +47,7 @@ import { SearchService } from './search.service';
         FundingSearchControls,
         SummaryStatistics,
         GeneralAdvancedControls,
+        SyncStatus,
 
         ItemList, ItemTable,
         HighlightText, HighlightPipe,

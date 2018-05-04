@@ -78,6 +78,7 @@ const BASE_QUERY_ARGS = {
         <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
         <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize"></mat-paginator>
     </div>
+    <sync-status></sync-status>
     `,
     styleUrls: [ './item-search.component.scss']
 })
