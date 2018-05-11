@@ -32,13 +32,13 @@ export const TABLE_COLUMNS = [{
     template: `
     <mat-table [dataSource]="dataSource" matSort>
         <ng-container matColumnDef="simplified.dates.sort">
-            <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-type"> Date </mat-header-cell>
-            <mat-cell *matCellDef="let item"><item-date [item]="item"></item-date></mat-cell>
+            <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-date"> Date </mat-header-cell>
+            <mat-cell *matCellDef="let item" class="item-date"><item-date [item]="item"></item-date></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.combinedResourceType">
             <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-type"> Resource type </mat-header-cell>
-            <mat-cell *matCellDef="let item"><item-icon [item]="item" class="item-type"></item-icon></mat-cell>
+            <mat-cell *matCellDef="let item" class="item-type"><item-icon [item]="item"></item-icon></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.title">
@@ -58,7 +58,7 @@ export const TABLE_COLUMNS = [{
 
         <ng-container matColumnDef="simplified.funding.fiscalYears">
             <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-fiscal"> Fiscal year(s) </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-pi">{{item.simplified.funding ? item.simplified.funding.fiscalYears.join(', ') : ''}}</mat-cell>
+            <mat-cell *matCellDef="let item" class="item-fiscal">{{item.simplified.funding ? item.simplified.funding.fiscalYears.join(', ') : ''}}</mat-cell>
         </ng-container>
 
         <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
@@ -76,6 +76,9 @@ export const TABLE_COLUMNS = [{
         .item-pi,
         .item-lcc {
             flex-grow: 2;
+        }
+        .item-lcc {
+            padding-left: 4px;
         }
     `]
 })
