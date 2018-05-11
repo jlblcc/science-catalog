@@ -44,13 +44,11 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
             </div>
             <mat-form-field class="funding-range">
                 <mat-select placeholder="Funding amount" [formControl]="fundingRange">
+                    <mat-option>Any amount</mat-option>
                     <mat-option *ngFor="let range of fundingRanges" [value]="range">
-                        <span *ngIf="range; else nullRange">
-                            {{range[0] | currency:'USD':'symbol':'1.0-0'}}
-                            <span *ngIf="range.length === 2; else openEndedRange"> -  {{range[1] | currency:'USD':'symbol':'1.0-0'}}</span>
-                            <ng-template #openEndedRange> and up</ng-template>
-                        </span>
-                        <ng-template #nullRange>Any</ng-template>
+                        {{range[0] | currency:'USD':'symbol':'1.0-0'}}
+                        <span *ngIf="range.length === 2; else openEndedRange"> -  {{range[1] | currency:'USD':'symbol':'1.0-0'}}</span>
+                        <ng-template #openEndedRange> and up</ng-template>
                     </mat-option>
                 </mat-select>
             </mat-form-field>
@@ -98,7 +96,6 @@ export class FundingSearchControls extends MonitorsDestroy implements SearchCont
     @ViewChild('recipient') recipient:DistinctAutocomplete;
 
     fundingRanges = [
-        null,
         [1,12499],
         [12500,24999],
         [25000,49999],
@@ -119,7 +116,7 @@ export class FundingSearchControls extends MonitorsDestroy implements SearchCont
             // mat-select works by reference so the array must be the exact one.
             // only need to compare index 0 since they're all unique
             this.fundingRanges.reduce((found,range) => {
-                return found||((range && initRange.length === range.length && initRange[0] === range[0]) ? range : null);
+                return found||((initRange.length === range.length && initRange[0] === range[0]) ? range : null);
             },null) : null
         );
         search.register(this);
