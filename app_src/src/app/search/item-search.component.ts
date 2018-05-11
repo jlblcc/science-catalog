@@ -3,11 +3,11 @@ import { FormGroup, FormControl } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
 import { Subject } from 'rxjs/Subject';
-import { debounceTime, map, switchMap, startWith, catchError, takeUntil, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, map, switchMap, startWith, catchError, takeUntil, distinctUntilChanged, filter } from 'rxjs/operators';
 import { merge as mergeObservables } from 'rxjs/observable/merge';
 import { of as observableOf } from 'rxjs/observable/of';
 
-import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort } from '@angular/material';
+import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort, PageEvent } from '@angular/material';
 
 import { MonitorsDestroy } from '../common';
 import { LccSelect } from './lcc-select.component';
@@ -76,7 +76,7 @@ const BASE_QUERY_ARGS = {
     <div class="search-results">
         <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
         <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
-        <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize"></mat-paginator>
+        <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize" [pageSizeOptions]="[10, 20, 50, 100, 200]"></mat-paginator>
     </div>
     <sync-status></sync-status>
     `,
@@ -139,6 +139,10 @@ export class ItemSearch extends MonitorsDestroy {
             criteriaGroup.valueChanges, // criteria changed
             this.resultsListType.valueChange.asObservable(), // view changed between table/list
             this.sortChanges, // sort order changed
+            /* TODO after upgrade to Angular 6 filter out events where pageIndex !== previousPageIndex (page changed vs page size changed)
+            this.paginator.page.pipe(
+                    filter((pe) => pe.previousP)
+                )*/
         )
         .pipe(
             takeUntil(this.componentDestroyed)
@@ -148,7 +152,7 @@ export class ItemSearch extends MonitorsDestroy {
         // when one of several things happen re-execute the query
         mergeObservables(
             criteriaGroup.valueChanges, // criteria changed
-            this.paginator.page, // page navigation
+            this.paginator.page.asObservable(), // page navigation
             this.sortChanges, // sort property/direction change
             this.search.searchReset // search criteria reset
         ).pipe(

@@ -263,7 +263,7 @@ export class SearchService {
         console.log('SearchService.search',criteria);
         let qargs:any = {
             ...BASE_QUERY_ARGS,
-            $top: this.pageSize,
+            $top: this.paginator.pageSize||this.pageSize,
             $skip: this.paginator.pageIndex * this.pageSize,
             $ellipsis: '300',
             $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
