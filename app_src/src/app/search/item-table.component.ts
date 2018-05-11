@@ -92,6 +92,12 @@ export const TABLE_COLUMNS = [{
             padding-left: 2px;
             padding-right: 4px;
         }
+        mat-row {
+            align-items: stretch;
+        }
+        mat-row > mat-cell {
+            align-items: start;
+        }
     `]
 })
 export class ItemTable {
