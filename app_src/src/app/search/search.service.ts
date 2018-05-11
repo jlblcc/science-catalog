@@ -31,7 +31,7 @@ export interface SearchControl {
 }
 
 export interface FundingSearchCriteria {
-    fiscalYears?: number [];
+
     awardId?: string;
     match?:boolean;
     lowerAmount?:number;
@@ -59,6 +59,10 @@ export interface KeywordSearchCriteria {
 export interface GeneralAdvancedCriteria {
     /** List of resource types */
     resourceType?: string[];
+    /** List of fiscal years */
+    fiscalYears?: number [];
+    /** List of keyword criteria */
+    keywords?: KeywordSearchCriteria;
 }
 export interface SearchCriteria {
     /** Sciencebase item type */
@@ -67,8 +71,6 @@ export interface SearchCriteria {
     lcc?: string[];
     /** General advanced criteria */
     general?: GeneralAdvancedCriteria;
-    /** List of keyword criteria */
-    keywords?: KeywordSearchCriteria;
     /** text index search input */
     $text?: string;
     /** funding criteria */
@@ -214,19 +216,18 @@ export class SearchService {
                 const rTypesQuoted = general.resourceType.map(rt => `'${rt}'`);
                 $filter += ` and (in(simplified.combinedResourceType.type,${rTypesQuoted.join(',')}))`;
             }
-        }
-
-        if(criteria.keywords && criteria.keywords.criteria.length) {
-            let keywordFilter =
-                criteria.keywords.criteria.map(k => `simplified.keywords.keywords.${k.typeKey} eq '${k.value}'`)
-                    .join(` ${criteria.keywords.logicalOperator} `);
-            $filter += ` and (${keywordFilter})`;
+            if(general.fiscalYears && general.fiscalYears.length) {
+                $filter += ` and in(simplified.funding.fiscalYears,${general.fiscalYears.join(',')})`;
+            }
+            if(general.keywords && general.keywords.criteria.length) {
+                let keywordFilter =
+                    general.keywords.criteria.map(k => `simplified.keywords.keywords.${k.typeKey} eq '${k.value}'`)
+                        .join(` ${general.keywords.logicalOperator} `);
+                $filter += ` and (${keywordFilter})`;
+            }
         }
         if(criteria.funding) {
             let f = criteria.funding;
-            if(f.fiscalYears && f.fiscalYears.length) {
-                $filter += ` and in(simplified.funding.fiscalYears,${f.fiscalYears.join(',')})`;
-            }
             if(f.awardId) {
                 $filter += ` and simplified.funding.awardIds eq '${f.awardId}'`;
             }

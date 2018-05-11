@@ -57,7 +57,7 @@ export const TABLE_COLUMNS = [{
         </ng-container>
 
         <ng-container matColumnDef="simplified.funding.fiscalYears">
-            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-fiscal"> Fiscal year(s) </mat-header-cell>
+            <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-fiscal"> Years funded </mat-header-cell>
             <mat-cell *matCellDef="let item" class="item-fiscal">{{item.simplified.funding ? item.simplified.funding.fiscalYears.join(', ') : ''}}</mat-cell>
         </ng-container>
 

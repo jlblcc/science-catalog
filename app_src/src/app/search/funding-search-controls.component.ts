@@ -14,19 +14,10 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
     <mat-expansion-panel class="funding" expanded="false">
         <mat-expansion-panel-header>Funding</mat-expansion-panel-header>
             <div class="general-controls">
-                <distinct-select #fiscalYears
-                                 placeholder="Fiscal year(s)"
-                                 distinctProperty="simplified.funding.fiscalYears"
-                                 [initialValue]="initialValues.fiscalYears"></distinct-select>
-                <distinct-autocomplete #awardId
-                                       placeholder="Award ID"
-                                       distinctProperty="simplified.funding.awardIds"
-                                       containsMode="true"
-                                       [initialValue]="initialValues.awardId"></distinct-autocomplete>
                 <mat-radio-group [formControl]="match">
-                         <mat-radio-button [value]="null">All</mat-radio-button>
-                         <mat-radio-button [value]="false">Agency Funding Only</mat-radio-button>
-                         <mat-radio-button [value]="true">Matching/In-Kind Only</mat-radio-button>
+                     <mat-radio-button [value]="null">All</mat-radio-button>
+                     <mat-radio-button [value]="false">Agency Funding Only</mat-radio-button>
+                     <mat-radio-button [value]="true">Matching/In-Kind Only</mat-radio-button>
                 </mat-radio-group>
             </div>
             <div class="source-recipient-pair">
@@ -59,6 +50,11 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
                     <input matInput type="number" placeholder="Funding amount <=" [formControl]="upperAmountInput" min="0" step="1000" />
                 </mat-form-field>
             </div>
+            <distinct-autocomplete #awardId class="award-id"
+                                   placeholder="Award ID"
+                                   distinctProperty="simplified.funding.awardIds"
+                                   containsMode="true"
+                                   [initialValue]="initialValues.awardId"></distinct-autocomplete>
     </mat-expansion-panel>
     `,
     styles:[`
@@ -77,6 +73,12 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
         mat-form-field {
             margin-right: 10px;
         }
+        .award-id {
+            display: inline-block;
+        }
+        mat-radio-button {
+            margin-right: 15px;
+        }
     `]
 })
 export class FundingSearchControls extends MonitorsDestroy implements SearchControl {
@@ -86,7 +88,6 @@ export class FundingSearchControls extends MonitorsDestroy implements SearchCont
     match:FormControl;
     lowerAmountInput:FormControl;
     upperAmountInput:FormControl;
-    @ViewChild('fiscalYears') fiscalYears:DistinctSelect;
     @ViewChild('awardId') awardId:DistinctAutocomplete;
     @ViewChild('sourceType') sourceType:DistinctSelect;
     @ViewChild('source') source:DistinctAutocomplete;
@@ -110,7 +111,6 @@ export class FundingSearchControls extends MonitorsDestroy implements SearchCont
     }
 
     ngAfterViewInit() {
-        this.controls.addControl('fiscalYears',this.fiscalYears.control);
         this.controls.addControl('awardId',this.awardId.control);
         this.controls.addControl('match',this.match);
 

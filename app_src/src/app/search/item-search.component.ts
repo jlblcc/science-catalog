@@ -55,10 +55,6 @@ const BASE_QUERY_ARGS = {
             <mat-expansion-panel-header>Advanced search</mat-expansion-panel-header>
             <div class="advanced-search-controls">
                 <general-advanced-controls></general-advanced-controls>
-                <mat-expansion-panel  expanded="true">
-                    <mat-expansion-panel-header>Keywords</mat-expansion-panel-header>
-                    <keyword-select></keyword-select>
-                </mat-expansion-panel>
                 <funding-search-controls></funding-search-controls>
             </div>
         </mat-expansion-panel>
@@ -89,8 +85,7 @@ export class ItemSearch extends MonitorsDestroy {
     @ViewChild(SctypeSelect) scType: SctypeSelect;
     /** The general advanced control */
     @ViewChild(GeneralAdvancedControls) general: GeneralAdvancedControls;
-    /** The keyword selection component (advanced) */
-    @ViewChild(KeywordSelect) keywords: KeywordSelect;
+
     /** The funding controls */
     @ViewChild(FundingSearchControls) funding: FundingSearchControls;
     /** Holds the current page of search results to pass down to the table/list view */
@@ -127,7 +122,6 @@ export class ItemSearch extends MonitorsDestroy {
             lcc: this.lcc.control,
             scType: this.scType.control,
             general: this.general.controls,
-            keywords: this.keywords.control,
             funding: this.funding.controls,
             $text: this.$text.control
         });

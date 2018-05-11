@@ -44,6 +44,9 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
     </mat-chip-list>
     `,
     styles:[`
+        :host {
+            display: block;
+        }
         .keyword-selection {
             display: flex;
             flex-wrap: wrap;
@@ -73,9 +76,9 @@ export class KeywordSelect extends MonitorsDestroy implements SearchControl {
         super();
         let initial = search.initial,
             logical,criteria;
-        if(initial && initial.keywords) {
-            logical = initial.keywords.logicalOperator;
-            criteria = initial.keywords.criteria;
+        if(initial && initial.general && initial.general.keywords) {
+            logical = initial.general.keywords.logicalOperator;
+            criteria = initial.general.keywords.criteria;
         }
         this.logicalOperatorControl = new FormControl(logical||'and');
         this.control = new FormControl({
