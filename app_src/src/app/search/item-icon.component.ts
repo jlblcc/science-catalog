@@ -11,16 +11,16 @@ import { ItemIfc } from '../../../../src/db/models';
         [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
         matTooltip="{{rt.type | resourceType:rt.name}}"
         matTooltipPosition="right"></mat-icon>
-    <span *ngIf="extraResourceTypes.length" class="extra-rtypes">
+    <div *ngIf="extraResourceTypes.length" class="extra-rtypes">
     <mat-icon *ngFor="let rt of extraResourceTypes"
         [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
         matTooltip="Product type {{rt.type | resourceType:rt.name}}"
         matTooltipPosition="right"></mat-icon>
-    </span>
+    </div>
     `,
     styles:[`
-        .extra-rtypes:before { content: '[' }
-        .extra-rtypes:after { content: ']' }
+        .extra-rtypes:before { content: '[ ' }
+        .extra-rtypes:after { content: ' ]' }
         .extra-rtypes > mat-icon:last-of-type {
             width: auto;
         }

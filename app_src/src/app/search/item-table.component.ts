@@ -66,19 +66,31 @@ export const TABLE_COLUMNS = [{
     </mat-table>
     `,
     styles:[`
-        .item-type,
+        .item-date {
+            flex-grow: 0.8;
+        }
+        .item-type {
+            flex-grow: 0.9;
+        }
         .item-fiscal {
-            flex-grow: 1;
+            flex-grow: 0.8;
         }
         .item-title {
             flex-grow: 3;
         }
-        .item-pi,
-        .item-lcc {
+        .item-pi {
             flex-grow: 2;
         }
         .item-lcc {
+            flex-grow: 1.5;
+        }
+        .item-title {
             padding-left: 4px;
+            padding-right: 2px;
+        }
+        .item-lcc {
+            padding-left: 2px;
+            padding-right: 4px;
         }
     `]
 })
