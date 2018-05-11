@@ -34,8 +34,7 @@ export interface FundingSearchCriteria {
 
     awardId?: string;
     match?:boolean;
-    lowerAmount?:number;
-    upperAmount?:number;
+    amountRange?:number[];
 
     sourceType?: string[];
     source?: string;
@@ -234,11 +233,11 @@ export class SearchService {
             if(typeof(f.match) === 'boolean') {
                 $filter += ` and simplified.funding.matching eq ${f.match}`;
             }
-            if(f.lowerAmount) {
-                $filter += ` and simplified.funding.amount ge ${f.lowerAmount}`;
-            }
-            if(f.upperAmount) {
-                $filter += ` and simplified.funding.amount le ${f.upperAmount}`;
+            if(f.amountRange && f.amountRange.length) {
+                $filter += ` and simplified.funding.amount ge ${f.amountRange[0]}`;
+                if(f.amountRange.length > 1) {
+                    $filter += ` and simplified.funding.amount le ${f.amountRange[1]}`;
+                }
             }
             if(f.source) {
                 $filter += ` and simplified.funding.sources.name eq '${f.source}'`;

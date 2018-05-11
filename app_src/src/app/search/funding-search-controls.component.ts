@@ -42,14 +42,18 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
                                        containsMode="true"
                                        [initialValue]="initialValues.recipient"></distinct-autocomplete>
             </div>
-            <div class="amount-range">
-                <mat-form-field>
-                    <input matInput type="number" placeholder="Funding amount >=" [formControl]="lowerAmountInput" min="0" step="1000" />
-                </mat-form-field>
-                <mat-form-field>
-                    <input matInput type="number" placeholder="Funding amount <=" [formControl]="upperAmountInput" min="0" step="1000" />
-                </mat-form-field>
-            </div>
+            <mat-form-field class="funding-range">
+                <mat-select placeholder="Funding amount" [formControl]="fundingRange">
+                    <mat-option *ngFor="let range of fundingRanges" [value]="range">
+                        <span *ngIf="range; else nullRange">
+                            {{range[0] | currency:'USD':'symbol':'1.0-0'}}
+                            <span *ngIf="range.length === 2; else openEndedRange"> -  {{range[1] | currency:'USD':'symbol':'1.0-0'}}</span>
+                            <ng-template #openEndedRange> and up</ng-template>
+                        </span>
+                        <ng-template #nullRange>Any</ng-template>
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
             <distinct-autocomplete #awardId class="award-id"
                                    placeholder="Award ID"
                                    distinctProperty="simplified.funding.awardIds"
@@ -59,8 +63,7 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
     `,
     styles:[`
         .general-controls,
-        .source-recipient-pair,
-        .amount-range {
+        .source-recipient-pair{
             display: flex;
             align-items: center;
         }
@@ -86,28 +89,45 @@ export class FundingSearchControls extends MonitorsDestroy implements SearchCont
     controls:FormGroup = new FormGroup({});
 
     match:FormControl;
-    lowerAmountInput:FormControl;
-    upperAmountInput:FormControl;
+    fundingRange:FormControl;
+
     @ViewChild('awardId') awardId:DistinctAutocomplete;
     @ViewChild('sourceType') sourceType:DistinctSelect;
     @ViewChild('source') source:DistinctAutocomplete;
     @ViewChild('recipientType') recipientType:DistinctSelect;
     @ViewChild('recipient') recipient:DistinctAutocomplete;
 
+    fundingRanges = [
+        null,
+        [1,12499],
+        [12500,24999],
+        [25000,49999],
+        [50000,99999],
+        [100000,199999],
+        [200000,499999],
+        [500000]
+    ];
+
     constructor(private search:SearchService) {
         super();
         let initial = search.initial;
         this.initialValues = initial ? initial.funding||{} : {};
         this.match = new FormControl(this.initialValues.match);
-        this.lowerAmountInput = new FormControl(this.initialValues.lowerAmount);
-        this.upperAmountInput = new FormControl(this.initialValues.upperAmount);
+        const initRange = this.initialValues.amountRange;
+        this.fundingRange = new FormControl (
+            initRange ?
+            // mat-select works by reference so the array must be the exact one.
+            // only need to compare index 0 since they're all unique
+            this.fundingRanges.reduce((found,range) => {
+                return found||((range && initRange.length === range.length && initRange[0] === range[0]) ? range : null);
+            },null) : null
+        );
         search.register(this);
     }
 
     reset() {
         this.match.setValue(null,{emitEvent:false});
-        this.lowerAmountInput.setValue(null,{emitEvent:false});
-        this.upperAmountInput.setValue(null,{emitEvent:false});
+        this.fundingRange.setValue(null,{emitEvent:false});
     }
 
     ngAfterViewInit() {
@@ -119,19 +139,6 @@ export class FundingSearchControls extends MonitorsDestroy implements SearchCont
 
         this.controls.addControl('recipientType',this.recipientType.control);
         this.controls.addControl('recipient',this.recipient.control);
-
-        const lowerAmount = new FormControl();
-        this.controls.addControl('lowerAmount', lowerAmount);
-        this.lowerAmountInput.valueChanges.pipe(
-                takeUntil(this.componentDestroyed),
-                debounceTime(500)
-            ).subscribe(v => lowerAmount.setValue(v));
-
-        const upperAmount = new FormControl();
-        this.controls.addControl('upperAmount',upperAmount);
-        this.upperAmountInput.valueChanges.pipe(
-                takeUntil(this.componentDestroyed),
-                debounceTime(500)
-            ).subscribe(v => upperAmount.setValue(v));
+        this.controls.addControl('amountRange',this.fundingRange);
     }
 }
