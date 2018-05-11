@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Subject ,  merge as mergeObservables ,  of as observableOf } from 'rxjs';
 import { debounceTime, map, switchMap, startWith, catchError, takeUntil, distinctUntilChanged, filter } from 'rxjs/operators';
 
-import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort, PageEvent } from '@angular/material';
+import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort, PageEvent, MatDrawer } from '@angular/material';
 
 import { MonitorsDestroy } from '../common';
 import { LccSelect } from './lcc-select.component';
@@ -33,46 +33,59 @@ const BASE_QUERY_ARGS = {
         <mat-spinner></mat-spinner>
     </div>
 
-    <div class="search-controls">
-        <div class="basic-controls-line-1">
-            <text-search></text-search>
-            <sctype-select></sctype-select>
-            <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type">
-                <mat-button-toggle value="list" matTooltip="Display results as a list">
-                    <mat-icon fontIcon="fa-bars"></mat-icon>
-                </mat-button-toggle>
-                <mat-button-toggle value="table" matTooltip="Display results in a table">
-                    <mat-icon fontIcon="fa-table"></mat-icon>
-                </mat-button-toggle>
-            </mat-button-toggle-group>
-            <reset></reset>
-            <share></share>
-        </div>
+    <mat-drawer-container>
+        <mat-drawer mode="push" [opened]="advancedSearchOpen" class="advanced-search-controls mat-typography" #advancedSearchDrawer>
+            <div class="mat-title">Advanced search</div>
+            <general-advanced-controls></general-advanced-controls>
+            <funding-search-controls></funding-search-controls>
+        </mat-drawer>
+        <mat-drawer-content>
 
-        <lcc-select></lcc-select>
+            <mat-drawer-container>
+                <mat-drawer mode="push" [opened]="summaryStatsOpened" position="end" class="stats-drawer mat-typography" #summaryStatsDrawer>
+                    <button mat-icon-button class="close-summary-stats" (click)="summaryStatsOpened=false">
+                        <mat-icon fontIcon="fa-times"></mat-icon>
+                    </button>
+                    <div class="mat-title">Summary statistics</div>
+                    <summary-statistics *ngIf="summaryStatsOpened"></summary-statistics>
+                </mat-drawer>
+                <mat-drawer-content class="main-drawer-content">
 
-        <mat-expansion-panel class="advanced-search-panel" expanded="false">
-            <mat-expansion-panel-header>Advanced search</mat-expansion-panel-header>
-            <div class="advanced-search-controls">
-                <general-advanced-controls></general-advanced-controls>
-                <funding-search-controls></funding-search-controls>
-            </div>
-        </mat-expansion-panel>
-        <mat-expansion-panel class="summary-statistics-panel"
-            [expanded]="statisticsExpanded"
-            (opened)="statisticsExpanded = true"
-            (closed)="statisticsExpanded = false">
-            <mat-expansion-panel-header>Summary statistics</mat-expansion-panel-header>
-            <summary-statistics *ngIf="statisticsExpanded"></summary-statistics>
-        </mat-expansion-panel>
-    </div>
+                    <div class="search-controls">
+                        <lcc-select></lcc-select>
+                        <div class="basic-controls-line-1">
+                            <text-search></text-search>
+                            <sctype-select></sctype-select>
+                            <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type">
+                                <mat-button-toggle value="list" matTooltip="Display results as a list">
+                                    <mat-icon fontIcon="fa-bars"></mat-icon>
+                                </mat-button-toggle>
+                                <mat-button-toggle value="table" matTooltip="Display results in a table">
+                                    <mat-icon fontIcon="fa-table"></mat-icon>
+                                </mat-button-toggle>
+                            </mat-button-toggle-group>
+                            <button class="toggle-advanced-search" mat-mini-fab matTooltip="Advanced search" matTooltipPosition="left" (click)="advancedSearchOpen = !advancedSearchOpen">
+                                <mat-icon fontIcon="fa-cog"></mat-icon>
+                             </button>
+                             <button class="toggle-summary-stats" mat-mini-fab matTooltip="Summary statistics" matTooltipPosition="left" (click)="summaryStatsOpened = !summaryStatsOpened">
+                                 <mat-icon fontIcon="fa-pie-chart"></mat-icon>
+                              </button>
+                            <reset></reset>
+                            <share></share>
+                        </div>
+                    </div>
 
-    <div class="search-results">
-        <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
-        <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
-        <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize" [pageSizeOptions]="[10, 20, 50, 100, 200]"></mat-paginator>
-    </div>
-    <sync-status></sync-status>
+                    <div class="search-results">
+                        <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
+                        <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
+                        <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize" [pageSizeOptions]="[10, 20, 50, 100, 200]"></mat-paginator>
+                    </div>
+                    <sync-status></sync-status>
+
+                </mat-drawer-content>
+            </mat-drawer-container>
+        </mat-drawer-content>
+    </mat-drawer-container>
     `,
     styleUrls: [ './item-search.component.scss']
 })
@@ -100,12 +113,15 @@ export class ItemSearch extends MonitorsDestroy {
     /** If on table view contains ItemTable child component */
     @ViewChild(ItemTable) itemTable:ItemTable;
 
+    @ViewChild('advancedSearchDrawer') advancedSearchDrawer:MatDrawer;
+    advancedSearchOpen:boolean = false;
+    @ViewChild('summaryStatsDrawer') summaryStatsDrawer:MatDrawer;
+    summaryStatsOpened:boolean = false;
+
     /** Kicked when the view changes to update the underlying sorter */
     private sorterChanges:Subject<MatSort> = new Subject();
     /** Pass through for events comming from `currentSorter`. */
     private sortChanges:Subject<Sort> = new Subject();
-
-    statisticsExpanded:boolean = false;
 
     constructor(public search:SearchService) {
         super();
@@ -183,6 +199,9 @@ export class ItemSearch extends MonitorsDestroy {
                   )
                   .subscribe((sort:Sort) => setTimeout(() => this.sortChanges.next(sort)));
           });
+
+          this.advancedSearchDrawer.openedChange.asObservable().subscribe(bool => this.advancedSearchOpen = bool);
+          this.summaryStatsDrawer.openedChange.asObservable().subscribe(bool => this.summaryStatsOpened = bool);
     }
 
     ngAfterViewChecked() {

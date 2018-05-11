@@ -1,8 +1,0 @@
-@import '~@angular/material/theming';
-
-@mixin reset-component-theme($theme) {
-    // like share button
-    .reset-button.mat-mini-fab.mat-accent {
-        color: #fff;
-    }
-}
