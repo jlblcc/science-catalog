@@ -79,10 +79,18 @@ export interface FiscalTimePeriod {
 export function fiscalYear(d:string,end?:boolean):number {
     if(d) {
         let m = moment(d).tz('UTC');
-        // if >= october next year
+        // the following two checks are due to the variety of timezones data
+        // is being entered in vs where its being interpreted.  Either we
+        // need to keep track of all LCC's timezone's and interpret dates relative to
+        // those or allow this leeway of one day on start/end dates to allow for the
+        // fact that a date's interpretation may shift one day based on the origin's
+        // offset to UTC.  this solution is more simplistic and should work adequately.
         if(end && m.month() === 9 && m.date() === 1) {
             // end on Oct 1 not considered the next fiscal year
             return m.year();
+        } else if (!end && m.month() === 8 && m.date() === 30) {
+            // start on Sept 30 considered next fiscal year
+            return m.year()+1;
         }
         return m.year() + (m.month() >= 9 ? 1 : 0);
     }

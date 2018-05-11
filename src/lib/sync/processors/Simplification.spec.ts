@@ -33,12 +33,12 @@ describe('Simplification',() => {
         expect(years[0]).to.equal(2014);
     });
 
-    it('fiscalYears endOnOct1',() => {
+    it('fiscalYears start Sept30 or endOnOct1',() => {
         let years = fiscalYears([{
-            startDateTime: '2015-10-01T04:00:00.000Z',
+            startDateTime: '2015-09-30T04:00:00.000Z', // TZ shift issues
             endDateTime: '2016-10-01T03:59:59.999Z'
         },{
-            startDateTime: '2016-10-01T04:00:00.000Z',
+            startDateTime: '2016-09-30T04:00:00.000Z', // TZ shift issues
             endDateTime: '2017-10-01T03:59:59.999Z'
         }]);
         expect(years).to.be.instanceof(Array).with.length(2);
