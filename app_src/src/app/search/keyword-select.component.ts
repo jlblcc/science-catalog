@@ -3,10 +3,8 @@ import { FormControl } from '@angular/forms';
 
 import { MatChipList, MatChipEvent } from '@angular/material';
 
-import { Observable } from 'rxjs/Observable';
+import { Observable ,  merge as mergeObservables ,  of as observableOf } from 'rxjs';
 import { startWith, switchMap, map, tap, takeUntil } from 'rxjs/operators';
-import { merge as mergeObservables } from 'rxjs/observable/merge';
-import { of as observableOf } from 'rxjs/observable/of';
 
 import { SimplifiedKeywordType } from '../../../../src/db/models';
 
@@ -39,7 +37,7 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
         </mat-form-field>
     </div>
     <mat-chip-list>
-        <mat-chip *ngFor="let keyword of control.value.criteria; index as i" (remove)="removeKeyword(i)">
+        <mat-chip *ngFor="let keyword of control.value.criteria; index as i" (removed)="removeKeyword(i)">
             {{keyword.typeLabel}} : {{keyword.value}}
             <mat-icon matChipRemove fontIcon="fa-times"></mat-icon>
         </mat-chip>

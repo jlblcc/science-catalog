@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 
-import { Observable } from 'rxjs/Observable';
+import { Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 import { SearchService } from './search.service';

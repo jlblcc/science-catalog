@@ -3,7 +3,7 @@ import { FormControl } from '@angular/forms';
 
 import { MatAutocompleteSelectedEvent } from '@angular/material';
 
-import { Observable } from 'rxjs/Observable';
+import { Observable } from 'rxjs';
 import { debounceTime, switchMap, startWith, tap, takeUntil } from 'rxjs/operators';
 
 import { MonitorsDestroy } from '../common';

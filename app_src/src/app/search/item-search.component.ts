@@ -2,10 +2,8 @@ import { Component, ViewChild } from '@angular/core';
 import { FormGroup, FormControl } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
-import { Subject } from 'rxjs/Subject';
+import { Subject ,  merge as mergeObservables ,  of as observableOf } from 'rxjs';
 import { debounceTime, map, switchMap, startWith, catchError, takeUntil, distinctUntilChanged, filter } from 'rxjs/operators';
-import { merge as mergeObservables } from 'rxjs/observable/merge';
-import { of as observableOf } from 'rxjs/observable/of';
 
 import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort, PageEvent } from '@angular/material';
 

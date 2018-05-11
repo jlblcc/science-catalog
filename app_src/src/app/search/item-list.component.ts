@@ -58,7 +58,7 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
         .sort-controls .sort-column {
             flex-grow: 1;
         }
-        .sort-controls .sort-column /deep/ .mat-input-underline {
+        .sort-controls .sort-column /deep/ .mat-form-field-underline {
             /* no idea why, this is ootb 1.25em and for this ONE control that causes the underling to not show up. */
             bottom: 1.26em;
         }

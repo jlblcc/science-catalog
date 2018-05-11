@@ -4,8 +4,7 @@ import { Location } from '@angular/common';
 
 import { MatPaginator, MatSort } from '@angular/material';
 
-import { Observable } from 'rxjs/Observable';
-import { Subject } from 'rxjs/Subject';
+import { Observable ,  Subject } from 'rxjs';
 import { map, switchMap, startWith, filter } from 'rxjs/operators';
 
 import { ConfigService, CacheService } from '../common';

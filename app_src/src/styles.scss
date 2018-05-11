@@ -87,7 +87,7 @@ mat-icon[class*="fa-"] {
 /* no idea why, this is ootb 1.25em and for a few controls that causes the
    underline to not show up.
 */
-.mat-input-underline {
+.mat-form-field-underline {
     bottom: 1.27em;
 }
 
