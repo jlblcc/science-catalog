@@ -107,8 +107,10 @@ export enum FromScienceBaseLogCodes {
     ITEM_UPDATED = 'item_updated',
     /** An item in the catalog has not changed since the last sync */
     ITEM_UNCHANGED = 'item_unchanged',
-    /** An item has been deleted from the catalog */
-    ITEM_DELETED = 'item_deleted',
+    /** Some items were deleted from the catalog.  When this happens it means
+        the items were in the catalog when an LCC's sync was started but were
+        not discovered in the current results pulled from ScienceBase */
+    ITEMS_DELETED = 'items_deleted',
     /** An item was ignored (no `mdJson`) */
     ITEM_IGNORED = 'item_ignored',
     /** An error occured while an item was being syned */
@@ -154,8 +156,6 @@ export function fromScienceBaseReport(results:ItemCounts[]):string {
  * ScienceBase items for them.
  *
  * It produces on output `ItemCount[]`.
- *
- * @todo Handle deleted items from sciencebase
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     requestCount:number = 0;
@@ -323,9 +323,28 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                 startLogCode = itemType === ScType.PROJECT ? FromScienceBaseLogCodes.PROJECT_SYNC_STARTED : FromScienceBaseLogCodes.PRODUCT_SYNC_STARTED,
                 endLogCode = itemType === ScType.PROJECT ? FromScienceBaseLogCodes.PROJECT_SYNC_COMPLETED : FromScienceBaseLogCodes.PRODUCT_SYNC_COMPLETED;
             this.log.info(`[${startLogCode}][${lcc._id}] "${lcc.title}"`,{...logAdditions,code:startLogCode});
-            let resolve = () => {
+            let remainingIds = [],
+                resolve = () => {
                     this.log.info(`[${endLogCode}][${lcc._id}] "${lcc.title}"`,{...logAdditions,code:endLogCode});
                     _resolve()
+                },
+                cleanup = () => {
+                    if(remainingIds.length) {
+                        // the items in this list were not found during the sync from ScienceBase which means they disappeared
+                        // from ScienceBase since the last sync and should be deleted from the catalog.
+                        Item.deleteMany({_id: {$in: remainingIds}})
+                            .then(() => {
+                                this.log.info(`[${FromScienceBaseLogCodes.ITEMS_DELETED}][${lcc._id}] "${lcc.title}"`,{...logAdditions,
+                                    code:FromScienceBaseLogCodes.ITEMS_DELETED,
+                                    data: remainingIds
+                                });
+                                counts.deleted += remainingIds.length;
+                                resolve();
+                            })
+                            .catch(reject);
+                    } else {
+                        resolve();
+                    }
                 },
                 importOnePage = (response) => {
                     counts.pages++;
@@ -334,7 +353,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                             if(response.nextlink && response.nextlink.url) {
                                 this.request(response.nextlink.url).then(importOnePage).catch(reject);
                             } else {
-                                resolve();
+                                cleanup();
                             }
                         },
                         items = response.items,
@@ -343,30 +362,48 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     if(promises.length) {
                         // wait for them to complete
                         Promise.all(promises)
-                            .then(() => setImmediate(next)) // clear call stack
+                            .then(() => {
+                                // no rejections, drop any item ids from the remainingIds list
+                                items.forEach(i => {
+                                    const idx = remainingIds.indexOf(i.id);
+                                    if(idx !== -1) {
+                                        remainingIds.splice(idx,1);
+                                    }
+                                });
+                                setImmediate(next)
+                            }) // clear call stack
                             .catch(reject);
                     } else {
                         setImmediate(next);
                     }
                 };
-                // get the ball rolling
-                this.request({
-                    url: `https://www.sciencebase.gov/catalog/items`,
-                    qs: {
-                        fields: 'title,files',
-                        lq: itemType === ScType.PROJECT ?
-                            'browseCategories:"Data" AND browseCategories:"Project"':
-                            'browseCategories:"Data" AND NOT browseCategories:"Project"',
-                        filter: 'tagslq=tags.name:"LCC Network Science Catalog" AND tags.type:"Harvest Set"',
-                        filter1: `ancestors=${lcc._id}`,
-                        sort: 'lastUpdated',
-                        order: 'asc',
-                        format: 'json',
-                        max: this.pageSize
-                    }
-                })
-                .then(importOnePage)
-                .catch(reject);
+                Item.find({_lcc:lcc._id,scType:itemType})
+                    .select('_id')
+                    .exec()
+                    .then((existing) => {
+                        // populate remainingIds with all the ids for this itemType that are currently in the catalog
+                        remainingIds = existing.map(e => e._id.toString());
+                        // get the ball rolling
+                        this.request({
+                            url: `https://www.sciencebase.gov/catalog/items`,
+                            qs: {
+                                fields: 'title,files',
+                                lq: itemType === ScType.PROJECT ?
+                                    'browseCategories:"Data" AND browseCategories:"Project"':
+                                    'browseCategories:"Data" AND NOT browseCategories:"Project"',
+                                filter: 'tagslq=tags.name:"LCC Network Science Catalog" AND tags.type:"Harvest Set"',
+                                filter1: `ancestors=${lcc._id}`,
+                                sort: 'lastUpdated',
+                                order: 'asc',
+                                format: 'json',
+                                max: this.pageSize
+                            }
+                        })
+                        .then(importOnePage)
+                        .catch(reject);
+                    })
+                    .catch(reject);
+
         });
     }
 
@@ -396,9 +433,6 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         break;
                     case FromScienceBaseLogCodes.ITEM_UPDATED:
                         counts.updated++;
-                        break;
-                    case FromScienceBaseLogCodes.ITEM_DELETED:
-                        counts.deleted++;
                         break;
                     case FromScienceBaseLogCodes.ITEM_UNCHANGED:
                         counts.unchanged++;
