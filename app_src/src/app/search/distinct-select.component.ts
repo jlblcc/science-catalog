@@ -10,7 +10,7 @@ import { SearchService, SearchControl } from './search.service';
     selector: 'distinct-select',
     template: `
     <mat-form-field>
-        <mat-select [placeholder]="placeholder" [formControl]="control" multiple>
+        <mat-select [placeholder]="placeholder" [formControl]="control" [multiple]=multiple>
             <mat-option *ngFor="let o of options | async" [value]="o">
               <span *ngIf="displayPipe === 'resourceType'; else plainText">{{o | resourceType}}</span>
               <ng-template #plainText>{{o}}</ng-template>
@@ -22,6 +22,7 @@ import { SearchService, SearchControl } from './search.service';
 export class DistinctSelect implements SearchControl {
     // this is not very generic, but this is a small app so...
     @Input() displayPipe:string;
+    @Input() multiple:boolean = true;
 
     @Input() initialValue:any[];
     @Input() placeholder:string;

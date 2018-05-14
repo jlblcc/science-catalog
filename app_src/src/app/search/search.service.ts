@@ -59,9 +59,11 @@ export interface GeneralAdvancedCriteria {
     /** List of resource types */
     resourceType?: string[];
     /** List of fiscal years */
-    fiscalYears?: number [];
+    fiscalYears?: number[];
     /** List of keyword criteria */
     keywords?: KeywordSearchCriteria;
+    /** Single status */
+    status?: string[];
 }
 export interface SearchCriteria {
     /** Sciencebase item type */
@@ -223,6 +225,10 @@ export class SearchService {
                     general.keywords.criteria.map(k => `simplified.keywords.keywords.${k.typeKey} eq '${k.value}'`)
                         .join(` ${general.keywords.logicalOperator} `);
                 $filter += ` and (${keywordFilter})`;
+            }
+            if(general.status && general.status.length) {
+                const statusQuoted = general.status.map(s => `'${s}'`);
+                $filter += ` and in(simplified.status,${statusQuoted.join(',')})`;
             }
         }
         if(criteria.funding) {

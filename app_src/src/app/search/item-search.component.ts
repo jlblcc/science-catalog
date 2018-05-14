@@ -35,6 +35,9 @@ const BASE_QUERY_ARGS = {
 
     <mat-drawer-container>
         <mat-drawer mode="push" [opened]="advancedSearchOpen" class="advanced-search-controls mat-typography" #advancedSearchDrawer>
+            <button mat-icon-button class="close-advanced-search" (click)="advancedSearchOpen=false">
+                <mat-icon fontIcon="fa-times"></mat-icon>
+            </button>
             <div class="mat-title">Advanced search</div>
             <general-advanced-controls></general-advanced-controls>
             <funding-search-controls></funding-search-controls>
