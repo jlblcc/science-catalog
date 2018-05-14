@@ -64,6 +64,10 @@ export interface GeneralAdvancedCriteria {
     keywords?: KeywordSearchCriteria;
     /** Single status */
     status?: string[];
+    /** Associated organization by name */
+    assocOrgNames?: string;
+    /** Lead organization by name */
+    leadOrgNames?: string;
 }
 export interface SearchCriteria {
     /** Sciencebase item type */
@@ -229,6 +233,12 @@ export class SearchService {
             if(general.status && general.status.length) {
                 const statusQuoted = general.status.map(s => `'${s}'`);
                 $filter += ` and in(simplified.status,${statusQuoted.join(',')})`;
+            }
+            if(general.assocOrgNames) {
+                $filter += ` and simplified.assocOrgNames eq '${general.assocOrgNames}'`;
+            }
+            if(general.leadOrgNames) {
+                $filter += ` and simplified.leadOrgNames eq '${general.leadOrgNames}'`;
             }
         }
         if(criteria.funding) {

@@ -3,6 +3,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 
 import { MonitorsDestroy } from '../common';
 import { DistinctSelect } from './distinct-select.component';
+import { DistinctAutocomplete } from './distinct-autocomplete.component';
 import { KeywordSelect } from './keyword-select.component';
 import { SearchService, GeneralAdvancedCriteria } from './search.service';
 
@@ -22,18 +23,43 @@ import { SearchService, GeneralAdvancedCriteria } from './search.service';
                  placeholder="Years funded"
                  distinctProperty="simplified.funding.fiscalYears"
                  [initialValue]="initialValue.fiscalYears"></distinct-select>
+
+    <distinct-autocomplete #assocOrgNames class="assoc-org-name"
+                        placeholder="Associated organization"
+                        distinctProperty="simplified.assocOrgNames"
+                        containsMode="true"
+                        [initialValue]="initialValue.assocOrgNames"></distinct-autocomplete>
+    <distinct-autocomplete #leadOrgNames class="lead-org-name"
+                        placeholder="Lead organization"
+                        distinctProperty="simplified.leadOrgNames"
+                        containsMode="true"
+                        [initialValue]="initialValue.leadOrgNames"></distinct-autocomplete>
     <keyword-select></keyword-select>
     `,
     styles: [`
-    keyword-select {
-        margin-bottom: 15px;
-    }
-    distinct-select {
-        margin-right: 10px;
-    }
-    distinct-select:last-of-type {
-        margin-right: 0px;
-    }
+        :host {
+            display: flex;
+            flex-wrap: wrap;
+            flex-direction: row;
+        }
+
+        distinct-select {
+            padding-right: 10px;
+        }
+        distinct-select:last-of-type {
+            padding-right: 0px;
+        }
+        .assoc-org-name,
+        .lead-org-name {
+            flex-basis: 50%;
+        }
+        .assoc-org-name {
+            padding-right: 10px;
+        }
+        keyword-select {
+            margin-bottom: 15px;
+            flex-basis: 100%;
+        }
     `]
 
 })
@@ -46,6 +72,10 @@ export class GeneralAdvancedControls extends MonitorsDestroy {
     @ViewChild('fiscalYears') fiscalYears: DistinctSelect;
     /** The status control */
     @ViewChild('status') status: DistinctSelect;
+    /** The assocOrgNames control */
+    @ViewChild('assocOrgNames') assocOrgNames: DistinctAutocomplete;
+    /** The leadOrgNames control */
+    @ViewChild('leadOrgNames') leadOrgNames: DistinctAutocomplete;
     /** The keyword selection component (advanced) */
     @ViewChild(KeywordSelect) keywords: KeywordSelect;
 
@@ -60,5 +90,7 @@ export class GeneralAdvancedControls extends MonitorsDestroy {
         this.controls.addControl('fiscalYears',this.fiscalYears.control);
         this.controls.addControl('keywords',this.keywords.control);
         this.controls.addControl('status',this.status.control);
+        this.controls.addControl('assocOrgNames',this.assocOrgNames.control);
+        this.controls.addControl('leadOrgNames',this.leadOrgNames.control);
     }
 }

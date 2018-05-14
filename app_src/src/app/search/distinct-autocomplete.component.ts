@@ -64,7 +64,7 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
                     this.containsMode ? v : null,
                     true /* fire immediately */))
             ).pipe(
-                tap((arr:any[]) => arr.length ? this.typeAhead.enable({emitEvent:false}) : this.typeAhead.disable({emitEvent:false}))
+                tap((arr:any[]) => (arr.length || this.typeAhead.value) ? this.typeAhead.enable({emitEvent:false}) : this.typeAhead.disable({emitEvent:false}))
             );
     }
 
