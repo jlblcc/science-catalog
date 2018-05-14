@@ -33,7 +33,7 @@ export interface SearchControl {
 export interface FundingSearchCriteria {
     awardId?: string;
     match?:boolean;
-    amountRange?:number[];
+    amountRange?:number[][];
     sourceType?: string[];
     source?: string;
     recipientType?: string[];
@@ -255,9 +255,18 @@ export class SearchService {
                 $filter += ` and simplified.funding.matching eq ${f.match}`;
             }
             if(f.amountRange && f.amountRange.length) {
-                $filter += ` and simplified.funding.amount ge ${f.amountRange[0]}`;
-                if(f.amountRange.length > 1) {
-                    $filter += ` and simplified.funding.amount le ${f.amountRange[1]}`;
+                let clauses = f.amountRange.map(range => {
+                    let $f = `simplified.funding.amount ge ${range[0]}`;
+                    if(range.length > 1) {
+                        $f += ` and simplified.funding.amount le ${range[1]}`;
+                    }
+                    return $f;
+                });
+                if(clauses.length === 1) {
+                    $filter += ` and ${clauses[0]}`;
+                } else {
+                    clauses = clauses.map(c => `(${c})`);
+                    $filter += ` and (${clauses.join(' or ')})`;
                 }
             }
             if(f.source) {

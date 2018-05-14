@@ -42,21 +42,22 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
                                        containsMode="true"
                                        [initialValue]="initialValues.recipient"></distinct-autocomplete>
             </div>
-            <mat-form-field class="funding-range">
-                <mat-select placeholder="Funding amount" [formControl]="fundingRange">
-                    <mat-option>Any amount</mat-option>
-                    <mat-option *ngFor="let range of fundingRanges" [value]="range">
-                        {{range[0] | currency:'USD':'symbol':'1.0-0'}}
-                        <span *ngIf="range.length === 2; else openEndedRange"> -  {{range[1] | currency:'USD':'symbol':'1.0-0'}}</span>
-                        <ng-template #openEndedRange> and up</ng-template>
-                    </mat-option>
-                </mat-select>
-            </mat-form-field>
-            <distinct-autocomplete #awardId class="award-id"
-                                   placeholder="Award ID"
-                                   distinctProperty="simplified.funding.awardIds"
-                                   containsMode="true"
-                                   [initialValue]="initialValues.awardId"></distinct-autocomplete>
+            <div class="funding-last-row">
+                <mat-form-field class="funding-range">
+                    <mat-select placeholder="Funding amount" [formControl]="fundingRange" multiple>
+                        <mat-option *ngFor="let range of fundingRanges" [value]="range">
+                            {{range[0] | currency:'USD':'symbol':'1.0-0'}}
+                            <span *ngIf="range.length === 2; else openEndedRange"> -  {{range[1] | currency:'USD':'symbol':'1.0-0'}}</span>
+                            <ng-template #openEndedRange> and up</ng-template>
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <distinct-autocomplete #awardId class="award-id"
+                                       placeholder="Award ID"
+                                       distinctProperty="simplified.funding.awardIds"
+                                       containsMode="true"
+                                       [initialValue]="initialValues.awardId"></distinct-autocomplete>
+            </div>
     </mat-expansion-panel>
     `,
     styles:[`
@@ -79,6 +80,12 @@ import { SearchService, FundingSearchCriteria, SearchControl } from './search.se
         }
         mat-radio-button {
             margin-right: 15px;
+        }
+        .funding-last-row {
+            display: flex;
+        }
+        .funding-range {
+            flex-grow: 1;
         }
     `]
 })
@@ -110,14 +117,22 @@ export class FundingSearchControls extends MonitorsDestroy implements SearchCont
         let initial = search.initial;
         this.initialValues = initial ? initial.funding||{} : {};
         this.match = new FormControl(this.initialValues.match);
-        const initRange = this.initialValues.amountRange;
+        const initRange = this.initialValues.amountRange,
+              isInitRange = (r:number[]):boolean => {
+                  return initRange.reduce((found,rng) => {
+                        return found||(r.length === rng.length && r[0] === rng[0]);
+                    },false);
+              };
         this.fundingRange = new FormControl (
             initRange ?
             // mat-select works by reference so the array must be the exact one.
             // only need to compare index 0 since they're all unique
-            this.fundingRanges.reduce((found,range) => {
-                return found||((initRange.length === range.length && initRange[0] === range[0]) ? range : null);
-            },null) : null
+            this.fundingRanges.reduce((arr:number[][],range) => {
+                if(isInitRange(range)) {
+                    arr.push(range);
+                }
+                return arr;
+            },[]) : null
         );
         search.register(this);
     }
