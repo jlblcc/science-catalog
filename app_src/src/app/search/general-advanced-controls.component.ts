@@ -23,6 +23,7 @@ import { SearchService, GeneralAdvancedCriteria } from './search.service';
                  placeholder="Years funded"
                  distinctProperty="simplified.funding.fiscalYears"
                  [initialValue]="initialValue.fiscalYears"></distinct-select>
+    <mat-checkbox [formControl]="dataDotGov">Data.gov</mat-checkbox>
 
     <distinct-autocomplete #assocOrgNames class="assoc-org-name"
                         placeholder="Associated organization"
@@ -41,10 +42,14 @@ import { SearchService, GeneralAdvancedCriteria } from './search.service';
             display: flex;
             flex-wrap: wrap;
             flex-direction: row;
+            align-items: baseline;
         }
 
         distinct-select {
             padding-right: 10px;
+        }
+        mat-checkbox {
+            padding-left: 10px;
         }
         distinct-select:last-of-type {
             padding-right: 0px;
@@ -78,11 +83,13 @@ export class GeneralAdvancedControls extends MonitorsDestroy {
     @ViewChild('leadOrgNames') leadOrgNames: DistinctAutocomplete;
     /** The keyword selection component (advanced) */
     @ViewChild(KeywordSelect) keywords: KeywordSelect;
+    dataDotGov: FormControl;
 
     constructor(private search:SearchService) {
         super();
         let initial = search.initial;
         this.initialValue = initial ? initial.general||{} : {};
+        this.dataDotGov = new FormControl(this.initialValue.dataDotGov);
     }
 
     ngAfterViewInit() {
@@ -92,5 +99,6 @@ export class GeneralAdvancedControls extends MonitorsDestroy {
         this.controls.addControl('status',this.status.control);
         this.controls.addControl('assocOrgNames',this.assocOrgNames.control);
         this.controls.addControl('leadOrgNames',this.leadOrgNames.control);
+        this.controls.addControl('dataDotGov',this.dataDotGov);
     }
 }

@@ -68,6 +68,8 @@ export interface GeneralAdvancedCriteria {
     assocOrgNames?: string;
     /** Lead organization by name */
     leadOrgNames?: string;
+    /** Filter for data.gov bound items */
+    dataDotGov?:boolean;
 }
 export interface SearchCriteria {
     /** Sciencebase item type */
@@ -239,6 +241,9 @@ export class SearchService {
             }
             if(general.leadOrgNames) {
                 $filter += ` and simplified.leadOrgNames eq '${general.leadOrgNames}'`;
+            }
+            if(general.dataDotGov) {
+                $filter += ` and mdJson.metadataRepository.repository eq 'data.gov'`;
             }
         }
         if(criteria.funding) {
