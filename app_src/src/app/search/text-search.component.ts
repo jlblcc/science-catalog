@@ -10,7 +10,7 @@ import { SearchService, SearchControl } from './search.service';
     selector: 'text-search',
     template: `
     <mat-form-field class="text-search">
-        <input matInput placeholder="Quick Search: Title/Description/People/Organizations/Keywords" [formControl]="$text" />
+        <input matInput placeholder="Quick Search: Title/Abstract/Contacts/Keywords" [formControl]="$text" />
         <mat-hint>To search for a phrase &quot;wrap it in quotes&quot;</mat-hint>
     </mat-form-field>
     `,

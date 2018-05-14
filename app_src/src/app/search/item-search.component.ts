@@ -34,7 +34,6 @@ const BASE_QUERY_ARGS = {
     </div>
 
     <div class="search-controls">
-        <lcc-select></lcc-select>
         <div class="basic-controls-line-1">
             <text-search></text-search>
             <sctype-select></sctype-select>
@@ -49,6 +48,7 @@ const BASE_QUERY_ARGS = {
             <reset></reset>
             <share></share>
         </div>
+        <lcc-select></lcc-select>
     </div>
 
     <mat-expansion-panel>
