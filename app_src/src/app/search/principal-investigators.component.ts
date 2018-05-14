@@ -36,6 +36,15 @@ interface Investigator {
         ul > li > div:hover {
             cursor: pointer;
         }
+        ul > li:after {
+            content: ', ';
+        }
+        ul > li:last-of-type:after {
+            content: '';
+        }
+        ul > li > div {
+            display: inline-block;
+        }
     `]
 })
 export class PrincipalInvestigators {

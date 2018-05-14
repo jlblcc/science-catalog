@@ -13,9 +13,10 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
     template: `
     <div class="sort-controls">
         <mat-form-field class="sort-column">
-            <mat-select placeholder="Sort by" (selectionChange)="sortChange()" [(value)]="sort.active">
+            <mat-select (selectionChange)="sortChange()" [(value)]="sort.active">
                 <mat-option *ngFor="let c of tableColumns" [value]="c.property">{{c.label}}</mat-option>
             </mat-select>
+            <span matPrefix>Sort by:&nbsp;</span>
         </mat-form-field>
         <mat-button-toggle class="sort-direction-toggle"
             [checked]="sortDescending"
@@ -31,7 +32,7 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
         </mat-card-title>
         <mat-card-subtitle>
             <span *ngIf="item.simplified.responsibleParty?.principalInvestigator"><label>Principal Investigator:</label> <principal-investigators [item]="item" [highlight]="highlight"></principal-investigators></span>
-            <span *ngIf="item.simplified.funding && item.simplified.funding.fiscalYears.length"><label>Fiscal Year(s):</label> {{item.simplified.funding.fiscalYears.join(',')}}</span>
+            <span *ngIf="item.simplified.funding && item.simplified.funding.fiscalYears.length"><label>Years funded:</label>{{item.simplified.funding.fiscalYears.join(', ')}}</span>
             <span><label>Date:</label> <item-date [item]="item"></item-date></span>
         </mat-card-subtitle>
         <mat-card-content>
@@ -49,6 +50,7 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
         mat-card-subtitle label {
             font-weight: bold;
             margin-left: 10px;
+            margin-right: 3px;
         }
         .sort-controls {
             display: flex;

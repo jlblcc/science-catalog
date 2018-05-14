@@ -9,12 +9,12 @@ import { ItemIfc } from '../../../../src/db/models';
     template: `
     <mat-icon *ngFor="let rt of item.simplified.resourceType"
         [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
-        matTooltip="{{item.scType === 'product' ? 'Prodcut type: ': ''}}{{rt.type | resourceType:rt.name}}"
+        matTooltip="{{item.scType === 'product' ? 'Prodcut type: ': ''}}{{rt.type | resourceType}}"
         matTooltipPosition="right"></mat-icon>
     <div *ngIf="extraResourceTypes.length" class="extra-rtypes">
     <mat-icon *ngFor="let rt of extraResourceTypes"
         [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
-        matTooltip="Product type: {{rt.type | resourceType:rt.name}}"
+        matTooltip="Product type: {{rt.type | resourceType}}"
         matTooltipPosition="right"></mat-icon>
     </div>
     `,
@@ -60,6 +60,7 @@ export class ItemIcon {
         "collection": "fa-bars",
         "website": "fa-link",
         "Journal": "fa-file-text-o",
+        "journal": "fa-file-text-o",
         "service": "fa-cogs",
         "application": "fa-code",
         "tabularDataset": "fa-table",
@@ -75,5 +76,5 @@ export class ItemIcon {
         "tile": "fa-file-image-o",
     };
 
-    readonly UNKNOWN_FONT_ICON = 'fa-question-circle-o';
+    readonly UNKNOWN_FONT_ICON = 'fa-question-circle';
 }

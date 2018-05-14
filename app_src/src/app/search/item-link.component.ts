@@ -22,7 +22,7 @@ export class ItemLink {
         this._title = this.item.simplified.title;
         if(this.item.simplified && this.item.simplified.lccnet) {
             this._href = this.item.simplified.lccnet.url;
-            this._target = this.target || '';
+            this._target = this.target || '_blank';
         } else {
             this._target = this.target || '_blank';
             this._href = `https://www.sciencebase.gov/catalog/item/${this.item._id}`;

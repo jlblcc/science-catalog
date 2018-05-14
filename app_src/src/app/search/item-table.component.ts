@@ -21,7 +21,7 @@ export const TABLE_COLUMNS = [{
     label: 'Principal investigator'
 },{
     property: 'simplified.funding.fiscalYears',
-    label: 'Fiscal year(s)'
+    label: 'Years funded'
 }];
 
 /**

@@ -4,6 +4,6 @@ import { Pipe, PipeTransform } from '@angular/core';
 export class LccTitlePipe implements PipeTransform {
     transform(value:string) {
         return value ?
-            value.replace(/Landscape Conservation Cooperative$/,'') : value;
+            value.replace(/Landscape Conservation Cooperative$/,'LCC') : value;
     }
 }
