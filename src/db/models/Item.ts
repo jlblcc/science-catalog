@@ -225,8 +225,10 @@ export interface SimplifiedIfc {
     combinedResourceType: ResourceType[];
     /** The simplified funding information */
     funding?: SimplifiedFunding;
-    /** Contains any string that should be part of the text index */
-    textIndex: string[];
+    /** Just contact names (for text search) */
+    contactNames: string[];
+    /** All keyword values regardless of type (for text search and raw keyword search) */
+    allKeywords: string[];
     /** Reference to lccnetwork if one exists */
     lccnet?: LccnetRef;
 }
@@ -281,7 +283,8 @@ const simplifiedSchema = new Schema({
     resourceType: [resourceTypeSchema],
     combinedResourceType: [resourceTypeSchema],
     funding: { type: fundingSchema, required: false },
-    textIndex: [{type: String, required: true}],
+    contactNames: [{type: String, required: true}],
+    allKeywords: [{type: String, required: true}],
     lccnet: {type: lccnetRefSchema, required: false},
 },{ _id : false });
 
@@ -303,7 +306,7 @@ const schema = new Schema({
             updatedAt:'modified'
         }
     });
-schema.index({'simplified.abstract':'text','title':'text','simplified.textIndex':'text'});
+schema.index({'simplified.abstract':'text','title':'text','simplified.contactNames':'text','simplified.allKeywords':'text'});
 
 /**
  * Item model.

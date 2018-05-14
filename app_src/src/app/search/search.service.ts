@@ -31,11 +31,9 @@ export interface SearchControl {
 }
 
 export interface FundingSearchCriteria {
-
     awardId?: string;
     match?:boolean;
     amountRange?:number[];
-
     sourceType?: string[];
     source?: string;
     recipientType?: string[];
@@ -43,9 +41,9 @@ export interface FundingSearchCriteria {
 }
 export interface KeywordCriteria {
     /** The keyword type key */
-    typeKey:string;
+    typeKey?:string;
     /** The keyword type label */
-    typeLabel:string;
+    typeLabel?:string;
     /** The keyword value */
     value:string;
 }
@@ -228,7 +226,9 @@ export class SearchService {
             }
             if(general.keywords && general.keywords.criteria.length) {
                 let keywordFilter =
-                    general.keywords.criteria.map(k => `simplified.keywords.keywords.${k.typeKey} eq '${k.value}'`)
+                    general.keywords.criteria.map(k => k.typeKey ?
+                            `simplified.keywords.keywords.${k.typeKey} eq '${k.value}'` :
+                            `simplified.allKeywords eq '${k.value}'`)
                         .join(` ${general.keywords.logicalOperator} `);
                 $filter += ` and (${keywordFilter})`;
             }
@@ -326,7 +326,7 @@ export class SearchService {
             $select: $select
         };
         if($f || $filter) {
-            params.$filter = $f && $filter ? `{$f} and ${$filter}` : ($f ? $f : $filter);
+            params.$filter = $f && $filter ? `${$f} and ${$filter}` : ($f ? $f : $filter);
         }
         if(criteria && criteria.$text) {
             params.$text = criteria.$text;

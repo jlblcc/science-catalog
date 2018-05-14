@@ -266,17 +266,6 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                 types: [],
                 keywords: {},
             });
-        // the text index for an item includes title, simplified.abstract and simplified.textIndex
-        // put any strings in this array that should trigger a find when a visitor does a simple
-        // text based search
-        const textIndex = contacts.map(c => c.name);
-        Object.keys(keywords.keywords).forEach(keyType => {
-            keywords.keywords[keyType].forEach(kw => {
-                if(textIndex.indexOf(kw) === -1) {
-                    textIndex.push(kw);
-                }
-            });
-        });
 
         item.simplified = {
             title: mdJson.metadata.resourceInfo.citation.title,
@@ -297,7 +286,15 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             responsibleParty: responsibleParty,
             resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
             combinedResourceType: mdJson.metadata.resourceInfo.resourceType, // if project will be filled out with product resourceTypes later
-            textIndex: textIndex,
+            contactNames: contacts.map(c => c.name),
+            allKeywords: Object.keys(keywords.keywords).reduce((all,keyType) => {
+                    keywords.keywords[keyType].forEach(kw => {
+                        if(all.indexOf(kw) === -1) {
+                            all.push(kw);
+                        }
+                    });
+                    return all;
+                },[]),
             lccnet: item.simplified ? item.simplified.lccnet : undefined, // keep if set previously
         };
         if(item.scType === ScType.PROJECT) {

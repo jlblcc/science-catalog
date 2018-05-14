@@ -31,6 +31,7 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
     @Input() placeholder:string;
     @Input() distinctProperty:string;
     @Input() containsMode:boolean = false;
+    @Input() fireImmediately:boolean = true;
     control:FormControl;
 
     typeAhead:FormControl;
@@ -60,9 +61,9 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
                 }),
                 switchMap(v => this.search.liveDistinct<any>(
                     this.distinctProperty,
-                    !this.containsMode ? `contains(${this.distinctProperty},'${v}')` : null,
+                    !this.containsMode && v ? `contains(${this.distinctProperty},'${v}')` : null,
                     this.containsMode ? v : null,
-                    true /* fire immediately */))
+                    this.fireImmediately))
             ).pipe(
                 tap((arr:any[]) => (arr.length || this.typeAhead.value) ? this.typeAhead.enable({emitEvent:false}) : this.typeAhead.disable({emitEvent:false}))
             );
