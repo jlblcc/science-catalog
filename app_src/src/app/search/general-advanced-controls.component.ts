@@ -5,7 +5,7 @@ import { MonitorsDestroy } from '../common';
 import { DistinctSelect } from './distinct-select.component';
 import { DistinctAutocomplete } from './distinct-autocomplete.component';
 import { KeywordSelect } from './keyword-select.component';
-import { SearchService, GeneralAdvancedCriteria } from './search.service';
+import { SearchService, SearchControl, GeneralAdvancedCriteria } from './search.service';
 
 @Component({
     selector: 'general-advanced-controls',
@@ -68,7 +68,7 @@ import { SearchService, GeneralAdvancedCriteria } from './search.service';
     `]
 
 })
-export class GeneralAdvancedControls extends MonitorsDestroy {
+export class GeneralAdvancedControls extends MonitorsDestroy implements SearchControl {
     initialValue:GeneralAdvancedCriteria;
     controls:FormGroup = new FormGroup({});
     /** The resourceType control */
@@ -90,6 +90,11 @@ export class GeneralAdvancedControls extends MonitorsDestroy {
         let initial = search.initial;
         this.initialValue = initial ? initial.general||{} : {};
         this.dataDotGov = new FormControl(this.initialValue.dataDotGov);
+        search.register(this);
+    }
+
+    reset() {
+        this.dataDotGov.setValue(null,{emitEvent:false});
     }
 
     ngAfterViewInit() {
