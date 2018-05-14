@@ -37,14 +37,6 @@ const BASE_QUERY_ARGS = {
         <div class="basic-controls-line-1">
             <text-search></text-search>
             <sctype-select></sctype-select>
-            <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type">
-                <mat-button-toggle value="list" matTooltip="Display results as a list">
-                    <mat-icon fontIcon="fa-bars"></mat-icon>
-                </mat-button-toggle>
-                <mat-button-toggle value="table" matTooltip="Display results in a table">
-                    <mat-icon fontIcon="fa-table"></mat-icon>
-                </mat-button-toggle>
-            </mat-button-toggle-group>
             <reset></reset>
             <share></share>
         </div>
@@ -67,6 +59,14 @@ const BASE_QUERY_ARGS = {
     </mat-expansion-panel>
 
     <div class="search-results">
+        <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type" vertical="true">
+            <mat-button-toggle value="list" matTooltip="Display results as a list" matTooltipPosition="left">
+                <mat-icon fontIcon="fa-bars"></mat-icon>
+            </mat-button-toggle>
+            <mat-button-toggle value="table" matTooltip="Display results in a table" matTooltipPosition="left">
+                <mat-icon fontIcon="fa-table"></mat-icon>
+            </mat-button-toggle>
+        </mat-button-toggle-group>
         <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
         <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
         <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize" [pageSizeOptions]="[10, 20, 50, 100, 200]"></mat-paginator>

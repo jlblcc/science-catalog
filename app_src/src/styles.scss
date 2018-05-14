@@ -63,10 +63,13 @@ item-list {
     font-size: 2em;
     margin-top: -1px;
 }
-.mat-mini-fab mat-icon.fa,
-.mat-button-toggle mat-icon.fa {
+.mat-mini-fab mat-icon.fa {
     font-size: 1.35em;
     margin-top: 4px;
+}
+.mat-button-toggle mat-icon.fa {
+    font-size: 1.75em;
+    margin-top: 5px;
 }
 /* this feels like a workaround but it would be nice to have both material
    icons and font-awesome icons work without having to specify font-awesome as

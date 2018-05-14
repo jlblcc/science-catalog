@@ -39,6 +39,16 @@
     }
 }
 
+.search-results {
+    position: relative;
+    .results-list-type {
+        background-color: #fff;
+        position: absolute;
+        top: 15px;
+        right: -65px;
+    }
+}
+
 mat-form-field {
     display: block;
 }
