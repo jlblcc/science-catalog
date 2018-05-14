@@ -146,7 +146,7 @@ export function camelToTitleCase(s:string):string {
             title += c;
         }
     }
-    return title;
+    return title.replace(/\s+/,' '); // collapse multiple spaces
 }
 
 /**
@@ -236,43 +236,68 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                 });
         }
 
+        const contacts = this.simplifyContacts(mdJson.contact.map(c => c.contactId),item);
+        const responsibleParty = (mdJson.metadata.resourceInfo.citation.responsibleParty||[]).reduce((map,poc) => {
+                map[poc.role] = map[poc.role] || [];
+                this.simplifyContacts(poc.party.map(ref => ref.contactId),item,poc)
+                    .forEach(c => map[poc.role].push(c));
+                return map;
+            },{});
+        const keywords = (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
+                if(k.keywordType) {
+                    let typeLabel = k.keywordType,
+                        typeKey = typeLabel
+                            .trim()
+                            .toLowerCase()
+                            .replace(/[\.-]/g,'')
+                            .replace(/\s+/g,'_');
+                    // look through types to see if this one has been put in there yet
+                    if(!map.types.filter(kt => kt.type === typeKey).length) {
+                        map.types.push({
+                            type: typeKey,
+                            label: typeLabel
+                        });
+                    }
+                    map.keywords[typeKey] = map.keywords[typeKey]||[];
+                    k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
+                }
+                return map;
+            },{
+                types: [],
+                keywords: {},
+            });
+        // the text index for an item includes title, simplified.abstract and simplified.textIndex
+        // put any strings in this array that should trigger a find when a visitor does a simple
+        // text based search
+        const textIndex = contacts.map(c => c.name);
+        Object.keys(keywords.keywords).forEach(keyType => {
+            keywords.keywords[keyType].forEach(kw => {
+                if(textIndex.indexOf(kw) === -1) {
+                    textIndex.push(kw);
+                }
+            });
+        });
+
         item.simplified = {
             title: mdJson.metadata.resourceInfo.citation.title,
             lcc: lcc.title,
             abstract: mdJson.metadata.resourceInfo.abstract,
             status: mdJson.metadata.resourceInfo.status.map(s => camelToTitleCase(s)),
-            keywords: (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
-                    if(k.keywordType) {
-                        let typeLabel = k.keywordType,
-                            typeKey = typeLabel
-                                .trim()
-                                .toLowerCase()
-                                .replace(/[\.-]/g,'')
-                                .replace(/\s+/g,'_');
-                        // look through types to see if this one has been put in there yet
-                        if(!map.types.filter(kt => kt.type === typeKey).length) {
-                            map.types.push({
-                                type: typeKey,
-                                label: typeLabel
-                            });
+            keywords: keywords,
+            contacts: contacts,
+            leadOrgNames: (responsibleParty.principalInvestigator||[]).reduce((names,pi) => {
+                    (pi.memberOfOrganization||[]).forEach(org => {
+                        if(names.indexOf(org.name) === -1) {
+                            names.push(org.name);
                         }
-                        map.keywords[typeKey] = map.keywords[typeKey]||[];
-                        k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
-                    }
-                    return map;
-                },{
-                    types: [],
-                    keywords: {},
-                }),
-            contacts: this.simplifyContacts(mdJson.contact.map(c => c.contactId),item),
-            responsibleParty: (mdJson.metadata.resourceInfo.citation.responsibleParty||[]).reduce((map,poc) => {
-                    map[poc.role] = map[poc.role] || [];
-                    this.simplifyContacts(poc.party.map(ref => ref.contactId),item,poc)
-                        .forEach(c => map[poc.role].push(c));
-                    return map;
-                },{}),
+                    });
+                    return names;
+                },[]),
+            assocOrgNames: contacts.filter(c => c.isOrganization).map(o => o.name),
+            responsibleParty: responsibleParty,
             resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
-            combinedResourceType: mdJson.metadata.resourceInfo.resourceType,
+            combinedResourceType: mdJson.metadata.resourceInfo.resourceType, // if project will be filled out with product resourceTypes later
+            textIndex: textIndex,
             lccnet: item.simplified ? item.simplified.lccnet : undefined, // keep if set previously
         };
         if(item.scType === ScType.PROJECT) {

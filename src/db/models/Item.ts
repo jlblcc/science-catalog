@@ -213,6 +213,10 @@ export interface SimplifiedIfc {
     keywords: SimplifiedKeywords;
     /** The list of simplified contacts (built from `metadata.contact`) */
     contacts: SimplifiedContact[];
+    /** List of Principal Investigator organization names (for search) */
+    leadOrgNames: string[];
+    /** List of all associated organization names (for search) */
+    assocOrgNames: string[];
     /** The list of simplified contacts (built from `metadata.resourceInfo.citation.responsibleParty` and `metadata.contact`) */
     responsibleParty: SimplifiedContactsMap;
     /** The list of string resourceTypes (extracted from `metadata.resourceInfo.resourceType.type`) */
@@ -221,6 +225,8 @@ export interface SimplifiedIfc {
     combinedResourceType: ResourceType[];
     /** The simplified funding information */
     funding?: SimplifiedFunding;
+    /** Contains any string that should be part of the text index */
+    textIndex: string[];
     /** Reference to lccnetwork if one exists */
     lccnet?: LccnetRef;
 }
@@ -268,11 +274,14 @@ const simplifiedSchema = new Schema({
     status: [{type:String, required: true}],
     keywords: keywordsSchema,
     contacts: [{type: contactSchema, required: true}],
+    leadOrgNames: [{type: String, required: true}],
+    assocOrgNames: [{type: String, required: true}],
     // mongoose cannot validate but TypeScript can
     responsibleParty: {type: Schema.Types.Mixed, required: false },
     resourceType: [resourceTypeSchema],
     combinedResourceType: [resourceTypeSchema],
     funding: { type: fundingSchema, required: false },
+    textIndex: [{type: String, required: true}],
     lccnet: {type: lccnetRefSchema, required: false},
 },{ _id : false });
 
@@ -294,7 +303,7 @@ const schema = new Schema({
             updatedAt:'modified'
         }
     });
-schema.index({'simplified.abstract':'text','title':'text','simplified.responsibleParty.principalInvestigator.name':'text'});
+schema.index({'simplified.abstract':'text','title':'text','simplified.textIndex':'text'});
 
 /**
  * Item model.
