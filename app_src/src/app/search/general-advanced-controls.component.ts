@@ -25,16 +25,17 @@ import { SearchService, SearchControl, GeneralAdvancedCriteria } from './search.
                  [initialValue]="initialValue.fiscalYears"></distinct-select>
     <mat-checkbox [formControl]="dataDotGov">Data.gov</mat-checkbox>
 
-    <distinct-autocomplete #assocOrgNames class="assoc-org-name"
-                        placeholder="Associated organization"
-                        distinctProperty="simplified.assocOrgNames"
-                        containsMode="true"
-                        [initialValue]="initialValue.assocOrgNames"></distinct-autocomplete>
     <distinct-autocomplete #leadOrgNames class="lead-org-name"
                         placeholder="Lead organization"
                         distinctProperty="simplified.leadOrgNames"
                         containsMode="true"
                         [initialValue]="initialValue.leadOrgNames"></distinct-autocomplete>
+    <distinct-autocomplete #assocOrgNames class="assoc-org-name"
+                        placeholder="Partner organization"
+                        distinctProperty="simplified.assocOrgNames"
+                        containsMode="true"
+                        [initialValue]="initialValue.assocOrgNames"></distinct-autocomplete>
+
     <keyword-select></keyword-select>
     `,
     styles: [`
@@ -58,7 +59,7 @@ import { SearchService, SearchControl, GeneralAdvancedCriteria } from './search.
         .lead-org-name {
             flex-basis: 50%;
         }
-        .assoc-org-name {
+        .lead-org-name {
             padding-right: 10px;
         }
         keyword-select {

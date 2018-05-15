@@ -82,17 +82,35 @@ export class ItemMap extends ItemList /* for common sort functionality */ {
                 setTimeout(() => {
                     this.mapsApiLoader.load()
                         .then(() => {
-                            this.markerBounds = new google.maps.LatLngBounds();
-                            (this.cData||[])
-                            // only necessary for that second when switching from list/table to map
-                            .filter(item => !!item.simplified.extent)
-                            .forEach(item => {
-                                const latLng = new google.maps.LatLng(
-                                    item.simplified.extent.representativePoint.coordinates[1],
-                                    item.simplified.extent.representativePoint.coordinates[0]
-                                );
-                                this.markerBounds.extend(latLng);
-                            });
+                            if(this.cData.length === 1) {
+                                // if just a single marker than make the bounding box span a single degree
+                                // surrounding the marker
+                                const item = this.cData[0],
+                                      lat = item.simplified.extent.representativePoint.coordinates[1],
+                                      lng = item.simplified.extent.representativePoint.coordinates[0],
+                                      delta = 0.5;
+                                this.markerBounds = new google.maps.LatLngBounds();
+                                this.markerBounds.extend(new google.maps.LatLng(
+                                    lat + delta,
+                                    lng + delta
+                                ));
+                                this.markerBounds.extend(new google.maps.LatLng(
+                                    lat - delta,
+                                    lng - delta
+                                ));
+                            } else {
+                                this.markerBounds = new google.maps.LatLngBounds();
+                                (this.cData||[])
+                                // only necessary for that second when switching from list/table to map
+                                .filter(item => !!item.simplified.extent)
+                                .forEach(item => {
+                                    const latLng = new google.maps.LatLng(
+                                        item.simplified.extent.representativePoint.coordinates[1],
+                                        item.simplified.extent.representativePoint.coordinates[0]
+                                    );
+                                    this.markerBounds.extend(latLng);
+                                });
+                            }
                         });
                 });
             }
