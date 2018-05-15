@@ -195,6 +195,30 @@ const datesSchema = new Schema({
     start: {type: Date, required: false },
     lastRevision: {type: Date, required: false },
 },{_id: false});
+
+/**
+ * Basic GeoJson Geometry
+ */
+export interface Geometry {
+    /** The geometry type (e.g. "Point", or "Polygon") */
+    type: string;
+    /** The lat/lng coordinates */
+    coordinates: number[]|number[][];
+}
+const geometrySchema = new Schema({
+    type: {type: String, required: true},
+    // using mixed since most are number[][] but Point woud be number[]
+    coordinates:[{type:Schema.Types.Mixed,required:true}]
+},{_id: false});
+
+export interface SimplifiedExtent {
+    representativePoint: Geometry;
+    boundingBox?: number[];
+}
+const extentSchema = new Schema({
+    representativePoint: {type:geometrySchema, required:true},
+    boundingBox:[{type:Number,required: false}]
+},{_id: false});
 /**
  * The basic representation of a simplified item document.
  */
@@ -229,6 +253,8 @@ export interface SimplifiedIfc {
     contactNames: string[];
     /** All keyword values regardless of type (for text search and raw keyword search) */
     allKeywords: string[];
+    /** The geographic extent info if it can be generated */
+    extent?: SimplifiedExtent;
     /** Reference to lccnetwork if one exists */
     lccnet?: LccnetRef;
 }
@@ -285,6 +311,7 @@ const simplifiedSchema = new Schema({
     funding: { type: fundingSchema, required: false },
     contactNames: [{type: String, required: true}],
     allKeywords: [{type: String, required: true}],
+    extent: {type:extentSchema,required: false},
     lccnet: {type: lccnetRefSchema, required: false},
 },{ _id : false });
 
@@ -307,7 +334,7 @@ const schema = new Schema({
         }
     });
 schema.index({'simplified.abstract':'text','title':'text','simplified.contactNames':'text','simplified.allKeywords':'text'});
-
+schema.index({'simplified.extent.representativePoint':'2dsphere'});
 /**
  * Item model.
  */

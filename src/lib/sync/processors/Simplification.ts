@@ -8,6 +8,7 @@ import { Item,
          SimplifiedFunding,
          SimplifiedFundingAllocations, SimplifiedFundingAllocation,
          SimplifiedDates,
+         SimplifiedExtent,
          Contact,
          ContactDoc } from '../../../db/models';
 import FromScienceBase from './FromScienceBase';
@@ -15,6 +16,7 @@ import { LogAdditions } from '../../log';
 import Contacts from './Contacts';
 import { QueryCursor } from 'mongoose';
 import * as moment from 'moment-timezone';
+import * as geojsonExtent from '@mapbox/geojson-extent';
 
 /**
  * The output of the simplification processor.
@@ -50,6 +52,8 @@ export enum SimplificationCodes {
     DATE_FORMAT = 'deprecated_date_format',
     /** A project points to another project via the product relationship */
     PROJECT_AS_PRODUCT = 'project_as_product',
+    /** An error occured while attempting to simplify an item's geographic extent */
+    GEOGRAPHIC_WARN = 'geographic_warn',
 }
 
 /**
@@ -147,6 +151,75 @@ export function camelToTitleCase(s:string):string {
         }
     }
     return title.replace(/\s+/,' '); // collapse multiple spaces
+}
+
+/**
+ * Given mdJson collects and/or builds any GeoJson features from its contents.
+ * For a given `geographicExtent` if a `geographicElement` is found it takes
+ * it takes precedence.  If one is not found and a `boundingBox` is found then
+ * a feature (`Polygon`) will be built from the bounding box.
+ *
+ * @param mdJson The mdJson document.
+ * @returns A GeoJson feature collection or undefined.
+ */
+function collectedFeatures(mdJson) {
+    const features = [];
+    if (mdJson &&
+        mdJson.metadata &&
+        mdJson.metadata.resourceInfo &&
+        mdJson.metadata.resourceInfo.extent) {
+
+        mdJson.metadata.resourceInfo.extent.forEach(function(extent) {
+            (extent.geographicExtent || []).forEach(function(ge) {
+                if (ge.geographicElement && ge.geographicElement.length) {
+                    ge.geographicElement.forEach(function(e) {
+                        // unclear from adiwg schema if this will always be a feature
+                        if (e.type === 'Feature') {
+                            features.push(e);
+                        } else if (e.type === 'FeatureCollection') {
+                            e.features.forEach(function(f) {
+                                features.push(f);
+                            });
+                        } else {
+                            // wrap in a feature
+                            features.push({
+                                type: 'Feature',
+                                geometry: e
+                            });
+                        }
+                    });
+                } else if (ge.boundingBox) {
+                    // assume that if an element has both geographicElement
+                    // and bounding box that the former represents the latter
+                    const nLat = ge.boundingBox.northLatitude,
+                        sLat = ge.boundingBox.southLatitude,
+                        wLon = ge.boundingBox.westLongitude,
+                        eLon = ge.boundingBox.eastLongitude;
+                    if (nLat && sLat && wLon && eLon) {
+                        const nw = [wLon, nLat],
+                            ne = [eLon, nLat],
+                            se = [eLon, sLat],
+                            sw = [wLon, sLat];
+                        features.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Polygon',
+                                coordinates: [[nw, ne, se, sw, nw]]
+                            }
+                        });
+                    }
+                }
+            });
+        });
+    }
+    return features.length ? {
+        type: 'FeatureCollection',
+        features: features.map(f => {
+            // geojson-flatten is not tollerant of no properties....
+            f.properties = f.properties||{};
+            return f;
+        })
+    } : undefined;
 }
 
 /**
@@ -295,6 +368,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     });
                     return all;
                 },[]),
+            extent: this.simplifyExtent(item),
             lccnet: item.simplified ? item.simplified.lccnet : undefined, // keep if set previously
         };
         if(item.scType === ScType.PROJECT) {
@@ -505,6 +579,39 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             allocations: allocations
         };
         return simplified;
+    }
+
+    private simplifyExtent(item:ItemDoc):SimplifiedExtent {
+        try {
+            const featureCollection = collectedFeatures(item.mdJson);
+            if(featureCollection) {
+                const bbox = geojsonExtent(featureCollection); // [WSEN]
+                if(bbox && bbox.length === 4) {
+                    const [w,s,e,n] = bbox;
+                    // if a single point is fed in then we'll get back a bounding box
+                    // that is a single point, if that happens then ignore the bbox (it's not a box)
+                    const isPoint = w === e && s === n,
+                          pointCoords = isPoint ?
+                            [bbox[0],bbox[1]] :
+                            [(w+((e-w)/2)),(s+((n-s)/2))];
+                    return {
+                        representativePoint: {
+                            type: 'Point',
+                            coordinates: pointCoords
+                        },
+                        boundingBox: !isPoint ? bbox : undefined
+                    };
+                }
+            }
+        } catch(geoError) {
+            this.log.warn(`[${SimplificationCodes.GEOGRAPHIC_WARN}][${item._id}] "${geoError.message}"`,{
+                    _lcc: item._lcc._id,
+                    _item: item._id,
+                    code: SimplificationCodes.GEOGRAPHIC_WARN,
+                    data: this.constructErrorForStorage(geoError)
+                });
+        }
+        return undefined;
     }
 
     private simplifyContacts(contactIds:string[],item:ItemDoc,context?:any) {
