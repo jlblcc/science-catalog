@@ -9,7 +9,7 @@ import { ItemIfc } from '../../../../src/db/models';
     template: `
     <mat-icon *ngFor="let rt of item.simplified.resourceType"
         [fontIcon]="FONT_ICONS[rt.type]||UNKNOWN_FONT_ICON"
-        matTooltip="{{item.scType === 'product' ? 'Prodcut type: ': ''}}{{rt.type | resourceType}}"
+        matTooltip="{{item.scType === 'product' ? 'Product type: ': ''}}{{rt.type | resourceType}}"
         matTooltipPosition="right"></mat-icon>
     <div *ngIf="extraResourceTypes.length" class="extra-rtypes">
     <mat-icon *ngFor="let rt of extraResourceTypes"
