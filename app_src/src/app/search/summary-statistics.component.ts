@@ -11,9 +11,9 @@ import { MonitorsDestroy } from '../common';
     template: `
     <mat-tab-group *ngIf="data">
         <mat-tab label="General">
-            <div class="sum-line" *ngIf="data.projectsInLastMonth"><span class="mat-subheading-2">Projects in the last month</span>{{data.projectsInLastMonth}}
+            <div class="sum-line" *ngIf="data.projectCount"><span class="mat-subheading-2">Number of projects</span>{{data.projectCount}}
             </div>
-            <div class="sum-line" *ngIf="data.productsInLastMonth"><span class="mat-subheading-2">Products in the last month</span> {{data.productsInLastMonth}}</div>
+            <div class="sum-line" *ngIf="data.productCount"><span class="mat-subheading-2">Number of products</span> {{data.productCount}}</div>
             <div class="sum-line" *ngIf="data.projectsByResourceType">
                 <span class="mat-subheading-2">Projects by resource type</span>
                 <div class="sum-grid">

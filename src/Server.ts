@@ -178,8 +178,8 @@ export class Server {
                             projectsByResourceType: null,
                             productsByResourceType: null,
                             uniqueCollaboratorsByOrgType: null,
-                            projectsInLastMonth: 0,
-                            productsInLastMonth: 0,
+                            projectCount: 0,
+                            productCount: 0,
                         },
                         contactMap = simplified.contacts.reduce((map,c) => {
                                 map[c.contactId] = c;
@@ -229,20 +229,14 @@ export class Server {
                                 map[rt.type] = 1;
                                 return map;
                             },{});
-                    if(simplified.dates && simplified.dates.creation) {
-                        let now = Date.now(),
-                            oneMonth = 30*24*60*60*1000;
-                        if((now - simplified.dates.creation.getTime()) < oneMonth) {
-                            stats[doc.scType === 'project' ? 'projectsInLastMonth' : 'productsInLastMonth'] = 1;
-                        }
-                    }
+                    stats[doc.scType === 'project' ? 'projectCount' : 'productCount'] = 1;
                     emit('stats',stats);
                 },
                 reduce: function(key,values:any[]) {
                     let stats = values.reduce((stats,v) => {
                             stats.fundingTotal += v.fundingTotal;
-                            stats.projectsInLastMonth += v.projectsInLastMonth;
-                            stats.productsInLastMonth += v.productsInLastMonth;
+                            stats.projectCount += v.projectCount;
+                            stats.productCount += v.productCount;
                             let sumMap = (key) => {
                                     let vMap = v[key];
                                     if(vMap) {
@@ -287,8 +281,8 @@ export class Server {
                             projectsByResourceType: null,
                             productsByResourceType: null,
                             uniqueCollaboratorsByOrgType: null,
-                            projectsInLastMonth: 0,
-                            productsInLastMonth: 0,
+                            projectCount: 0,
+                            productCount: 0,
                         });
                     return stats;
                 }
@@ -305,8 +299,8 @@ export class Server {
                         projectsByResourceType: null,
                         productsByResourceType: null,
                         uniqueCollaboratorsByOrgType: null,
-                        projectsInLastMonth: 0,
-                        productsInLastMonth: 0,
+                        projectCount: 0,
+                        productCount: 0,
                     });
                 }
                 // collapse "unique" arrays/maps into numbers
