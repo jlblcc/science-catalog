@@ -40,7 +40,8 @@ mark {
 }
 
 // putting here for now to avoid the need for /deep/
-item-list {
+item-list,
+item-map {
     .sort-direction-toggle {
         box-shadow: none;
         &.mat-button-toggle-checked {
@@ -53,6 +54,28 @@ item-list {
             padding: 0px;
             font-size: .75em;
         }
+    }
+    .sort-controls {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+    .sort-controls .sort-column {
+        flex-grow: 1;
+    }
+    .sort-controls .sort-column /deep/ .mat-form-field-underline {
+        /* no idea why, this is ootb 1.25em and for this ONE control that causes the underling to not show up. */
+        bottom: 1.26em;
+    }
+    .sort-controls .sort-direction-toggle {
+        margin-left: 15px;
+    }
+}
+.agm-info-window-content {
+    mat-card {
+        box-shadow: none !important;
+        padding: 2px;
+        margin: 0px;
     }
 }
 

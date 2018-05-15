@@ -80,6 +80,8 @@ export interface SearchCriteria {
     $text?: string;
     /** funding criteria */
     funding?: FundingSearchCriteria;
+    /** The current view */
+    $view?: string;
     /** The $filter value built from these criteria */
     $filter?: string;
 }
@@ -207,6 +209,9 @@ export class SearchService {
         // items that are currently being sync'ed into the system and have yet
         // to have simplification run on them.
         let $filter = 'simplified ne null',tmp:any;
+        if(criteria.$view === 'map') {
+            $filter += ` and simplified.extent.representativePoint ne null`;
+        }
         if(criteria.scType) {
             $filter += ` and scType eq '${criteria.scType}'`;
         }

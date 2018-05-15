@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 
-import { MatSort, Sort, MatSortable, MatSelectChange, SortDirection } from '@angular/material';
+import { MatSort, Sort, MatSortable, MatSelectChange, SortDirection, MatTableDataSource } from '@angular/material';
 
 import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './item-table.component';
 
@@ -25,58 +25,14 @@ import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './it
             <mat-icon [fontIcon]="sortDescending ? 'fa-arrow-down' :'fa-arrow-up'"></mat-icon>
         </mat-button-toggle>
     </div>
-    <mat-card *ngFor="let item of dataSource.data">
-        <mat-card-title class="item-title">
-            <item-icon [item]="item"></item-icon>
-            <item-link [item]="item" [highlight]="highlight"></item-link> ({{item.simplified.lcc | lccTitle}})
-        </mat-card-title>
-        <mat-card-subtitle>
-            <span *ngIf="item.simplified.responsibleParty?.principalInvestigator"><label>Principal Investigator:</label> <principal-investigators [item]="item" [highlight]="highlight"></principal-investigators></span>
-            <span *ngIf="item.simplified.funding && item.simplified.funding.fiscalYears.length"><label>Years funded:</label>{{item.simplified.funding.fiscalYears.join(', ')}}</span>
-            <span><label>Date:</label> <item-date [item]="item"></item-date></span>
-        </mat-card-subtitle>
-        <mat-card-content>
-            <highlight-text [text]="item.simplified.abstract" [highlight]="highlight"></highlight-text>
-        </mat-card-content>
-    </mat-card>
-    `,
-    styles: [`
-        mat-card {
-            margin-bottom: 10px;
-        }
-        mat-card .mat-card-title {
-            font-size: 1.1em;
-        }
-        mat-card-subtitle label {
-            font-weight: bold;
-            margin-left: 10px;
-            margin-right: 3px;
-        }
-        .sort-controls {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-        }
-        .sort-controls .sort-column {
-            flex-grow: 1;
-        }
-        .sort-controls .sort-column /deep/ .mat-form-field-underline {
-            /* no idea why, this is ootb 1.25em and for this ONE control that causes the underling to not show up. */
-            bottom: 1.26em;
-        }
-        .sort-controls .sort-direction-toggle {
-            margin-left: 15px;
-        }
-        item-icon {
-            font-size: 0.75em;
-        }
-    `]
+    <item-teaser *ngFor="let item of dataSource.data" [item]="item" [highlight]="highlight"></item-teaser>
+    `
 })
 export class ItemList {
     tableColumns = TABLE_COLUMNS;
 
     @Input() highlight:string[];
-    @Input() dataSource;
+    @Input() dataSource: MatTableDataSource<any>;
 
     sortDescending:boolean;
     sort:MatSort;

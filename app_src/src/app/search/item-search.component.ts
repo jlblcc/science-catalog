@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Subject ,  merge as mergeObservables ,  of as observableOf } from 'rxjs';
 import { debounceTime, map, switchMap, startWith, catchError, takeUntil, distinctUntilChanged, filter } from 'rxjs/operators';
 
-import { MatTableDataSource, MatPaginator, MatButtonToggleGroup, MatSort, Sort, PageEvent } from '@angular/material';
+import { MatTableDataSource, MatPaginator, MatSort, Sort, PageEvent } from '@angular/material';
 
 import { MonitorsDestroy } from '../common';
 import { LccSelect } from './lcc-select.component';
@@ -19,6 +19,7 @@ import { ItemIfc } from '../../../../src/db/models';
 
 import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
+import { ItemMap } from './item-map.component';
 
 import { SearchCriteria, SearchService } from './search.service';
 
@@ -59,20 +60,23 @@ const BASE_QUERY_ARGS = {
     </mat-expansion-panel>
 
     <div class="search-results">
-        <mat-button-toggle-group #resultsListType="matButtonToggleGroup" value="table" class="results-list-type" vertical="true">
+        <mat-button-toggle-group [formControl]="resultsListType" class="results-list-type" vertical="true">
             <mat-button-toggle value="list" matTooltip="Display results as a list" matTooltipPosition="left">
                 <mat-icon fontIcon="fa-bars"></mat-icon>
             </mat-button-toggle>
             <mat-button-toggle value="table" matTooltip="Display results in a table" matTooltipPosition="left">
                 <mat-icon fontIcon="fa-table"></mat-icon>
             </mat-button-toggle>
+            <mat-button-toggle value="map" matTooltip="Display results on a map" matTooltipPosition="left">
+                <mat-icon fontIcon="fa-map"></mat-icon>
+            </mat-button-toggle>
         </mat-button-toggle-group>
         <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
         <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
+        <item-map *ngIf="resultsListType.value === 'map'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-map>
         <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize" [pageSizeOptions]="[10, 20, 50, 100, 200]"></mat-paginator>
     </div>
     <sync-status></sync-status>
-
     `,
     styleUrls: [ './item-search.component.scss']
 })
@@ -92,13 +96,15 @@ export class ItemSearch extends MonitorsDestroy {
     dataSource = new MatTableDataSource<ItemIfc>();
 
     /** Toggles between table/list view */
-    @ViewChild(MatButtonToggleGroup) resultsListType: MatButtonToggleGroup;
+    resultsListType: FormControl;
     /** Controls which page is current in the results */
     @ViewChild(MatPaginator) paginator:MatPaginator;
     /** If on list view contains ItemList child component */
     @ViewChild(ItemList) itemList:ItemList;
     /** If on table view contains ItemTable child component */
     @ViewChild(ItemTable) itemTable:ItemTable;
+    /** If on the map view contains ItemMap child component */
+    @ViewChild(ItemMap) itemMap:ItemMap;
 
     /** Kicked when the view changes to update the underlying sorter */
     private sorterChanges:Subject<MatSort> = new Subject();
@@ -109,6 +115,9 @@ export class ItemSearch extends MonitorsDestroy {
 
     constructor(public search:SearchService) {
         super();
+        const initialCriteria:SearchCriteria = search.initial;
+        initialCriteria.$view = initialCriteria.$view||'table';
+        this.resultsListType = new FormControl(initialCriteria.$view)
     }
 
     ngOnInit() {
@@ -123,18 +132,15 @@ export class ItemSearch extends MonitorsDestroy {
             scType: this.scType.control,
             general: this.general.controls,
             funding: this.funding.controls,
+            $view: this.resultsListType,
             $text: this.$text.control
         });
 
         // when one of several things happen reset to page zero
         mergeObservables(
             criteriaGroup.valueChanges, // criteria changed
-            this.resultsListType.valueChange.asObservable(), // view changed between table/list
+            this.resultsListType.valueChanges, // view changed between table/list
             this.sortChanges, // sort order changed
-            /* TODO after upgrade to Angular 6 filter out events where pageIndex !== previousPageIndex (page changed vs page size changed)
-            this.paginator.page.pipe(
-                    filter((pe) => pe.previousP)
-                )*/
         )
         .pipe(
             takeUntil(this.componentDestroyed)
@@ -190,7 +196,8 @@ export class ItemSearch extends MonitorsDestroy {
         // based on whether the list or table view is being used update the
         // underlying MatSort implementation dictating column sorting
         let matSort = this.itemList && this.itemList.sort ? this.itemList.sort :
-                      this.itemTable && this.itemTable.sort ? this.itemTable.sort : null;
+                      this.itemTable && this.itemTable.sort ? this.itemTable.sort :
+                      this.itemMap && this.itemMap.sort ? this.itemMap.sort : null;
         this.sorterChanges.next(matSort);
     }
 }

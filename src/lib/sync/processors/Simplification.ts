@@ -593,7 +593,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     const isPoint = w === e && s === n,
                           pointCoords = isPoint ?
                             [bbox[0],bbox[1]] :
-                            [(w+((e-w)/2)),(s+((n-s)/2))];
+                            [(w+(Math.abs(e-w)/2)),(s+(Math.abs(n-s)/2))];
                     return {
                         representativePoint: {
                             type: 'Point',

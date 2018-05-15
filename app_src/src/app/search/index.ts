@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 
 import { MaterialModule } from '../material';
 import { ClipboardModule } from 'ngx-clipboard';
+import { AgmCoreModule } from '@agm/core';
 
 import { ScienceCatalogCommonModule } from '../common';
 
@@ -22,8 +23,11 @@ import { ItemLink } from './item-link.component';
 import { PrincipalInvestigators } from './principal-investigators.component';
 import { ItemDate } from './item-date.component';
 
+import { ItemTeaser } from './item-teaser.component';
 import { ItemList } from './item-list.component';
 import { ItemTable } from './item-table.component';
+import { ItemMap } from './item-map.component';
+
 import { HighlightText, HighlightPipe } from './highlight-text.component';
 import { LccTitlePipe } from './lcc-title.pipe';
 import { ResourceTypePipe } from './resource-type.pipe';
@@ -38,6 +42,7 @@ import { SearchService } from './search.service';
         CommonModule,
         MaterialModule,
         ClipboardModule,
+        AgmCoreModule,
         ScienceCatalogCommonModule
     ],
     declarations:[
@@ -49,7 +54,8 @@ import { SearchService } from './search.service';
         GeneralAdvancedControls,
         SyncStatus,
 
-        ItemList, ItemTable,
+        ItemTeaser,
+        ItemList, ItemTable, ItemMap,
         HighlightText, HighlightPipe,
         ItemSearch,
 
