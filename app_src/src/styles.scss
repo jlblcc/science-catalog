@@ -123,3 +123,12 @@ mat-icon[class*="fa-"] {
         text-decoration: underline;
     }
 }
+
+summary-statistics {
+    .mat-tab-label {
+        height: 34px; // normally 48px;
+        &.mat-tab-label-active {
+            background-color: #eee;
+        }
+    }
+}
