@@ -175,8 +175,8 @@ export class Server {
                             fundsByRecipientType: null, // TODO by year
                             matchingContributionsByOrgType: null, // TODO by year
                             orgsProvidingInKindMatch: 0,
-                            projectsByResourceType: null,
-                            productsByResourceType: null,
+                            projectsByProjectCategory: null,
+                            productsByProjectCategory: null,
                             uniqueCollaboratorsByOrgType: null,
                             projectCount: 0,
                             productCount: 0,
@@ -224,11 +224,11 @@ export class Server {
                             }
                             return map;
                         },{});
-                    stats[doc.scType === 'project' ? 'projectsByResourceType' : 'productsByResourceType']
-                        = simplified.resourceType.reduce((map,rt) => {
-                                map[rt.type] = 1;
-                                return map;
-                            },{});
+                    stats[doc.scType === 'project' ? 'projectsByProjectCategory' : 'productsByProjectCategory'] =
+                        ((simplified.keywords.keywords||{}).lcc_project_category||[]).reduce((map,pc) => {
+                            map[pc] = 1;
+                            return map;
+                        },{});
                     stats[doc.scType === 'project' ? 'projectCount' : 'productCount'] = 1;
                     emit('stats',stats);
                 },
@@ -250,8 +250,9 @@ export class Server {
                             sumMap('fundsBySourceType');
                             sumMap('fundsByRecipientType');
                             sumMap('matchingContributionsByOrgType');
-                            sumMap('projectsByResourceType');
-                            sumMap('productsByResourceType');
+                            sumMap('projectsByProjectCategory');
+                            sumMap('productsByProjectCategory');
+
                             if(v.orgsProvidingInKindMatch) {
                                 stats.orgsProvidingInKindMatch = stats.orgsProvidingInKindMatch||[];
                                 v.orgsProvidingInKindMatch.forEach(o => {

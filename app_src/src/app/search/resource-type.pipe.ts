@@ -13,7 +13,7 @@ export class ResourceTypePipe implements PipeTransform {
         }
         for(; i < resourceType.length; i++) {
             c = resourceType.charAt(i);
-            if(c === c.toUpperCase()) {
+            if(/[A-Z]/.test(c)) {
                 s += ` ${c}`;
             } else {
                 s += c;

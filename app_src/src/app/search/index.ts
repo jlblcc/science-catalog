@@ -31,6 +31,7 @@ import { ItemMap } from './item-map.component';
 import { HighlightText, HighlightPipe } from './highlight-text.component';
 import { LccTitlePipe } from './lcc-title.pipe';
 import { ResourceTypePipe } from './resource-type.pipe';
+import { CollaboratorPipe } from './collaborator.pipe';
 
 import { ItemSearch } from './item-search.component';
 import { SyncStatus } from './sync-status.component';
@@ -59,13 +60,13 @@ import { SearchService } from './search.service';
         HighlightText, HighlightPipe,
         ItemSearch,
 
-        LccTitlePipe, ResourceTypePipe,
+        LccTitlePipe, ResourceTypePipe, CollaboratorPipe,
     ],
     exports:[
         ItemSearch
     ],
     providers: [
-        LccTitlePipe, ResourceTypePipe,
+        LccTitlePipe, ResourceTypePipe, CollaboratorPipe,
         SearchService
     ]
 })

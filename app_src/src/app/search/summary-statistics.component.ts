@@ -14,16 +14,16 @@ import { MonitorsDestroy } from '../common';
             <div class="sum-line" *ngIf="data.projectCount"><span class="mat-subheading-2">Number of projects</span>{{data.projectCount}}
             </div>
             <div class="sum-line" *ngIf="data.productCount"><span class="mat-subheading-2">Number of products</span> {{data.productCount}}</div>
-            <div class="sum-line" *ngIf="data.projectsByResourceType">
-                <span class="mat-subheading-2">Projects by resource type</span>
+            <div class="sum-line" *ngIf="data.projectsByProjectCategory">
+                <span class="mat-subheading-2">Projects by category</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.projectsByResourceType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> {{d.value}}</div>
+                    <div *ngFor="let d of data.projectsByProjectCategory"><span class="mat-subheading-1">{{d.key}}</span> {{d.value}}</div>
                 </div>
             </div>
-            <div class="sum-line" *ngIf="data.productsByResourceType">
-                <span class="mat-subheading-2">Products by resource type</span>
+            <div class="sum-line" *ngIf="data.productsByProjectCategory">
+                <span class="mat-subheading-2">Products by category</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.productsByResourceType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> {{d.value}}</div>
+                    <div *ngFor="let d of data.productsByProjectCategory"><span class="mat-subheading-1">{{d.key}}</span> {{d.value}}</div>
                 </div>
             </div>
         </mat-tab>
@@ -55,7 +55,7 @@ import { MonitorsDestroy } from '../common';
             <div class="sum-line">
                 <span class="mat-subheading-2">Unique collaborators by org type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.uniqueCollaboratorsByOrgType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> {{d.value}}</div>
+                    <div *ngFor="let d of data.uniqueCollaboratorsByOrgType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> {{d.value}}</div>
                 </div>
             </div>
         </mat-tab>
