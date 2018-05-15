@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Location } from '@angular/common';
 
-import { MatPaginator, MatSort } from '@angular/material';
+import { MatPaginator, MatSort, SortDirection } from '@angular/material';
 
 import { Observable ,  Subject } from 'rxjs';
 import { map, switchMap, startWith, filter } from 'rxjs/operators';
@@ -12,6 +12,10 @@ import { ConfigService, CacheService } from '../common';
 import { ScType, ItemIfc, LccIfc } from '../../../../src/db/models';
 
 import * as pako from 'pako';
+
+export const DEFAULT_PAGE_SIZE = 10;
+export const DEFAULT_SORT_DIRECTION = 'desc';
+export const DEFAULT_ACTIVE_SORT = 'simplified.dates.sort';
 
 const BASE_QUERY_ARGS = {
     $select: 'scType simplified lccnet'
@@ -69,6 +73,14 @@ export interface GeneralAdvancedCriteria {
     /** Filter for data.gov bound items */
     dataDotGov?:boolean;
 }
+export interface SearchContext {
+    /** The current view */
+    $view?: string;
+    $pageSize?: number;
+    $pageIndex?: number;
+    $sortDirection?: SortDirection;
+    $sortActive?: string;
+}
 export interface SearchCriteria {
     /** Sciencebase item type */
     scType?: ScType;
@@ -80,8 +92,7 @@ export interface SearchCriteria {
     $text?: string;
     /** funding criteria */
     funding?: FundingSearchCriteria;
-    /** The current view */
-    $view?: string;
+    $control?: SearchContext;
     /** The $filter value built from these criteria */
     $filter?: string;
 }
@@ -94,8 +105,6 @@ export class SearchService {
     private currentCriteria:SearchCriteria;
     private criteriaChanges:Subject<SearchCriteria> = new Subject();
     private controls:SearchControl[] = [];
-    /** How many items to display per page */
-    readonly pageSize = 10;
     /** How many items are in the last search result */
     totalItems = 0;
     /** Whether a search is currently active */
@@ -125,6 +134,15 @@ export class SearchService {
         } else {
             this.initialCriteria = this.cache.get(CACHED_CRITERIA_KEY);
         }
+        // other views use the initialCriteria to initialize paging, sorting, etc. so
+        // make sure $control is completely populated
+        this.initialCriteria.$control = this.initialCriteria.$control||{};
+        this.initialCriteria.$control.$view = this.initialCriteria.$control.$view||'table';
+        this.initialCriteria.$control.$pageSize = this.initialCriteria.$control.$pageSize||DEFAULT_PAGE_SIZE;
+        this.initialCriteria.$control.$pageIndex = this.initialCriteria.$control.$pageIndex||0;
+        this.initialCriteria.$control.$sortDirection = this.initialCriteria.$control.$sortDirection||DEFAULT_SORT_DIRECTION;
+        this.initialCriteria.$control.$sortActive = this.initialCriteria.$control.$sortActive||DEFAULT_ACTIVE_SORT;
+        console.log('initialCriteria',this.initialCriteria);
     }
 
     register(control:SearchControl):void {
@@ -209,7 +227,7 @@ export class SearchService {
         // items that are currently being sync'ed into the system and have yet
         // to have simplification run on them.
         let $filter = 'simplified ne null',tmp:any;
-        if(criteria.$view === 'map') {
+        if(criteria.$control.$view === 'map') {
             $filter += ` and simplified.extent.representativePoint ne null`;
         }
         if(criteria.scType) {
@@ -294,13 +312,22 @@ export class SearchService {
     }
 
     search(criteria:SearchCriteria):Observable<ItemIfc[]> {
+        // fill in the blanks in the current criteria, ideally these inputs
+        // would come via controls and drive search changes but often they're
+        // tangled up in other details and driver other circular change so it's
+        // easier to simply push the data into the criteria so it's cached and
+        // later restored properly (all but pageIndex)
+        criteria.$control.$pageSize = this.paginator.pageSize||DEFAULT_PAGE_SIZE;
+        criteria.$control.$pageIndex = this.paginator.pageIndex;
+        criteria.$control.$sortDirection = this.currentSorter.direction;
+        criteria.$control.$sortActive = this.currentSorter.active;
         console.log('SearchService.search',criteria);
         let qargs:any = {
             ...BASE_QUERY_ARGS,
-            $top: this.paginator.pageSize||this.pageSize,
-            $skip: this.paginator.pageIndex * this.pageSize,
+            $top: criteria.$control.$pageSize,
+            $skip: criteria.$control.$pageIndex * criteria.$control.$pageSize,
             $ellipsis: '300',
-            $orderby: `${this.currentSorter.direction === 'desc' ? '-' : ''}${this.currentSorter.active}`,
+            $orderby: `${criteria.$control.$sortDirection === 'desc' ? '-' : ''}${criteria.$control.$sortActive}`,
         };
         // if $text search, pass along
         if(criteria.$text) {
@@ -316,7 +343,9 @@ export class SearchService {
                                criteria.$filter !== this.currentCriteria.$filter ||
                                criteria.$text !== this.currentCriteria.$text) {
                               this.criteriaChanges.next(this.currentCriteria = criteria);
-                              this.cache.set(CACHED_CRITERIA_KEY,this.currentCriteria);
+                            }
+                            if(this.currentCriteria) {
+                                this.cache.set(CACHED_CRITERIA_KEY,this.currentCriteria);
                             }
                             return response.list as ItemIfc[]
                         }));

@@ -1,8 +1,9 @@
 import { Component, Input } from '@angular/core';
 import { MatSort, Sort, MatSortable, MatSelectChange, SortDirection } from '@angular/material';
 import {} from '@types/googlemaps';
+import { MapsAPILoader } from '@agm/core';
 
-import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './item-table.component';
+import { SearchService } from './search.service';
 import { ItemList } from './item-list.component';
 
 @Component({
@@ -69,26 +70,32 @@ export class ItemMap extends ItemList /* for common sort functionality */ {
             }];
     markerBounds:google.maps.LatLngBounds;
 
+    constructor(protected search:SearchService,private mapsApiLoader:MapsAPILoader) {
+        super(search);
+    }
+
     cData:any;
     ngDoCheck() {
         if(this.cData !== this.dataSource.data) {
             this.cData = this.dataSource.data;
             if(this.cData.length) {
                 setTimeout(() => {
-                    this.markerBounds = new google.maps.LatLngBounds();
-                    (this.cData||[])
-                    // only necessary for that second when switching from list/table to map
-                    .filter(item => !!item.simplified.extent)
-                    .forEach(item => {
-                        const latLng = new google.maps.LatLng(
-                            item.simplified.extent.representativePoint.coordinates[1],
-                            item.simplified.extent.representativePoint.coordinates[0]
-                        );
-                        this.markerBounds.extend(latLng);
-                    });
+                    this.mapsApiLoader.load()
+                        .then(() => {
+                            this.markerBounds = new google.maps.LatLngBounds();
+                            (this.cData||[])
+                            // only necessary for that second when switching from list/table to map
+                            .filter(item => !!item.simplified.extent)
+                            .forEach(item => {
+                                const latLng = new google.maps.LatLng(
+                                    item.simplified.extent.representativePoint.coordinates[1],
+                                    item.simplified.extent.representativePoint.coordinates[0]
+                                );
+                                this.markerBounds.extend(latLng);
+                            });
+                        });
                 });
             }
-            console.log('DATA CHANGED!');
         }
     }
 }

@@ -2,8 +2,8 @@ import { Component, Input, ViewChild } from '@angular/core';
 
 import { MatSort, Sort } from '@angular/material';
 
-export const DEFAULT_SORT_DIRECTION = 'desc';
-export const DEFAULT_ACTIVE_SORT = 'simplified.dates.sort';
+import { SearchService } from './search.service';
+
 export const TABLE_COLUMNS = [{
     property: 'simplified.dates.sort',
     label: 'Date'
@@ -107,8 +107,11 @@ export class ItemTable {
 
     @ViewChild(MatSort) sort:MatSort;
 
+    constructor(private search:SearchService) {}
+
     ngOnInit() {
-        this.sort.active = DEFAULT_ACTIVE_SORT;
-        this.sort.direction = DEFAULT_SORT_DIRECTION;
+        const initialCriteria = this.search.initial;
+        this.sort.active = initialCriteria.$control.$sortActive;
+        this.sort.direction = initialCriteria.$control.$sortDirection;
     }
 }

@@ -2,7 +2,8 @@ import { Component, Input } from '@angular/core';
 
 import { MatSort, Sort, MatSortable, MatSelectChange, SortDirection, MatTableDataSource } from '@angular/material';
 
-import { DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT, TABLE_COLUMNS } from './item-table.component';
+import { SearchService, DEFAULT_SORT_DIRECTION, DEFAULT_ACTIVE_SORT } from './search.service';
+import { TABLE_COLUMNS } from './item-table.component';
 
 /**
  * Display search results in a list.  Unlike `ItemTable` this component drives
@@ -37,8 +38,11 @@ export class ItemList {
     sortDescending:boolean;
     sort:MatSort;
 
+    constructor(protected search:SearchService) {}
+
     ngOnInit() {
-        let sort = new MatSort();
+        const sort = new MatSort();
+        const initialCriteria = this.search.initial;
         TABLE_COLUMNS.forEach(c => {
             sort.register({
                 disableClear: false,
@@ -46,9 +50,9 @@ export class ItemList {
                 start: DEFAULT_SORT_DIRECTION
             });
         });
-        sort.active = DEFAULT_ACTIVE_SORT;
-        sort.direction = DEFAULT_SORT_DIRECTION;
-        this.sortDescending = (DEFAULT_SORT_DIRECTION as string) === 'desc';
+        sort.active = initialCriteria.$control.$sortActive;
+        sort.direction = initialCriteria.$control.$sortDirection;
+        this.sortDescending = (sort.direction as string) === 'desc';
         this.sort = sort;
     }
 

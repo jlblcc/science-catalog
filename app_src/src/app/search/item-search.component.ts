@@ -74,7 +74,7 @@ const BASE_QUERY_ARGS = {
         <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
         <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
         <item-map *ngIf="resultsListType.value === 'map'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-map>
-        <mat-paginator [length]="search.totalItems" [pageSize]="search.pageSize" [pageSizeOptions]="[10, 20, 50, 100, 200]"></mat-paginator>
+        <mat-paginator [length]="search.totalItems" [pageSize]="initialCriteria.$control.$pageSize" [pageSizeOptions]="[10, 20, 50, 100, 200]"></mat-paginator>
     </div>
     <sync-status></sync-status>
     `,
@@ -111,13 +111,13 @@ export class ItemSearch extends MonitorsDestroy {
     /** Pass through for events comming from `currentSorter`. */
     private sortChanges:Subject<Sort> = new Subject();
 
+    initialCriteria:SearchCriteria;
     summaryStatsOpened:boolean = false;
 
     constructor(public search:SearchService) {
         super();
-        const initialCriteria:SearchCriteria = search.initial;
-        initialCriteria.$view = initialCriteria.$view||'table';
-        this.resultsListType = new FormControl(initialCriteria.$view)
+        const initialCriteria:SearchCriteria = this.initialCriteria = search.initial;
+        this.resultsListType = new FormControl(initialCriteria.$control.$view)
     }
 
     ngOnInit() {
@@ -125,15 +125,18 @@ export class ItemSearch extends MonitorsDestroy {
     }
 
     ngAfterViewInit() {
+        const controlGroup = new FormGroup({
+            $view: this.resultsListType,
+        });
         // roll up all criteria input into a group so we can react to
         // any change to the criteria input.
-        let criteriaGroup = new FormGroup({
+        const criteriaGroup = new FormGroup({
             lcc: this.lcc.control,
             scType: this.scType.control,
             general: this.general.controls,
             funding: this.funding.controls,
-            $view: this.resultsListType,
-            $text: this.$text.control
+            $text: this.$text.control,
+            $control: controlGroup
         });
 
         // when one of several things happen reset to page zero
