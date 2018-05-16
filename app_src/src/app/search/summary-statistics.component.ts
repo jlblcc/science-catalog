@@ -57,8 +57,11 @@ export class FundsByYear {
             </div>
         </mat-tab>
 
-        <mat-tab label="Agency funding" *ngIf="data.agencyFundingTotal || data.agencyFundsBySourceType">
-            <div class="sum-line"><span class="mat-subheading-2">Total funds</span> \${{data.agencyFundingTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
+        <mat-tab label="Agency funding" *ngIf="data.agencyFundsTotal || data.agencyFundsBySourceType">
+            <div class="sum-line inline">
+                <div><span class="mat-subheading-2">Sources providing agency funds</span> {{data.agencyFundsSourceCount}}</div>
+                <div><span class="mat-subheading-2">Total funds</span> \${{data.agencyFundsTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
+            </div>
             <funds-by-year [funds]="data.agencyFundsByFiscalYear"></funds-by-year>
             <div class="sum-line" *ngIf="data.agencyFundsByRecipientType">
                 <span class="mat-subheading-2">Funds by recipient type</span>
@@ -74,16 +77,16 @@ export class FundsByYear {
             </div>
         </mat-tab>
 
-        <mat-tab label="Matching contributions" *ngIf="data.matchingContributionsTotal || data.orgsProvidingInKindMatch || data.matchingContributionsBySourceType">
+        <mat-tab label="Matching contributions" *ngIf="data.matchingFundsTotal || data.matchingFundsSourceCount || data.matchingFundsBySourceType">
             <div class="sum-line inline">
-                <div><span class="mat-subheading-2">Organizations providing matching contributions</span> {{data.orgsProvidingInKindMatch}}</div>
-                <div><span class="mat-subheading-2">Total funds</span> \${{data.matchingContributionsTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
+                <div><span class="mat-subheading-2">Organizations providing matching contributions</span> {{data.matchingFundsSourceCount}}</div>
+                <div><span class="mat-subheading-2">Total funds</span> \${{data.matchingFundsTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
             </div>
-            <funds-by-year [funds]="data.matchingContributionsByFiscalYear"></funds-by-year>
-            <div class="sum-line" *ngIf="data.matchingContributionsBySourceType">
+            <funds-by-year [funds]="data.matchingFundsByFiscalYear"></funds-by-year>
+            <div class="sum-line" *ngIf="data.matchingFundsBySourceType">
                 <span class="mat-subheading-2">Matching contributions by organization type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.matchingContributionsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.matchingFundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
         </mat-tab>
