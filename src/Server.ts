@@ -163,7 +163,7 @@ export class Server {
         });
 
         item.staticLink('qaqcIssues',function(req,res) {
-            const query = this._distinctQuery(req);
+            const query = this.getModel().find({simplified:{$exists: true}});
             item.getModel().mapReduce({
                 query: query,
                 map: function() {
@@ -174,6 +174,8 @@ export class Server {
                             allocUnspecifiedRecipientType: [],
                             allocUnspecifiedSource: [],
                             allocUnspecifiedSourceType: [],
+                            allocMissingFiscalYear: [],
+                            allocMultipleFiscalYears: [],
                             duplicateContactName: []
                         };
                     if(simplified && simplified.funding && simplified.funding.allocations) {
@@ -190,6 +192,11 @@ export class Server {
                                 issues.allocUnspecifiedRecipient = [doc._id];
                             } else if (!a.recipient.contactType) {
                                 issues.allocUnspecifiedRecipientType = [doc._id];
+                            }
+                            if(!a.fiscalYears || a.fiscalYears.length === 0) {
+                                issues.allocMissingFiscalYear = [doc._id];
+                            } else if(a.fiscalYears && a.fiscalYears.length > 1) {
+                                issues.allocMultipleFiscalYears = [doc._id];
                             }
                         });
                     }
@@ -224,6 +231,8 @@ export class Server {
                         allocUnspecifiedRecipientType: [],
                         allocUnspecifiedSource: [],
                         allocUnspecifiedSourceType: [],
+                        allocMissingFiscalYear: [],
+                        allocMultipleFiscalYears: [],
                         duplicateContactName: []
                     });
                 }
@@ -241,13 +250,19 @@ export class Server {
                                 title: 'Allocation with unspecified recipient'
                             },{
                                 key: 'allocUnspecifiedRecipientType',
-                                title: 'Allocation with recipient with unspecified type'
+                                title: 'Allocation with recipient with unspecified contactType'
                             },{
                                 key: 'allocUnspecifiedSource',
                                 title: 'Allocation with unspecified source'
                             },{
                                 key: 'allocUnspecifiedSourceType',
-                                title: 'Allocation with source with unspecified type'
+                                title: 'Allocation with source with unspecified contactType'
+                            },{
+                                key: 'allocMissingFiscalYear',
+                                title: 'Allocation with no fiscal years identified'
+                            },{
+                                key: 'allocMultipleFiscalYears',
+                                title: 'Allocation has a timePeriod spanning multiple fiscal years'
                             },{
                                 key: 'duplicateContactName',
                                 title: 'Duplicate contact name'
@@ -284,13 +299,15 @@ export class Server {
                 map: function() {
                     let doc = this as ItemDoc,
                         simplified = doc.simplified,
-                        stats:any = {
-                            fundingTotal: 0,
-                            fundsBySourceType: null,
-                            fundsByRecipientType: null,
-                            fundsByFiscalYear: null,
+                        stats:any = { // has to be cut/paste because this code runs IN the db
+                            totalFunds: 0,
+                            agencyFundingTotal: 0,
+                            agencyFundsBySourceType: null,
+                            agencyFundsByRecipientType: null,
+                            agencyFundsByFiscalYear: null, // TODO
+                            matchingContributionsTotal: 0,
                             matchingContributionsByOrgType: null,
-                            matchingContributionsByFiscalYear: null,
+                            matchingContributionsByFiscalYear: null, // TODO
                             orgsProvidingInKindMatch: 0,
                             projectsByProjectCategory: null,
                             productsByProjectCategory: null,
@@ -303,40 +320,42 @@ export class Server {
                                 return map;
                             },{});
                     if(simplified.funding) {
-                        stats.fundingTotal += simplified.funding.amount;
+                        stats.totalFunds += simplified.funding.amount;
                         if(simplified.funding.allocations) {
                             const matching = simplified.funding.allocations.matching||[],
                                   nonMatching = simplified.funding.allocations.nonMatching||[],
                                   allAllocations = matching.concat(nonMatching);
                             const mapAllocationsByContactType = (arr,contactKey) => {
-                                    return arr.reduce((map,a) => {
-                                        const c = a[contactKey],
-                                              contactType = c ? c.contactType||`unspecified ${contactKey} type` : `unspecified ${contactKey}`;
-                                        map[contactType] = map[contactType]||0;
-                                        map[contactType] += a.amount;
-                                        return map;
-                                    },{});
-                                };
-                            stats.fundsBySourceType = mapAllocationsByContactType(allAllocations,'source');
-                            stats.fundsByRecipientType = mapAllocationsByContactType(allAllocations,'recipient');
+                                        return arr.reduce((map,a) => {
+                                            const c = a[contactKey],
+                                                  contactType = c ? c.contactType||`unspecified ${contactKey} type` : `unspecified ${contactKey}`;
+                                            map[contactType] = map[contactType]||0;
+                                            map[contactType] += a.amount;
+                                            return map;
+                                        },{});
+                                    },
+                                    sumAllocations = (arr) => arr.reduce((sum,a) => sum+(a.amount||0), 0);
+
+                            stats.agencyFundsBySourceType = mapAllocationsByContactType(nonMatching,'source');
+                            stats.agencyFundsByRecipientType = mapAllocationsByContactType(nonMatching,'recipient');
+                            stats.agencyFundingTotal = sumAllocations(nonMatching);
+
                             stats.matchingContributionsByOrgType = mapAllocationsByContactType(matching,'source');
+                            stats.matchingContributionsTotal = sumAllocations(matching);
+
                             stats.orgsProvidingInKindMatch = matching.reduce((arr,a) => {
-                                    // issue if using name as the key of uniqueness the total in the
-                                    // end is a smaller number than if using contactId.  This implies
-                                    // that within some items there are multiple contacts with the same
-                                    // name but with different ids???
-                                    /*if(a.source && arr.indexOf(a.source.name) === -1) {
+                                    // using name here because we want unique orgs over all items
+                                    // and orgs will NOT share a common id from item to items
+                                    // BUT contacts have been normalized so names should match
+                                    if(a.source && arr.indexOf(a.source.name) === -1) {
                                         arr.push(a.source.name);
-                                    }*/
-                                    if(a.source && arr.indexOf(a.source.contactId) === -1) {
-                                        arr.push(a.source.contactId);
                                     }
                                     return arr;
                                 },[]);
                         }
                     }
                     stats.uniqueCollaboratorsByOrgType = simplified.contacts.reduce((map,c) => {
-                            let t = c.contactType||'?';
+                            let t = c.contactType||'Unspecified contact type';
                             map[t] = map[t]||[];
                             if(map[t].indexOf(c.name) === -1) {
                                 map[t].push(c.name);
@@ -353,7 +372,9 @@ export class Server {
                 },
                 reduce: function(key,values:any[]) {
                     let stats = values.reduce((stats,v) => {
-                            stats.fundingTotal += v.fundingTotal;
+                            stats.totalFunds += v.totalFunds;
+                            stats.agencyFundingTotal += v.agencyFundingTotal;
+                            stats.matchingContributionsTotal += v.matchingContributionsTotal;
                             stats.projectCount += v.projectCount;
                             stats.productCount += v.productCount;
                             let sumMap = (key) => {
@@ -366,8 +387,8 @@ export class Server {
                                             },(stats[key]||{}));
                                     }
                                 };
-                            sumMap('fundsBySourceType');
-                            sumMap('fundsByRecipientType');
+                            sumMap('agencyFundsBySourceType');
+                            sumMap('agencyFundsByRecipientType');
                             sumMap('matchingContributionsByOrgType');
                             sumMap('projectsByProjectCategory');
                             sumMap('productsByProjectCategory');
@@ -393,13 +414,17 @@ export class Server {
                             }
                             return stats;
                         },{
-                            fundingTotal: 0,
-                            fundsBySourceType: null,
-                            fundsByRecipientType: null,
+                            totalFunds: 0,
+                            agencyFundingTotal: 0,
+                            agencyFundsBySourceType: null,
+                            agencyFundsByRecipientType: null,
+                            agencyFundsByFiscalYear: null, // TODO
+                            matchingContributionsTotal: 0,
                             matchingContributionsByOrgType: null,
+                            matchingContributionsByFiscalYear: null, // TODO
                             orgsProvidingInKindMatch: 0,
-                            projectsByResourceType: null,
-                            productsByResourceType: null,
+                            projectsByProjectCategory: null,
+                            productsByProjectCategory: null,
                             uniqueCollaboratorsByOrgType: null,
                             projectCount: 0,
                             productCount: 0,
@@ -411,13 +436,16 @@ export class Server {
                 console.log(`summaryStatistics:stats`,JSON.stringify(results.stats,null,2));
                 if(!results.results.length) {
                     return res.send({
-                        fundingTotal: 0,
-                        fundsBySourceType: null,
-                        fundsByRecipientType: null,
+                        agencyFundingTotal: 0,
+                        agencyFundsBySourceType: null,
+                        agencyFundsByRecipientType: null,
+                        agencyFundsByFiscalYear: null, // TODO
+                        matchingContributionsTotal: 0,
                         matchingContributionsByOrgType: null,
+                        matchingContributionsByFiscalYear: null, // TODO
                         orgsProvidingInKindMatch: 0,
-                        projectsByResourceType: null,
-                        productsByResourceType: null,
+                        projectsByProjectCategory: null,
+                        productsByProjectCategory: null,
                         uniqueCollaboratorsByOrgType: null,
                         projectCount: 0,
                         productCount: 0,

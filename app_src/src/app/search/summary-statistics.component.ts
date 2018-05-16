@@ -27,22 +27,23 @@ import { MonitorsDestroy } from '../common';
                 </div>
             </div>
         </mat-tab>
-        <mat-tab label="Funds" *ngIf="data.fundingTotal || data.fundsBySourceType">
-            <div class="sum-line"><span class="mat-subheading-2">Total funds</span> \${{data.fundingTotal | number:'1.2-2'}}</div>
-            <div class="sum-line" *ngIf="data.fundsBySourceType">
-                <span class="mat-subheading-2">Funds by source type</span>
-                <div class="sum-grid">
-                    <div *ngFor="let d of data.fundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
-                </div>
-            </div>
-            <div class="sum-line" *ngIf="data.fundsByRecipientType">
+        <mat-tab label="Agency funding" *ngIf="data.agencyFundingTotal || data.agencyFundsBySourceType">
+            <div class="sum-line"><span class="mat-subheading-2">Total funds</span> \${{data.agencyFundingTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
+            <div class="sum-line" *ngIf="data.agencyFundsByRecipientType">
                 <span class="mat-subheading-2">Funds by recipient type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.fundsByRecipientType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.agencyFundsByRecipientType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
+                </div>
+            </div>
+            <div class="sum-line" *ngIf="data.agencyFundsBySourceType">
+                <span class="mat-subheading-2">Funds by source type</span>
+                <div class="sum-grid">
+                    <div *ngFor="let d of data.agencyFundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
         </mat-tab>
-        <mat-tab label="Matching contributions" *ngIf="data.orgsProvidingInKindMatch || data.matchingContributionsByOrgType">
+        <mat-tab label="Matching contributions" *ngIf="data.matchingContributionsTotal || data.orgsProvidingInKindMatch || data.matchingContributionsByOrgType">
+            <div class="sum-line"><span class="mat-subheading-2">Total funds</span> \${{data.matchingContributionsTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
             <div class="sum-line"><span class="mat-subheading-2">Organizations providing matching contributions</span> {{data.orgsProvidingInKindMatch}}</div>
             <div class="sum-line" *ngIf="data.matchingContributionsByOrgType">
                 <span class="mat-subheading-2">Matching contributions by organization type</span>
