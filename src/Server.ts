@@ -172,8 +172,10 @@ export class Server {
                         stats:any = {
                             fundingTotal: 0,
                             fundsBySourceType: null,
-                            fundsByRecipientType: null, // TODO by year
-                            matchingContributionsByOrgType: null, // TODO by year
+                            fundsByRecipientType: null,
+                            fundsByFiscalYear: null,
+                            matchingContributionsByOrgType: null,
+                            matchingContributionsByFiscalYear: null,
                             orgsProvidingInKindMatch: 0,
                             projectsByProjectCategory: null,
                             productsByProjectCategory: null,
@@ -187,30 +189,25 @@ export class Server {
                             },{});
                     if(simplified.funding) {
                         stats.fundingTotal += simplified.funding.amount;
-                        let allocations = doc.mdJson.metadata.funding.reduce((arr,f) => {
-                                    (f.allocation||[]).forEach(a => arr.push(a));
-                                    return arr;
-                                },[]),
-                            matchingAllocations = allocations.filter(a => a.matching),
-                            mapAllocationsByContactType = (arr,key) => {
-                                return arr.reduce((map,a) => {
-                                        let c;
-                                        if(a[key] && (c = contactMap[a[key]])) {
-                                            let t = c.contactType||'?';
-                                            map[t] = map[t]||0;
-                                            map[t] += a.amount;
-                                        }
+                        if(simplified.funding.allocations) {
+                            const matching = simplified.funding.allocations.matching||[],
+                                  nonMatching = simplified.funding.allocations.nonMatching||[],
+                                  allAllocations = matching.concat(nonMatching);
+                            const mapAllocationsByContactType = (arr,contactKey) => {
+                                    return arr.reduce((map,a) => {
+                                        const c = a[contactKey],
+                                              contactType = c ? c.contactType||`unspecified ${contactKey} type` : `unspecified ${contactKey}`;
+                                        map[contactType] = map[contactType]||0;
+                                        map[contactType] += a.amount;
                                         return map;
                                     },{});
-                            };
-                        stats.fundsBySourceType = mapAllocationsByContactType(allocations,'sourceId');
-                        stats.fundsByRecipientType = mapAllocationsByContactType(allocations,'recipientId');
-                        if(matchingAllocations.length) {
-                            stats.matchingContributionsByOrgType = mapAllocationsByContactType(matchingAllocations,'sourceId');
-                            stats.orgsProvidingInKindMatch = matchingAllocations.reduce((arr,a) => {
-                                    let c;
-                                    if(a.sourceId && (c = contactMap[a.sourceId]) && arr.indexOf(c.name) === -1) {
-                                        arr.push(c.name);
+                                };
+                            stats.fundsBySourceType = mapAllocationsByContactType(allAllocations,'source');
+                            stats.fundsByRecipientType = mapAllocationsByContactType(allAllocations,'recipient');
+                            stats.matchingContributionsByOrgType = mapAllocationsByContactType(matching,'source');
+                            stats.orgsProvidingInKindMatch = matching.reduce((arr,a) => {
+                                    if(a.source && arr.indexOf(a.source.name) === -1) {
+                                        arr.push(a.source.name);
                                     }
                                     return arr;
                                 },[]);

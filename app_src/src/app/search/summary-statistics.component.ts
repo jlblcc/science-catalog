@@ -32,13 +32,13 @@ import { MonitorsDestroy } from '../common';
             <div class="sum-line" *ngIf="data.fundsBySourceType">
                 <span class="mat-subheading-2">Funds by source type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.fundsBySourceType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.fundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
             <div class="sum-line" *ngIf="data.fundsByRecipientType">
                 <span class="mat-subheading-2">Funds by recipient type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.fundsByRecipientType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.fundsByRecipientType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
         </mat-tab>
@@ -47,7 +47,7 @@ import { MonitorsDestroy } from '../common';
             <div class="sum-line" *ngIf="data.matchingContributionsByOrgType">
                 <span class="mat-subheading-2">Matching contributions by organization type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.matchingContributionsByOrgType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.matchingContributionsByOrgType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
         </mat-tab>
