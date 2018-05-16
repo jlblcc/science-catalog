@@ -162,6 +162,121 @@ export class Server {
                 .catch(err => Resource.sendError(res,500,`distinct ${req.query.$select}`,err));
         });
 
+        item.staticLink('qaqcIssues',function(req,res) {
+            const query = this._distinctQuery(req);
+            item.getModel().mapReduce({
+                query: query,
+                map: function() {
+                    let doc = this as ItemDoc,
+                        simplified = doc.simplified,
+                        issues:any = {
+                            allocUnspecifiedRecipient: [],
+                            allocUnspecifiedRecipientType: [],
+                            allocUnspecifiedSource: [],
+                            allocUnspecifiedSourceType: [],
+                            duplicateContactName: []
+                        };
+                    if(simplified && simplified.funding && simplified.funding.allocations) {
+                        const matching = simplified.funding.allocations.matching||[],
+                              nonMatching = simplified.funding.allocations.nonMatching||[],
+                              allAllocations = matching.concat(nonMatching);
+                        allAllocations.forEach(a => {
+                            if(!a.source) {
+                                issues.allocUnspecifiedSource = [doc._id];
+                            } else if (!a.source.contactType) {
+                                issues.allocUnspecifiedSourceType = [doc._id];
+                            }
+                            if(!a.recipient) {
+                                issues.allocUnspecifiedRecipient = [doc._id];
+                            } else if (!a.recipient.contactType) {
+                                issues.allocUnspecifiedRecipientType = [doc._id];
+                            }
+                        });
+                    }
+                    if(simplified && simplified.contacts) {
+                        const names = [];
+                        simplified.contacts.forEach(c => {
+                            if(names.indexOf(c.name) === -1) {
+                                names.push(c.name);
+                            } else {
+                                issues.duplicateContactName = [doc._id];
+                            }
+                        });
+                    }
+                    if(Object.keys(issues).reduce((hasIssue,key) => {
+                            return hasIssue||(issues[key].length ? true : false);
+                        },false)) {
+                        emit(doc._lcc,issues);
+                    }
+
+                },
+                reduce: function(key,values:any[]) {
+                    return values.reduce((issues,i) => {
+                        Object.keys(issues).forEach(key => {
+                            if(issues[key] instanceof Array && i[key] instanceof Array) {
+                                // should always be one or zero but.
+                                i[key].forEach(v => issues[key].push(v));
+                            }
+                        });
+                        return issues;
+                    },{
+                        allocUnspecifiedRecipient: [],
+                        allocUnspecifiedRecipientType: [],
+                        allocUnspecifiedSource: [],
+                        allocUnspecifiedSourceType: [],
+                        duplicateContactName: []
+                    });
+                }
+            })
+            .then(results => {
+                const lccIds = results.results.map(r => r._id);
+                return Lcc.find({_id:{$in:lccIds}})
+                    .then(lccs => {
+                        const lccMap = lccs.reduce((map,lcc) => {
+                            map[lcc._id.toString()] = lcc.title;
+                            return map;
+                        },{});
+                        const issuesInfo = [{
+                                key: 'allocUnspecifiedRecipient',
+                                title: 'Allocation with unspecified recipient'
+                            },{
+                                key: 'allocUnspecifiedRecipientType',
+                                title: 'Allocation with recipient with unspecified type'
+                            },{
+                                key: 'allocUnspecifiedSource',
+                                title: 'Allocation with unspecified source'
+                            },{
+                                key: 'allocUnspecifiedSourceType',
+                                title: 'Allocation with source with unspecified type'
+                            },{
+                                key: 'duplicateContactName',
+                                title: 'Duplicate contact name'
+                            }];
+                        let html = '<h1>Science-Catalog QA/QC Issues</h1>';
+                        html += `<ul>`;
+                        html += Object.keys(lccMap).map(lccId => `<li><a href="#${lccId}">${lccMap[lccId]}</a></li>`).join('');
+                        html += `</ul><hr />`;
+                        html = results.results.reduce((html,result) => {
+                                const issues = result.value;
+                                html += `<h2 id="${result._id}">${lccMap[result._id]}</h2>`;
+                                issuesInfo.forEach(info => {
+                                    const ids = issues[info.key];
+                                    if(ids.length) {
+                                        html += `<h3>${info.title}</h3>`;
+                                        html += `<ul>`;
+                                        html += ids.map(id => `<li><a target="_blank" href="https://www.sciencebase.gov/catalog/item/${id}">${id}</a></li>`).join('');
+                                        html += `</ul>`;
+                                    }
+                                });
+                                html += '<hr />';
+                                return html;
+                            },html);
+                        res.send(html);
+                    });
+            })
+            .catch(err => Resource.sendError(res,500,'qaqcIssues',err));
+        });
+
         item.staticLink('summaryStatistics',function(req,res) {
             const query = this._distinctQuery(req);
             item.getModel().mapReduce({
@@ -206,8 +321,15 @@ export class Server {
                             stats.fundsByRecipientType = mapAllocationsByContactType(allAllocations,'recipient');
                             stats.matchingContributionsByOrgType = mapAllocationsByContactType(matching,'source');
                             stats.orgsProvidingInKindMatch = matching.reduce((arr,a) => {
-                                    if(a.source && arr.indexOf(a.source.name) === -1) {
+                                    // issue if using name as the key of uniqueness the total in the
+                                    // end is a smaller number than if using contactId.  This implies
+                                    // that within some items there are multiple contacts with the same
+                                    // name but with different ids???
+                                    /*if(a.source && arr.indexOf(a.source.name) === -1) {
                                         arr.push(a.source.name);
+                                    }*/
+                                    if(a.source && arr.indexOf(a.source.contactId) === -1) {
+                                        arr.push(a.source.contactId);
                                     }
                                     return arr;
                                 },[]);
