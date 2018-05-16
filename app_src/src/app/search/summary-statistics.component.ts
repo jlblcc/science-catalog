@@ -20,10 +20,10 @@ import { MonitorsDestroy } from '../common';
                     <div *ngFor="let d of data.projectsByProjectCategory"><span class="mat-subheading-1">{{d.key}}</span> {{d.value}}</div>
                 </div>
             </div>
-            <div class="sum-line" *ngIf="data.productsByProjectCategory">
-                <span class="mat-subheading-2">Products by category</span>
+            <div class="sum-line" *ngIf="data.productsByResourceType">
+                <span class="mat-subheading-2">Products by resource type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.productsByProjectCategory"><span class="mat-subheading-1">{{d.key}}</span> {{d.value}}</div>
+                    <div *ngFor="let d of data.productsByResourceType"><span class="mat-subheading-1">{{d.key | resourceType}}</span> {{d.value}}</div>
                 </div>
             </div>
         </mat-tab>

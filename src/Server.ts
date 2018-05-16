@@ -310,7 +310,7 @@ export class Server {
                             matchingContributionsByFiscalYear: null, // TODO
                             orgsProvidingInKindMatch: 0,
                             projectsByProjectCategory: null,
-                            productsByProjectCategory: null,
+                            productsByResourceType: null,
                             uniqueCollaboratorsByOrgType: null,
                             projectCount: 0,
                             productCount: 0,
@@ -362,11 +362,17 @@ export class Server {
                             }
                             return map;
                         },{});
-                    stats[doc.scType === 'project' ? 'projectsByProjectCategory' : 'productsByProjectCategory'] =
-                        ((simplified.keywords.keywords||{}).lcc_project_category||[]).reduce((map,pc) => {
-                            map[pc] = 1;
-                            return map;
-                        },{});
+                    if(doc.scType === 'project') {
+                        stats.projectsByProjectCategory = ((simplified.keywords.keywords||{}).lcc_project_category||[]).reduce((map,pc) => {
+                                map[pc] = 1;
+                                return map;
+                            },{});
+                    } else {
+                        stats.productsByResourceType = (simplified.resourceType||[]).reduce((map,rt) => {
+                                map[rt.type] = 1;
+                                return map;
+                            },{});
+                    }
                     stats[doc.scType === 'project' ? 'projectCount' : 'productCount'] = 1;
                     emit('stats',stats);
                 },
@@ -391,7 +397,7 @@ export class Server {
                             sumMap('agencyFundsByRecipientType');
                             sumMap('matchingContributionsByOrgType');
                             sumMap('projectsByProjectCategory');
-                            sumMap('productsByProjectCategory');
+                            sumMap('productsByResourceType');
 
                             if(v.orgsProvidingInKindMatch) {
                                 stats.orgsProvidingInKindMatch = stats.orgsProvidingInKindMatch||[];
@@ -424,7 +430,7 @@ export class Server {
                             matchingContributionsByFiscalYear: null, // TODO
                             orgsProvidingInKindMatch: 0,
                             projectsByProjectCategory: null,
-                            productsByProjectCategory: null,
+                            productsByResourceType: null,
                             uniqueCollaboratorsByOrgType: null,
                             projectCount: 0,
                             productCount: 0,
@@ -445,7 +451,7 @@ export class Server {
                         matchingContributionsByFiscalYear: null, // TODO
                         orgsProvidingInKindMatch: 0,
                         projectsByProjectCategory: null,
-                        productsByProjectCategory: null,
+                        productsByResourceType: null,
                         uniqueCollaboratorsByOrgType: null,
                         projectCount: 0,
                         productCount: 0,
