@@ -136,6 +136,7 @@ export class SearchService {
         }
         // other views use the initialCriteria to initialize paging, sorting, etc. so
         // make sure $control is completely populated
+        this.initialCriteria = this.initialCriteria||{};
         this.initialCriteria.$control = this.initialCriteria.$control||{};
         this.initialCriteria.$control.$view = this.initialCriteria.$control.$view||'table';
         this.initialCriteria.$control.$pageSize = this.initialCriteria.$control.$pageSize||DEFAULT_PAGE_SIZE;
