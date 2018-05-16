@@ -304,10 +304,10 @@ export class Server {
                             agencyFundingTotal: 0,
                             agencyFundsBySourceType: null,
                             agencyFundsByRecipientType: null,
-                            agencyFundsByFiscalYear: null, // TODO
+                            agencyFundsByFiscalYear: null,
                             matchingContributionsTotal: 0,
-                            matchingContributionsByOrgType: null,
-                            matchingContributionsByFiscalYear: null, // TODO
+                            matchingContributionsBySourceType: null,
+                            matchingContributionsByFiscalYear: null,
                             orgsProvidingInKindMatch: 0,
                             projectsByProjectCategory: null,
                             productsByResourceType: null,
@@ -323,8 +323,7 @@ export class Server {
                         stats.totalFunds += simplified.funding.amount;
                         if(simplified.funding.allocations) {
                             const matching = simplified.funding.allocations.matching||[],
-                                  nonMatching = simplified.funding.allocations.nonMatching||[],
-                                  allAllocations = matching.concat(nonMatching);
+                                  nonMatching = simplified.funding.allocations.nonMatching||[];
                             const mapAllocationsByContactType = (arr,contactKey) => {
                                         return arr.reduce((map,a) => {
                                             const c = a[contactKey],
@@ -334,13 +333,26 @@ export class Server {
                                             return map;
                                         },{});
                                     },
-                                    sumAllocations = (arr) => arr.reduce((sum,a) => sum+(a.amount||0), 0);
+                                    sumAllocations = (arr) => arr.reduce((sum,a) => sum+(a.amount||0), 0),
+                                    sumByFiscalYear = (arr) => arr.reduce((map,a) => {
+                                        const fiscalYear = a.fiscalYears & a.fiscalYears.length ?
+                                            // there should only be one but if there are N then use the first year (last in array
+                                            // since they are sorted largest to smallest)
+                                            a.fiscalYears[a.fiscalYears.length-1] :
+                                            999, // unspecified
+                                            key = `${fiscalYear}`;
+                                        map[key] = map[key]||0;
+                                        map[key] += a.amount;
+                                        return map;
+                                    },{});
 
                             stats.agencyFundsBySourceType = mapAllocationsByContactType(nonMatching,'source');
                             stats.agencyFundsByRecipientType = mapAllocationsByContactType(nonMatching,'recipient');
+                            stats.agencyFundsByFiscalYear = sumByFiscalYear(nonMatching);
                             stats.agencyFundingTotal = sumAllocations(nonMatching);
 
-                            stats.matchingContributionsByOrgType = mapAllocationsByContactType(matching,'source');
+                            stats.matchingContributionsBySourceType = mapAllocationsByContactType(matching,'source');
+                            stats.matchingContributionsByFiscalYear = sumByFiscalYear(matching);
                             stats.matchingContributionsTotal = sumAllocations(matching);
 
                             stats.orgsProvidingInKindMatch = matching.reduce((arr,a) => {
@@ -395,7 +407,9 @@ export class Server {
                                 };
                             sumMap('agencyFundsBySourceType');
                             sumMap('agencyFundsByRecipientType');
-                            sumMap('matchingContributionsByOrgType');
+                            sumMap('agencyFundsByFiscalYear');
+                            sumMap('matchingContributionsBySourceType');
+                            sumMap('matchingContributionsByFiscalYear');
                             sumMap('projectsByProjectCategory');
                             sumMap('productsByResourceType');
 
@@ -424,10 +438,10 @@ export class Server {
                             agencyFundingTotal: 0,
                             agencyFundsBySourceType: null,
                             agencyFundsByRecipientType: null,
-                            agencyFundsByFiscalYear: null, // TODO
+                            agencyFundsByFiscalYear: null,
                             matchingContributionsTotal: 0,
-                            matchingContributionsByOrgType: null,
-                            matchingContributionsByFiscalYear: null, // TODO
+                            matchingContributionsBySourceType: null,
+                            matchingContributionsByFiscalYear: null,
                             orgsProvidingInKindMatch: 0,
                             projectsByProjectCategory: null,
                             productsByResourceType: null,
@@ -445,10 +459,10 @@ export class Server {
                         agencyFundingTotal: 0,
                         agencyFundsBySourceType: null,
                         agencyFundsByRecipientType: null,
-                        agencyFundsByFiscalYear: null, // TODO
+                        agencyFundsByFiscalYear: null,
                         matchingContributionsTotal: 0,
-                        matchingContributionsByOrgType: null,
-                        matchingContributionsByFiscalYear: null, // TODO
+                        matchingContributionsBySourceType: null,
+                        matchingContributionsByFiscalYear: null,
                         orgsProvidingInKindMatch: 0,
                         projectsByProjectCategory: null,
                         productsByResourceType: null,

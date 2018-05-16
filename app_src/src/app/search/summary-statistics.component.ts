@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 
 import { Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -7,13 +7,42 @@ import { SearchService } from './search.service';
 import { MonitorsDestroy } from '../common';
 
 @Component({
+    selector: 'funds-by-year',
+    template: `
+    <div class="sum-line" *ngIf="years.length">
+        <span class="mat-subheading-2">Funds by year</span>
+        <div class="sum-grid">
+            <div *ngFor="let year of years">
+                <span class="mat-subheading-1">{{year === 999 ? 'Unspecified' : year}}</span> \${{map[year] | number:'1.2-2'}}
+            </div>
+        </div>
+    </div>
+    `
+})
+export class FundsByYear {
+    @Input() funds:any;
+    years;
+    map;
+
+    ngOnInit() {
+        this.map = this.funds.reduce((map,f) => {
+                map[f.key] = f.value;
+                return map;
+            },{})
+        this.years = this.funds.map(f => parseInt(f.key)).sort((a,b) => b-a); // keys are years, sort numerically
+    }
+}
+
+@Component({
     selector: 'summary-statistics',
     template: `
     <mat-tab-group *ngIf="data">
+
         <mat-tab label="General">
-            <div class="sum-line" *ngIf="data.projectCount"><span class="mat-subheading-2">Number of projects</span>{{data.projectCount}}
+            <div class="sum-line inline" *ngIf="data.projectCount || data.productCount">
+                <div *ngIf="data.projectCount"><span class="mat-subheading-2">Number of projects</span>{{data.projectCount}}</div>
+                <div *ngIf="data.productCount"><span class="mat-subheading-2">Number of products</span> {{data.productCount}}</div>
             </div>
-            <div class="sum-line" *ngIf="data.productCount"><span class="mat-subheading-2">Number of products</span> {{data.productCount}}</div>
             <div class="sum-line" *ngIf="data.projectsByProjectCategory">
                 <span class="mat-subheading-2">Projects by category</span>
                 <div class="sum-grid">
@@ -27,8 +56,10 @@ import { MonitorsDestroy } from '../common';
                 </div>
             </div>
         </mat-tab>
+
         <mat-tab label="Agency funding" *ngIf="data.agencyFundingTotal || data.agencyFundsBySourceType">
             <div class="sum-line"><span class="mat-subheading-2">Total funds</span> \${{data.agencyFundingTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
+            <funds-by-year [funds]="data.agencyFundsByFiscalYear"></funds-by-year>
             <div class="sum-line" *ngIf="data.agencyFundsByRecipientType">
                 <span class="mat-subheading-2">Funds by recipient type</span>
                 <div class="sum-grid">
@@ -42,16 +73,21 @@ import { MonitorsDestroy } from '../common';
                 </div>
             </div>
         </mat-tab>
-        <mat-tab label="Matching contributions" *ngIf="data.matchingContributionsTotal || data.orgsProvidingInKindMatch || data.matchingContributionsByOrgType">
-            <div class="sum-line"><span class="mat-subheading-2">Total funds</span> \${{data.matchingContributionsTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
-            <div class="sum-line"><span class="mat-subheading-2">Organizations providing matching contributions</span> {{data.orgsProvidingInKindMatch}}</div>
-            <div class="sum-line" *ngIf="data.matchingContributionsByOrgType">
+
+        <mat-tab label="Matching contributions" *ngIf="data.matchingContributionsTotal || data.orgsProvidingInKindMatch || data.matchingContributionsBySourceType">
+            <div class="sum-line inline">
+                <div><span class="mat-subheading-2">Organizations providing matching contributions</span> {{data.orgsProvidingInKindMatch}}</div>
+                <div><span class="mat-subheading-2">Total funds</span> \${{data.matchingContributionsTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
+            </div>
+            <funds-by-year [funds]="data.matchingContributionsByFiscalYear"></funds-by-year>
+            <div class="sum-line" *ngIf="data.matchingContributionsBySourceType">
                 <span class="mat-subheading-2">Matching contributions by organization type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.matchingContributionsByOrgType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.matchingContributionsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
                 </div>
             </div>
         </mat-tab>
+
         <mat-tab label="Collaborators" *ngIf="data.uniqueCollaboratorsByOrgType">
             <div class="sum-line">
                 <span class="mat-subheading-2">Unique collaborators by org type</span>
@@ -61,31 +97,7 @@ import { MonitorsDestroy } from '../common';
             </div>
         </mat-tab>
     </mat-tab-group>
-    `,
-    styles:[`
-        .sum-line {
-            margin:5px;
-        }
-        .mat-subheading-1,
-        .mat-subheading-2 {
-            display: block;
-            margin-bottom: 0px;
-        }
-        .mat-subheading-2 {
-            font-weight: 500;
-        }
-        .sum-grid {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            border-top: 1px solid #aaa;
-        }
-        /* TODO adaptive layout */
-        .sum-grid > * {
-            flex-basis: 22%;
-            padding: 5px;
-        }
-    `]
+    `
 })
 export class SummaryStatistics extends MonitorsDestroy {
     data:any = null;

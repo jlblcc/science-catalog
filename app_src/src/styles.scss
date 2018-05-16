@@ -131,4 +131,31 @@ summary-statistics {
             background-color: #eee;
         }
     }
+
+    .sum-line {
+        margin:5px;
+        &.inline > div {
+            display: inline-block;
+            padding: 5px;
+        }
+    }
+    .mat-subheading-1,
+    .mat-subheading-2 {
+        display: block;
+        margin-bottom: 0px;
+    }
+    .mat-subheading-2 {
+        font-weight: 500;
+    }
+    .sum-grid {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-top: 1px solid #aaa;
+    }
+    /* TODO adaptive layout */
+    .sum-grid > * {
+        flex-basis: 20%;
+        padding: 5px;
+    }
 }
