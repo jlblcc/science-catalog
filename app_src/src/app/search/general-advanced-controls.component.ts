@@ -23,7 +23,7 @@ import { SearchService, SearchControl, GeneralAdvancedCriteria } from './search.
                  placeholder="Years funded"
                  distinctProperty="simplified.funding.fiscalYears"
                  [initialValue]="initialValue.fiscalYears"></distinct-select>
-    <mat-checkbox [formControl]="dataDotGov">Data.gov</mat-checkbox>
+    <mat-checkbox [formControl]="dataDotGov">data.gov items</mat-checkbox>
 
     <distinct-autocomplete #leadOrgNames class="lead-org-name"
                         placeholder="Lead organization"

@@ -36,6 +36,9 @@ export class FundsByYear {
 @Component({
     selector: 'summary-statistics',
     template: `
+    <div class="stats-running-shade" *ngIf="search.summaryRunning">
+        <mat-spinner></mat-spinner>
+    </div>
     <mat-tab-group *ngIf="data">
 
         <mat-tab label="General">

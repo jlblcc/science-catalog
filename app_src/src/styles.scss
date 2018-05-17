@@ -39,6 +39,12 @@ mark {
     */
 }
 
+// trying to save some space
+// this adds a little hiccup to the open/close animation but not super noticeable
+.mat-expansion-panel-header {
+    height: 44px !important;
+}
+
 // putting here for now to avoid the need for /deep/
 item-list,
 item-map {
@@ -125,6 +131,22 @@ mat-icon[class*="fa-"] {
 }
 
 summary-statistics {
+    display: block;
+    min-height: 200px;
+    position: relative;
+    .stats-running-shade {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.15);
+    }
+
     .mat-tab-label {
         height: 34px; // normally 48px;
         &.mat-tab-label-active {

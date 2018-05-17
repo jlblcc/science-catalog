@@ -5,7 +5,7 @@ import { Location } from '@angular/common';
 import { MatPaginator, MatSort, SortDirection } from '@angular/material';
 
 import { Observable ,  Subject } from 'rxjs';
-import { map, switchMap, startWith, filter } from 'rxjs/operators';
+import { map, switchMap, startWith, filter, tap } from 'rxjs/operators';
 
 import { ConfigService, CacheService } from '../common';
 
@@ -109,6 +109,8 @@ export class SearchService {
     totalItems = 0;
     /** Whether a search is currently active */
     searchRunning:boolean = false;
+    /** Whether a summary statistics request is currently active */
+    summaryRunning:boolean = false;
     /** Controls which page is current in the results */
     paginator:MatPaginator;
     /** The sort control for the current Item[List|Table] */
@@ -409,7 +411,9 @@ export class SearchService {
                 if(c.$text) {
                     params.$text = c.$text;
                 }
-                return this.http.get<any>(this.config.qualifyApiUrl('/item/summaryStatistics'),{params:params});
+                this.summaryRunning = true;
+                return this.http.get<any>(this.config.qualifyApiUrl('/item/summaryStatistics'),{params:params})
+                    .pipe(tap(() => this.summaryRunning = false));
             })
         );
     }
