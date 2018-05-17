@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, SimpleChanges } from '@angular/core';
 
 import { Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -9,7 +9,7 @@ import { MonitorsDestroy } from '../common';
 @Component({
     selector: 'funds-by-year',
     template: `
-    <div class="sum-line" *ngIf="years.length">
+    <div class="sum-line" *ngIf="years?.length">
         <span class="mat-subheading-2">Funds by year</span>
         <div class="sum-grid">
             <div *ngFor="let year of years">
@@ -24,12 +24,16 @@ export class FundsByYear {
     years;
     map;
 
-    ngOnInit() {
-        this.map = this.funds.reduce((map,f) => {
-                map[f.key] = f.value;
-                return map;
-            },{})
-        this.years = this.funds.map(f => parseInt(f.key)).sort((a,b) => b-a); // keys are years, sort numerically
+    ngOnChanges(changes:SimpleChanges) {
+        if(changes.funds.currentValue) {
+            setTimeout(() => {
+                this.map = this.funds.reduce((map,f) => {
+                        map[f.key] = f.value;
+                        return map;
+                    },{})
+                this.years = this.funds.map(f => parseInt(f.key)).sort((a,b) => b-a); // keys are years, sort numerically
+            });
+        }
     }
 }
 
