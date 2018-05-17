@@ -33,7 +33,7 @@ export const TABLE_COLUMNS = [{
     <mat-table [dataSource]="dataSource" matSort>
         <ng-container matColumnDef="simplified.dates.sort">
             <mat-header-cell *matHeaderCellDef mat-sort-header disableClear="true" class="item-date"> Date </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-date"><item-date [item]="item" format="MM/yyyy"></item-date></mat-cell>
+            <mat-cell *matCellDef="let item" class="item-date"><item-date [item]="item"></item-date></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.combinedResourceType">
