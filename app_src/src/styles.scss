@@ -157,9 +157,17 @@ summary-statistics {
 
     .sum-line {
         margin:5px;
-        &.inline > div {
-            display: inline-block;
-            padding: 5px;
+        &.inline {
+            display: flex;
+            >div {
+                padding: 5px 15px;
+                &:first-of-type {
+                    padding-left: 0px;
+                }
+                &:last-of-type {
+                    padding-right: 0px;
+                }
+            }
         }
     }
     .mat-subheading-1,
