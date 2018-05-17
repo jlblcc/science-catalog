@@ -149,6 +149,7 @@ summary-statistics {
 
     .mat-tab-label {
         height: 34px; // normally 48px;
+        font-weight: bold;
         &.mat-tab-label-active {
             background-color: #eee;
         }
