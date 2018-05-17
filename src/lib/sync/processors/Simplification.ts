@@ -138,7 +138,10 @@ export function fiscalYears(period:FiscalTimePeriod | FiscalTimePeriod[]):number
 }
 
 // thisThatTheOther -> This that the other
-export function camelToTitleCase(s:string):string {
+function statusCamelToTitleCase(s:string):string {
+    if(s === 'onGoing') {
+        return 'Ongoing';
+    }
     let title = '',i,c;
     for(i = 0; i < s.length; i++) {
         c = s.charAt(i);
@@ -316,6 +319,20 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     .forEach(c => map[poc.role].push(c));
                 return map;
             },{});
+        // collapse the coPrincipalInvestigator role into the principalInvestigator role
+        // data managers use these inconsistently anyway.  Some times they will define a PI
+        // some times multiple PIs (which would imply CO-PI) at any rate it appears they
+        // just want PI and equate CO-PI to PI anyway so throw it away.
+        if(responsibleParty.coPrincipalInvestigator) {
+            responsibleParty.principalInvestigator = responsibleParty.principalInvestigator||[];
+            const alreadyAPi = (contact) => responsibleParty.principalInvestigator.reduce((found,c) => found||(contact.contactId === c.contactId ? true : false),false);
+            responsibleParty.coPrincipalInvestigator.forEach((cpi) => {
+                if(!alreadyAPi(cpi)) {
+                    responsibleParty.principalInvestigator.push(cpi);
+                }
+            });
+            delete responsibleParty.coPrincipalInvestigator;
+        }
         const keywords = (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
                 if(k.keywordType) {
                     let typeLabel = k.keywordType,
@@ -344,7 +361,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             title: mdJson.metadata.resourceInfo.citation.title,
             lcc: lcc.title,
             abstract: mdJson.metadata.resourceInfo.abstract,
-            status: mdJson.metadata.resourceInfo.status.map(s => camelToTitleCase(s)),
+            status: mdJson.metadata.resourceInfo.status.map(s => statusCamelToTitleCase(s)),
             keywords: keywords,
             contacts: contacts,
             leadOrgNames: (responsibleParty.principalInvestigator||[]).reduce((names,pi) => {
