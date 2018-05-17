@@ -335,6 +335,13 @@ const schema = new Schema({
     });
 schema.index({'simplified.abstract':'text','title':'text','simplified.contactNames':'text','simplified.allKeywords':'text'});
 schema.index({'simplified.extent.representativePoint':'2dsphere'});
+// one index per field the UI wants to sort on
+schema.index({'simplified.dates.sort':1});
+schema.index({'simplified.combinedResourceType':1});
+schema.index({'simplified.title':1});
+schema.index({'simplified.lcc':1});
+schema.index({'simplified.responsibleParty.principalInvestigator.name':1});
+schema.index({'simplified.funding.fiscalYears':1});
 /**
  * Item model.
  */
