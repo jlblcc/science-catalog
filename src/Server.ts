@@ -309,12 +309,14 @@ export class Server {
 
                             agencyFundsTotal: 0,
                             agencyFundsSourceCount: 0,
+                            agencyFundsRecipientCount: 0,
                             agencyFundsBySourceType: null,
                             agencyFundsByRecipientType: null,
                             agencyFundsByFiscalYear: null,
 
                             matchingFundsTotal: 0,
                             matchingFundsSourceCount: 0,
+                            matchingFundsRecipientCount: 0,
                             matchingFundsBySourceType: null,
                             matchingFundsByRecipientType: null,
                             matchingFundsByFiscalYear: null,
@@ -351,27 +353,29 @@ export class Server {
                                         map[key] += a.amount;
                                         return map;
                                     },{}),
-                                    fundsSources = (input) => input.reduce((arr,a) => {
+                                    fundsSRNames = (input,contactKey) => input.reduce((arr,a) => {
                                             // using name here because we want unique orgs over all items
                                             // and orgs will NOT share a common id from item to items
                                             // BUT contacts have been normalized so names should match
-                                            if(a.source && arr.indexOf(a.source.name) === -1) {
-                                                arr.push(a.source.name);
+                                            if(a[contactKey] && arr.indexOf(a[contactKey].name) === -1) {
+                                                arr.push(a[contactKey].name);
                                             }
                                             return arr;
-                                        },[]);;
+                                        },[]);
 
                             stats.agencyFundsBySourceType = mapAllocationsByContactType(nonMatching,'source');
                             stats.agencyFundsByRecipientType = mapAllocationsByContactType(nonMatching,'recipient');
                             stats.agencyFundsByFiscalYear = sumByFiscalYear(nonMatching);
                             stats.agencyFundsTotal = sumAllocations(nonMatching);
-                            stats.agencyFundsSourceCount = fundsSources(nonMatching);
+                            stats.agencyFundsSourceCount = fundsSRNames(nonMatching,'source');
+                            stats.agencyFundsRecipientCount = fundsSRNames(nonMatching,'recipient');
 
                             stats.matchingFundsBySourceType = mapAllocationsByContactType(matching,'source');
                             stats.matchingFundsByRecipientType = mapAllocationsByContactType(matching,'recipient');
                             stats.matchingFundsByFiscalYear = sumByFiscalYear(matching);
                             stats.matchingFundsTotal = sumAllocations(matching);
-                            stats.matchingFundsSourceCount = fundsSources(matching);
+                            stats.matchingFundsSourceCount = fundsSRNames(matching,'source');
+                            stats.matchingFundsRecipientCount = fundsSRNames(matching,'recipient');
                         }
                     }
                     stats.uniqueCollaboratorsByOrgType = simplified.contacts.reduce((map,c) => {
@@ -426,22 +430,20 @@ export class Server {
                             sumMap('projectsByProjectCategory');
                             sumMap('productsByResourceType');
 
-                            if(v.matchingFundsSourceCount) {
-                                stats.matchingFundsSourceCount = stats.matchingFundsSourceCount||[];
-                                v.matchingFundsSourceCount.forEach(o => {
-                                    if(stats.matchingFundsSourceCount.indexOf(o) === -1) {
-                                        stats.matchingFundsSourceCount.push(o);
-                                    }
-                                });
-                            }
-                            if(v.agencyFundsSourceCount) {
-                                stats.agencyFundsSourceCount = stats.agencyFundsSourceCount||[];
-                                v.agencyFundsSourceCount.forEach(o => {
-                                    if(stats.agencyFundsSourceCount.indexOf(o) === -1) {
-                                        stats.agencyFundsSourceCount.push(o);
-                                    }
-                                });
-                            }
+                            const collapseFundsSet = (key) => {
+                                if(v[key]) {
+                                    stats[key] = stats[key]||[];
+                                    v[key].forEach(o => {
+                                        if(stats[key].indexOf(o) === -1) {
+                                            stats[key].push(o);
+                                        }
+                                    });
+                                }
+                            };
+                            collapseFundsSet('matchingFundsSourceCount');
+                            collapseFundsSet('matchingFundsRecipientCount');
+                            collapseFundsSet('agencyFundsSourceCount');
+                            collapseFundsSet('agencyFundsRecipientCount');
                             if(v.uniqueCollaboratorsByOrgType) {
                                 stats.uniqueCollaboratorsByOrgType = Object.keys(v.uniqueCollaboratorsByOrgType).reduce((map,key) => {
                                         map[key] = map[key]||[];
@@ -464,12 +466,14 @@ export class Server {
 
                             agencyFundsTotal: 0,
                             agencyFundsSourceCount: 0,
+                            agencyFundsRecipientCount: 0,
                             agencyFundsBySourceType: null,
                             agencyFundsByRecipientType: null,
                             agencyFundsByFiscalYear: null,
 
                             matchingFundsTotal: 0,
                             matchingFundsSourceCount: 0,
+                            matchingFundsRecipientCount: 0,
                             matchingFundsBySourceType: null,
                             matchingFundsByRecipientType: null,
                             matchingFundsByFiscalYear: null,
@@ -492,12 +496,14 @@ export class Server {
 
                         agencyFundsTotal: 0,
                         agencyFundsSourceCount: 0,
+                        agencyFundsRecipientCount: 0,
                         agencyFundsBySourceType: null,
                         agencyFundsByRecipientType: null,
                         agencyFundsByFiscalYear: null,
 
                         matchingFundsTotal: 0,
                         matchingFundsSourceCount: 0,
+                        matchingFundsRecipientCount: 0,
                         matchingFundsBySourceType: null,
                         matchingFundsByRecipientType: null,
                         matchingFundsByFiscalYear: null,
@@ -520,7 +526,9 @@ export class Server {
                         }
                     };
                 stats.matchingFundsSourceCount = stats.matchingFundsSourceCount ? stats.matchingFundsSourceCount.length : 0;
+                stats.matchingFundsRecipientCount = stats.matchingFundsRecipientCount ? stats.matchingFundsRecipientCount.length : 0;
                 stats.agencyFundsSourceCount = stats.agencyFundsSourceCount ? stats.agencyFundsSourceCount.length : 0;
+                stats.agencyFundsRecipientCount = stats.agencyFundsRecipientCount ? stats.agencyFundsRecipientCount.length : 0;
                 if(stats.uniqueCollaboratorsByOrgType) {
                     Object.keys(stats.uniqueCollaboratorsByOrgType)
                         .forEach(key => stats.uniqueCollaboratorsByOrgType[key] = stats.uniqueCollaboratorsByOrgType[key].length);

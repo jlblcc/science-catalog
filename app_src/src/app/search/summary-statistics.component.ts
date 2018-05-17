@@ -66,7 +66,7 @@ export class FundsByYear {
 
         <mat-tab label="Agency funding" *ngIf="data.agencyFundsTotal || data.agencyFundsBySourceType">
             <div class="sum-line inline">
-                <div><span class="mat-subheading-2">Sources providing agency funds</span> {{data.agencyFundsSourceCount}}</div>
+                <div><span class="mat-subheading-2">Recipients receiving agency funds</span> {{data.agencyFundsRecipientCount}}</div>
                 <div><span class="mat-subheading-2">Total funds</span> \${{data.agencyFundsTotal | number:'1.2-2'}} / \${{data.totalFunds | number:'1.2-2'}}</div>
             </div>
             <funds-by-year [funds]="data.agencyFundsByFiscalYear"></funds-by-year>
