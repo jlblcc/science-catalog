@@ -121,7 +121,7 @@ export class FundsByYear {
 export class SummaryStatistics extends MonitorsDestroy {
     data:any = null;
 
-    constructor(private search:SearchService) {
+    constructor(public search:SearchService) {
         super();
     }
 
