@@ -240,6 +240,7 @@ export class Server {
             .then(results => {
                 const lccIds = results.results.map(r => r._id);
                 return Lcc.find({_id:{$in:lccIds}})
+                    .sort('title')
                     .then(lccs => {
                         const lccMap = lccs.reduce((map,lcc) => {
                             map[lcc._id.toString()] = lcc.title;
