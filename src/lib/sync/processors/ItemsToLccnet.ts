@@ -71,22 +71,25 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
     run():Promise<SyncPipelineProcessorResults<ItemsToLccnetOutput>> {
         this.results.results = new ItemsToLccnetOutput();
         return new Promise((resolve,reject) => {
-            return this.startSession()
-                       .then(session => {
-                           return this.crawlLccnet('/api/v1/lcc?$select=id,sbid&$top=100')
-                            .then(lccs => {
-                                const lccMap = lccs.reduce((map,lcc) => {
-                                        map[lcc.sbid] = lcc.id;
-                                        return map;
-                                    },{});
-                                return this.syncType(ScType.PROJECT,lccMap)
-                                           .then(() => {
-                                               return this.syncType(ScType.PRODUCT,lccMap)
-                                                         .then(() => {
-                                                             resolve(this.results);
-                                                         });
-                                           });
-                            });
+            return this.cronHack()
+                .then(() => {
+                    return this.startSession()
+                               .then(session => {
+                                   return this.crawlLccnet('/api/v1/lcc?$select=id,sbid&$top=100')
+                                    .then(lccs => {
+                                        const lccMap = lccs.reduce((map,lcc) => {
+                                                map[lcc.sbid] = lcc.id;
+                                                return map;
+                                            },{});
+                                        return this.syncType(ScType.PROJECT,lccMap)
+                                                   .then(() => {
+                                                       return this.syncType(ScType.PRODUCT,lccMap)
+                                                                 .then(() => {
+                                                                     resolve(this.results);
+                                                                 });
+                                                   });
+                                    });
+                        });
                 })
                 .catch(err => {
                     console.error(err);
@@ -163,7 +166,7 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                                 });
                                                 item.simplified.lccnet = {
                                                     id: updated.id,
-                                                    url: updated._links.drupal_self
+                                                    url: this.pathFromUrl(updated._links.drupal_self)
                                                 };
                                                 return item.save();
                                             }).catch(error => {
