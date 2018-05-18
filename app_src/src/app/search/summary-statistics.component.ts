@@ -69,7 +69,7 @@ export class FundsByYear {
             <div class="sum-line inline">
                 <div><span class="mat-subheading-2">Total Funds</span> \${{data.totalFunds | number:'1.2-2'}}</div>
                 <div><span class="mat-subheading-2">Agency Funds</span> \${{data.agencyFundsTotal | number:'1.2-2'}}</div>
-                <div><span class="mat-subheading-2">Matching Funds</span> \${{data.matchingFundsTotal | number:'1.2-2'}}</div>
+                <div><span class="mat-subheading-2">Matching/In-kind Funds</span> \${{data.matchingFundsTotal | number:'1.2-2'}}</div>
             </div>
             <div class="sum-line">
                 <div><span class="mat-subheading-2">Number of Funding Recipients</span> {{data.agencyFundsRecipientCount}}</div>
@@ -89,11 +89,11 @@ export class FundsByYear {
             </div>
         </mat-tab>
 
-        <mat-tab label="Matching Funds" *ngIf="data.matchingFundsTotal || data.matchingFundsSourceCount || data.matchingFundsBySourceType">
+        <mat-tab label="Matching/In-kind Funds" *ngIf="data.matchingFundsTotal || data.matchingFundsSourceCount || data.matchingFundsBySourceType">
             <div class="sum-line inline">
                 <div><span class="mat-subheading-2">Total Funds</span> \${{data.totalFunds | number:'1.2-2'}}</div>
                 <div><span class="mat-subheading-2">Agency Funds</span> \${{data.agencyFundsTotal | number:'1.2-2'}}</div>
-                <div><span class="mat-subheading-2">Matching Funds</span> \${{data.matchingFundsTotal | number:'1.2-2'}}</div>
+                <div><span class="mat-subheading-2">Matching/In-kind Funds</span> \${{data.matchingFundsTotal | number:'1.2-2'}}</div>
             </div>
             <div class="sum-line">
                 <div><span class="mat-subheading-2">Number of Organizations Providing Matching Contributions</span> {{data.matchingFundsSourceCount}}</div>
