@@ -13,7 +13,7 @@ import { MonitorsDestroy } from '../common';
         <span class="mat-subheading-2">{{title}}</span>
         <div class="sum-grid">
             <div *ngFor="let year of years">
-                <span class="mat-subheading-1">{{year === 999 ? 'Unspecified' : year}}</span> \${{map[year] | number:'1.2-2'}}
+                <span class="mat-subheading-1">{{year === 999 ? 'Unspecified' : year}}</span> {{map[year] | currency:'USD':'symbol':'1.0-0'}}
             </div>
         </div>
     </div>
@@ -67,9 +67,9 @@ export class FundsByYear {
 
         <mat-tab label="Agency Funds" *ngIf="data.agencyFundsTotal || data.agencyFundsBySourceType">
             <div class="sum-line inline">
-                <div><span class="mat-subheading-2">Total Funds</span> \${{data.totalFunds | number:'1.2-2'}}</div>
-                <div><span class="mat-subheading-2">Agency Funds</span> \${{data.agencyFundsTotal | number:'1.2-2'}}</div>
-                <div><span class="mat-subheading-2">Matching/In-kind Funds</span> \${{data.matchingFundsTotal | number:'1.2-2'}}</div>
+                <div><span class="mat-subheading-2">Total Funds</span> {{data.totalFunds | currency:'USD':'symbol':'1.0-0'}}</div>
+                <div><span class="mat-subheading-2">Agency Funds</span> {{data.agencyFundsTotal | currency:'USD':'symbol':'1.0-0'}}</div>
+                <div><span class="mat-subheading-2">Matching/In-kind Funds</span> {{data.matchingFundsTotal | currency:'USD':'symbol':'1.0-0'}}</div>
             </div>
             <div class="sum-line">
                 <div><span class="mat-subheading-2">Number of Funding Recipients</span> {{data.agencyFundsRecipientCount}}</div>
@@ -78,22 +78,22 @@ export class FundsByYear {
             <div class="sum-line" *ngIf="data.agencyFundsByRecipientType">
                 <span class="mat-subheading-2">Agency Funds by Recipient Type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.agencyFundsByRecipientType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.agencyFundsByRecipientType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> {{d.value | currency:'USD':'symbol':'1.0-0'}}</div>
                 </div>
             </div>
             <div class="sum-line" *ngIf="data.agencyFundsBySourceType">
                 <span class="mat-subheading-2">Agency Funds by Source Type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.agencyFundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.agencyFundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> {{d.value | currency:'USD':'symbol':'1.0-0'}}</div>
                 </div>
             </div>
         </mat-tab>
 
         <mat-tab label="Matching/In-kind Funds" *ngIf="data.matchingFundsTotal || data.matchingFundsSourceCount || data.matchingFundsBySourceType">
             <div class="sum-line inline">
-                <div><span class="mat-subheading-2">Total Funds</span> \${{data.totalFunds | number:'1.2-2'}}</div>
-                <div><span class="mat-subheading-2">Agency Funds</span> \${{data.agencyFundsTotal | number:'1.2-2'}}</div>
-                <div><span class="mat-subheading-2">Matching/In-kind Funds</span> \${{data.matchingFundsTotal | number:'1.2-2'}}</div>
+                <div><span class="mat-subheading-2">Total Funds</span> {{data.totalFunds | currency:'USD':'symbol':'1.0-0'}}</div>
+                <div><span class="mat-subheading-2">Agency Funds</span> {{data.agencyFundsTotal | currency:'USD':'symbol':'1.0-0'}}</div>
+                <div><span class="mat-subheading-2">Matching/In-kind Funds</span> {{data.matchingFundsTotal | currency:'USD':'symbol':'1.0-0'}}</div>
             </div>
             <div class="sum-line">
                 <div><span class="mat-subheading-2">Number of Organizations Providing Matching Contributions</span> {{data.matchingFundsSourceCount}}</div>
@@ -102,7 +102,7 @@ export class FundsByYear {
             <div class="sum-line" *ngIf="data.matchingFundsBySourceType">
                 <span class="mat-subheading-2">Matching Funds by Source Type</span>
                 <div class="sum-grid">
-                    <div *ngFor="let d of data.matchingFundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> \${{d.value | number:'1.2-2'}}</div>
+                    <div *ngFor="let d of data.matchingFundsBySourceType"><span class="mat-subheading-1">{{d.key | collaborator}}</span> {{d.value | currency:'USD':'symbol':'1.0-0'}}</div>
                 </div>
             </div>
         </mat-tab>
