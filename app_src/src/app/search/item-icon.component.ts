@@ -48,6 +48,7 @@ export class ItemIcon {
 
     // built from a distinct query on mdJson.metadata.resourceInfo.resourceType.type
     // so is not future proof
+    // IMPORTANT: This is duplicated into the lccnetwork.org app sci_cat.js/scResourceTypeIcons
     readonly FONT_ICONS = {
         "project": "fa-product-hunt",
         "report": "fa-file-text-o",
