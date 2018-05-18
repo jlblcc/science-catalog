@@ -18,6 +18,16 @@ import { Item, ItemDoc, SimplifiedIfc,
 
 import { BASE_URI, BASE_API_URI } from './uris';
 
+/*
+wanted to use this in qaqc but cannot because the map/reduce logic runs
+in mongo so the list of valid roles must be defined in that context
+(nothing from the external scope can be referenced)
+import { ROLES as responsiblePartyRoles } from './qaqc/responsiblePartyRoles';
+
+const RESPONSIBLE_PARTY_VALID_ROLES = responsiblePartyRoles.map(o => o.codeName);
+console.log(RESPONSIBLE_PARTY_VALID_ROLES);
+*/
+
 /** Base resource configuration that disables POST,PUT and DELETE */
 const READONLY = {
     create: false,
@@ -167,6 +177,12 @@ export class Server {
             item.getModel().mapReduce({
                 query: query,
                 map: function() {
+                    const RESPONSIBLE_PARTY_VALID_ROLES = [
+                        'resourceProvider','custodian','owner','use','distributor','originator',
+                        'pointOfContact','principalInvestigator','processor','publisher','author',
+                        'sponsor','coAuthor','collaborator','editor','mediator','rightsHolder',
+                        'contributor','funder','stakeholder','administrator','client','logistics',
+                        'coPrincipalInvestigator','observer','curator' ];
                     let doc = this as ItemDoc,
                         simplified = doc.simplified,
                         issues:any = {
@@ -176,7 +192,8 @@ export class Server {
                             allocUnspecifiedSourceType: [],
                             allocMissingFiscalYear: [],
                             allocMultipleFiscalYears: [],
-                            duplicateContactName: []
+                            duplicateContactName: [],
+                            responsiblePartyInvalidRole: []
                         };
                     if(simplified && simplified.funding && simplified.funding.allocations) {
                         const matching = simplified.funding.allocations.matching||[],
@@ -210,12 +227,17 @@ export class Server {
                             }
                         });
                     }
+                    Object.keys(simplified.responsibleParty||{}).forEach(key => {
+                        if(RESPONSIBLE_PARTY_VALID_ROLES.indexOf(key) === -1) {
+                            issues.responsiblePartyInvalidRole = [doc._id];
+                        }
+                    });
+
                     if(Object.keys(issues).reduce((hasIssue,key) => {
                             return hasIssue||(issues[key].length ? true : false);
                         },false)) {
                         emit(doc._lcc,issues);
                     }
-
                 },
                 reduce: function(key,values:any[]) {
                     return values.reduce((issues,i) => {
@@ -233,7 +255,8 @@ export class Server {
                         allocUnspecifiedSourceType: [],
                         allocMissingFiscalYear: [],
                         allocMultipleFiscalYears: [],
-                        duplicateContactName: []
+                        duplicateContactName: [],
+                        responsiblePartyInvalidRole: []
                     });
                 }
             })
@@ -267,6 +290,9 @@ export class Server {
                             },{
                                 key: 'duplicateContactName',
                                 title: 'Duplicate contact name'
+                            },{
+                                key: 'responsiblePartyInvalidRole',
+                                title: 'A responsible party has an invalid role (<a href="https://mdtools.adiwg.org/#codes-page?c=iso_role" target="_blank">valid roles</a>)'
                             }];
                         let html = '<h1>Science-Catalog QA/QC Issues</h1>';
                         html += `<ul>`;
