@@ -383,8 +383,8 @@ export class SearchService {
         return this.http.get<T []>(this.config.qualifyApiUrl('/item/distinct'),{ params: params });
     }
 
-    distinct<T>($select:string,$filter?:string,$contains?:string):Observable<T []> {
-        return this._distinct(this.currentCriteria,$select,$filter,$contains);
+    distinct<T>($select:string,$filter?:string,$contains?:string,unfiltered?:boolean):Observable<T []> {
+        return this._distinct(unfiltered ? null : this.currentCriteria,$select,$filter,$contains);
     }
 
     liveDistinct<T>($select:string,$filter?:string,$contains?:string,startWithCurrent?:boolean):Observable<T []> {

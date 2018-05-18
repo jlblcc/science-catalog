@@ -25,8 +25,10 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
     template: `
     <div class="keyword-selection">
         <distinct-autocomplete #allKeywords class="all-keywords"
-                            placeholder="Keyword value (freeform)" containsMode="true" fireImmediately="false"
-                            distinctProperty="simplified.allKeywords"></distinct-autocomplete>
+                            placeholder="Keyword value (freeform)"
+                            containsMode="true" fireImmediately="false"
+                            distinctProperty="simplified.allKeywords"
+                            [unfiltered]="logicalOperatorControl.value === 'or'"></distinct-autocomplete>
         <mat-form-field class="keyword-type">
             <mat-select placeholder="Keyword type" [formControl]="keywordTypesControl">
                 <mat-option *ngFor="let keywordType of keywordTypes | async" [value]="keywordType">{{keywordType.label}}</mat-option>
@@ -39,7 +41,7 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
         </mat-form-field>
     </div>
 
-    <mat-radio-group [formControl]="logicalOperatorControl" *ngIf="control.value.criteria.length > 1">
+    <mat-radio-group [formControl]="logicalOperatorControl" *ngIf="control.value.criteria.length">
       <mat-radio-button value="and">All keywords match</mat-radio-button>
       <mat-radio-button value="or">Any keyword matches</mat-radio-button>
     </mat-radio-group>

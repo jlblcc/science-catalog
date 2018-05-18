@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, SimpleChanges } from '@angular/core';
 import { FormControl } from '@angular/forms';
 
 import { MatAutocompleteSelectedEvent } from '@angular/material';
@@ -32,6 +32,7 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
     @Input() distinctProperty:string;
     @Input() containsMode:boolean = false;
     @Input() fireImmediately:boolean = true;
+    @Input() unfiltered:boolean = false;
     control:FormControl;
 
     typeAhead:FormControl;
@@ -50,6 +51,10 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
     ngOnInit() {
         this.control = new FormControl(this.initialValue);
         this.typeAhead = new FormControl(this.initialValue);
+        this.initOptions();
+    }
+
+    private initOptions() {
         this.options = this.typeAhead.valueChanges.pipe(
                 takeUntil(this.componentDestroyed),
                 debounceTime(500),
@@ -59,11 +64,21 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
                         this.control.setValue(null);
                     }
                 }),
-                switchMap(v => this.search.liveDistinct<any>(
-                    this.distinctProperty,
-                    !this.containsMode && v ? `contains(${this.distinctProperty},'${v}')` : null,
-                    this.containsMode ? v : null,
-                    this.fireImmediately))
+                switchMap(v => {
+                    if(this.unfiltered) {
+                        return this.search.distinct<any>(
+                            this.distinctProperty,
+                            !this.containsMode && v ? `contains(${this.distinctProperty},'${v}')` : null,
+                            this.containsMode ? v : null,
+                            true /* unfiltered */
+                        );
+                    }
+                    return this.search.liveDistinct<any>(
+                        this.distinctProperty,
+                        !this.containsMode && v ? `contains(${this.distinctProperty},'${v}')` : null,
+                        this.containsMode ? v : null,
+                        this.fireImmediately);
+                })
             ).pipe(
                 tap((arr:any[]) => (arr.length || this.typeAhead.value) ? this.typeAhead.enable({emitEvent:false}) : this.typeAhead.disable({emitEvent:false}))
             );
@@ -71,5 +86,11 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
 
     optionSelected(event:MatAutocompleteSelectedEvent) {
         this.control.setValue(event.option.value);
+    }
+
+    ngOnChanges(changes:SimpleChanges) {
+        if(changes.unfiltered) {
+            setTimeout(() => { this.initOptions() });
+        }
     }
 }
