@@ -219,6 +219,21 @@ const extentSchema = new Schema({
     representativePoint: {type:geometrySchema, required:true},
     boundingBox:[{type:Number,required: false}]
 },{_id: false});
+
+export interface OnlineResource {
+    uri: string;
+    name?: string;
+    protocol?: string;
+    description?: string;
+    function?: string;
+}
+const onlineResourceSchema = new Schema({
+    uri: {type:String, required: true},
+    name: {type:String, required: false},
+    protocol: {type:String, required: false},
+    description: {type:String, required: false},
+    function: {type:String, required: false},
+},{_id:false});
 /**
  * The basic representation of a simplified item document.
  */
@@ -253,6 +268,8 @@ export interface SimplifiedIfc {
     contactNames: string[];
     /** All keyword values regardless of type (for text search and raw keyword search) */
     allKeywords: string[];
+    /** Copy of `metadata.resourceInfo.citation.onlineResource` */
+    onlineResources?: OnlineResource[];
     /** The geographic extent info if it can be generated */
     extent?: SimplifiedExtent;
     /** Reference to lccnetwork if one exists */
@@ -311,6 +328,7 @@ const simplifiedSchema = new Schema({
     funding: { type: fundingSchema, required: false },
     contactNames: [{type: String, required: true}],
     allKeywords: [{type: String, required: true}],
+    onlineResources: [{type:onlineResourceSchema,required: false}],
     extent: {type:extentSchema,required: false},
     lccnet: {type: lccnetRefSchema, required: false},
 },{ _id : false });

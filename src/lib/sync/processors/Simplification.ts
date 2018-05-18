@@ -385,6 +385,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                     });
                     return all;
                 },[]),
+            onlineResources: mdJson.metadata.resourceInfo.citation.onlineResource,
             extent: this.simplifyExtent(item),
             lccnet: item.simplified ? item.simplified.lccnet : undefined, // keep if set previously
         };
