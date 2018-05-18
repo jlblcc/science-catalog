@@ -46,7 +46,7 @@ const BASE_QUERY_ARGS = {
 
     <mat-expansion-panel>
         <mat-expansion-panel-header>
-            <mat-panel-title>Advanced search</mat-panel-title>
+            <mat-panel-title>Advanced Search</mat-panel-title>
         </mat-expansion-panel-header>
         <general-advanced-controls></general-advanced-controls>
         <funding-search-controls></funding-search-controls>
@@ -54,7 +54,7 @@ const BASE_QUERY_ARGS = {
 
     <mat-expansion-panel (opened)="summaryStatsOpened=true" (closed)="summaryStatsOpened=false">
         <mat-expansion-panel-header>
-            <mat-panel-title>Summary statistics</mat-panel-title>
+            <mat-panel-title>Summary Statistics</mat-panel-title>
         </mat-expansion-panel-header>
         <summary-statistics *ngIf="summaryStatsOpened"></summary-statistics>
     </mat-expansion-panel>
