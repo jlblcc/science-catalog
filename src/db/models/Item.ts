@@ -123,6 +123,8 @@ export interface SimplifiedFundingAllocation {
     recipient?: SimplifiedContact;
     /** The award id */
     awardId?: string;
+    /** contacts playing roles */
+    responsibleParty?: SimplifiedContactsMap;
 }
 const fundingAllocationSchema = new Schema({
     fiscalYears: [{ type: Number, required: false }],
@@ -130,6 +132,8 @@ const fundingAllocationSchema = new Schema({
     source: { type: contactSchema, required: false },
     recipient: { type: contactSchema, required: false },
     awardId: { type: String, required: false },
+    // mongoose can't validate typescript can
+    responsibleParty: { type: Schema.Types.Mixed, required: false },
 },{_id: false});
 export interface SimplifiedFundingAllocations {
     /** non-matching allocations */

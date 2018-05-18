@@ -5,6 +5,7 @@ import { Item,
          LccIfc,
          SimplifiedKeywords,
          SimplifiedContact,
+         SimplifiedContactsMap,
          SimplifiedFunding,
          SimplifiedFundingAllocations, SimplifiedFundingAllocation,
          SimplifiedDates,
@@ -313,12 +314,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         }
 
         const contacts = this.simplifyContacts(mdJson.contact.map(c => c.contactId),item);
-        const responsibleParty = (mdJson.metadata.resourceInfo.citation.responsibleParty||[]).reduce((map,poc) => {
-                map[poc.role] = map[poc.role] || [];
-                this.simplifyContacts(poc.party.map(ref => ref.contactId),item,poc)
-                    .forEach(c => map[poc.role].push(c));
-                return map;
-            },{});
+        const responsibleParty = this.simplifyResponsibleParty(item,(mdJson.metadata.resourceInfo.citation.responsibleParty||[]));
         // collapse the coPrincipalInvestigator role into the principalInvestigator role
         // data managers use these inconsistently anyway.  Some times they will define a PI
         // some times multiple PIs (which would imply CO-PI) at any rate it appears they
@@ -453,6 +449,15 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         return item.save();
     }
 
+    private simplifyResponsibleParty(item:ItemDoc,responsibleParty:any[]):SimplifiedContactsMap {
+        return responsibleParty.reduce((map,poc) => {
+                map[poc.role] = map[poc.role] || [];
+                this.simplifyContacts(poc.party.map(ref => ref.contactId),item,poc)
+                    .forEach(c => map[poc.role].push(c));
+                return map;
+            },{});
+    }
+
     private simplifyDates(item:ItemDoc):SimplifiedDates {
         const mdJson = item.mdJson,
             timePeriod = mdJson.metadata.resourceInfo.timePeriod,
@@ -542,6 +547,9 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                         }
                         if(a.recipientId) {
                             alloc.recipient = this.simplifyContact(a.recipientId,item,a);
+                        }
+                        if(a.responsibleParty) {
+                            alloc.responsibleParty = this.simplifyResponsibleParty(item,a.responsibleParty);
                         }
                         arr.push({
                             matching: a.matching||false,
