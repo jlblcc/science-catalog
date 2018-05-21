@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 import { FormControl } from '@angular/forms';
 
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, map } from 'rxjs/operators';
 
 import { SearchService, SearchControl } from './search.service';
 import { MD_CODES } from './md-codes';
@@ -31,6 +31,7 @@ export class DistinctSelect implements SearchControl {
     @Input() placeholder:string;
     @Input() distinctProperty:string;
     @Input() mdCode:string;
+    @Input() mapper;
     control:FormControl;
 
     options:Observable<any[]>;
@@ -47,6 +48,7 @@ export class DistinctSelect implements SearchControl {
         this.control = new FormControl(this.initialValue);
         this.options = this.search.liveDistinct<any>(this.distinctProperty)
             .pipe(
+                map((arr:any[]) => this.mapper ? this.mapper(arr) : arr),
                 tap((arr:any[]) => arr.length ? this.control.enable({emitEvent:false}) : this.control.disable({emitEvent:false}))
             );
     }

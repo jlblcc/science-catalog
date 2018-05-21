@@ -14,6 +14,7 @@ import { SearchService, SearchControl, GeneralAdvancedCriteria } from './search.
                  placeholder="Resource type"
                  displayPipe="resourceType"
                  mdCode="MD_ScopeCode"
+                 [mapper]="resourceTypeMapper"
                  distinctProperty="simplified.combinedResourceType.type"
                  [initialValue]="initialValue.resourceType"></distinct-select>
     <distinct-select #status class="status"
@@ -107,5 +108,16 @@ export class GeneralAdvancedControls extends MonitorsDestroy implements SearchCo
         this.controls.addControl('assocOrgNames',this.assocOrgNames.control);
         this.controls.addControl('leadOrgNames',this.leadOrgNames.control);
         this.controls.addControl('dataDotGov',this.dataDotGov);
+    }
+
+    resourceTypeMapper(arr) {
+        return arr.sort((a,b) => {
+            if(a === 'project') {
+                return -1;
+            } else if (b === 'project') {
+                return 1;
+            }
+            return a.toLowerCase().localeCompare(b.toLowerCase());
+        });
     }
 }
