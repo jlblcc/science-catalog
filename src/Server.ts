@@ -183,6 +183,13 @@ export class Server {
                         'sponsor','coAuthor','collaborator','editor','mediator','rightsHolder',
                         'contributor','funder','stakeholder','administrator','client','logistics',
                         'coPrincipalInvestigator','observer','curator' ];
+                    const VALID_RESOURCE_TYPES = ['attribute','attributeType','collectionHardware','collectionSession','dataset','series',
+                    'nonGeographicDataset','dimensionGroup','feature','featureType','propertyType','fieldSession',
+                    'software','service','model','tile','metadata','initiative','sample','document','repository',
+                    'aggregate','product','collection','coverage','application','sciencePaper','userGuide',
+                    'dataDictionary','website','publication','report','awardInfo','collectionSite','project',
+                    'factSheet','tabularDataset','map','drawing','photographicImage','presentation'];
+
                     let doc = this as ItemDoc,
                         simplified = doc.simplified,
                         issues:any = {
@@ -193,7 +200,8 @@ export class Server {
                             allocMissingFiscalYear: [],
                             allocMultipleFiscalYears: [],
                             duplicateContactName: [],
-                            responsiblePartyInvalidRole: []
+                            responsiblePartyInvalidRole: [],
+                            resourceTypeInvalid: []
                         };
                     if(simplified && simplified.funding && simplified.funding.allocations) {
                         const matching = simplified.funding.allocations.matching||[],
@@ -232,6 +240,12 @@ export class Server {
                             issues.responsiblePartyInvalidRole = [doc._id];
                         }
                     });
+                    (simplified.resourceType||[]).forEach(rt => {
+                        if(VALID_RESOURCE_TYPES.indexOf(rt.type) === -1) {
+                            issues.resourceTypeInvalid = [doc._id];
+                        }
+                    });
+
 
                     if(Object.keys(issues).reduce((hasIssue,key) => {
                             return hasIssue||(issues[key].length ? true : false);
@@ -256,7 +270,8 @@ export class Server {
                         allocMissingFiscalYear: [],
                         allocMultipleFiscalYears: [],
                         duplicateContactName: [],
-                        responsiblePartyInvalidRole: []
+                        responsiblePartyInvalidRole: [],
+                        resourceTypeInvalid: []
                     });
                 }
             })
@@ -293,6 +308,9 @@ export class Server {
                             },{
                                 key: 'responsiblePartyInvalidRole',
                                 title: 'A responsible party has an invalid role (<a href="https://mdtools.adiwg.org/#codes-page?c=iso_role" target="_blank">valid roles</a>)'
+                            },{
+                                key: 'resourceTypeInvalid',
+                                title: 'An invalid resource type has been specified (<a href="https://mdtools.adiwg.org/#codes-page?c=iso_scope" target="_blank">valid types</a>)'
                             }];
                         let html = '<h1>Science-Catalog QA/QC Issues</h1>';
                         html += `<ul>`;

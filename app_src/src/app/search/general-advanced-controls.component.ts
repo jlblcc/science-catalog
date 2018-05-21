@@ -13,6 +13,7 @@ import { SearchService, SearchControl, GeneralAdvancedCriteria } from './search.
     <distinct-select #resourceType class="resource-type"
                  placeholder="Resource type"
                  displayPipe="resourceType"
+                 mdCode="MD_ScopeCode"
                  distinctProperty="simplified.combinedResourceType.type"
                  [initialValue]="initialValue.resourceType"></distinct-select>
     <distinct-select #status class="status"

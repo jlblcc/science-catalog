@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { SearchService, SearchControl } from './search.service';
+import { MD_CODES } from './md-codes';
 
 @Component({
     selector: 'distinct-select',
@@ -14,12 +15,14 @@ import { SearchService, SearchControl } from './search.service';
             <mat-option *ngFor="let o of options | async" [value]="o">
               <span *ngIf="displayPipe === 'resourceType'; else plainText">{{o | resourceType}}</span>
               <ng-template #plainText>{{o}}</ng-template>
+              <mat-icon *ngIf="mdCode && MD_CODES[mdCode] && MD_CODES[mdCode][o]" class="option-help" fontIcon="fa-question-circle" [matTooltip]="MD_CODES[mdCode][o]"></mat-icon>
             </mat-option>
         </mat-select>
     </mat-form-field>
     `
 })
 export class DistinctSelect implements SearchControl {
+    MD_CODES:any = MD_CODES;
     // this is not very generic, but this is a small app so...
     @Input() displayPipe:string;
     @Input() multiple:boolean = true;
@@ -27,6 +30,7 @@ export class DistinctSelect implements SearchControl {
     @Input() initialValue:any[];
     @Input() placeholder:string;
     @Input() distinctProperty:string;
+    @Input() mdCode:string;
     control:FormControl;
 
     options:Observable<any[]>;

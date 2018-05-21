@@ -191,3 +191,12 @@ summary-statistics {
         padding: 5px;
     }
 }
+// if placing an icon in a mat-option it's a tooltip ? icon
+.mat-option-text .mat-icon.option-help {
+    float: right;
+    margin-top: 10px;
+    font-size: 1.25em;
+    &:hover {
+        cursor: pointer;
+    }
+}

@@ -46,36 +46,58 @@ export class ItemIcon {
         }
     }
 
-    // built from a distinct query on mdJson.metadata.resourceInfo.resourceType.type
-    // so is not future proof
+    // built from https://mdtools.adiwg.org/#codes-page?c=iso_scope
     // IMPORTANT: This is duplicated into the lccnetwork.org app sci_cat.js/scResourceTypeIcons
     readonly FONT_ICONS = {
-        "project": "fa-product-hunt",
-        "report": "fa-file-text-o",
-        "document": "fa-file-o",
-        "dataset": "fa-database",
-        "factSheet": "fa-file-o",
-        "presentation": "fa-file-powerpoint-o",
-        "map": "fa-map-o",
-        "publication": "fa-book",
-        "collection": "fa-bars",
-        "website": "fa-link",
-        "Journal": "fa-file-text-o",
-        "journal": "fa-file-text-o",
-        "service": "fa-cogs",
-        "application": "fa-code",
-        "tabularDataset": "fa-table",
-        "collectionHardware": "fa-hdd-o",
-        "repository": "fa-database",
-        "software": "fa-code",
-        "model": "fa-lightbulb-o",
-        "nonGeographicDataset": "fa-table",
-        "product": "fa-shopping-basket",
-        "awardInfo": "fa-trophy",
-        "geographicDataset": "fa-globe",
-        "nonGeographicDataset, report": "fa-book",
-        "tile": "fa-file-image-o",
+        attribute: '',
+        attributeType: '',
+        collectionHardware: 'fa-hdd-o',
+        collectionSession: '',
+        dataset: 'fa-database',
+        series: 'fa-list',
+        nonGeographicDataset: 'fa-table',
+        dimensionGroup: '',
+        feature: '',
+        featureType: '',
+        propertyType: '',
+        fieldSession: '',
+        software: 'fa-code',
+        service: 'fa-cogs',
+        model: 'fa-lightbulb-o',
+        tile: 'fa-file-image-o',
+        metadata: 'fa-info-circle',
+        initiative: '',
+        sample: '',
+        document: 'fa-file-o',
+        repository: 'fa-database',
+        aggregate: '',
+        product: 'fa-shopping-basket',
+        collection: 'fa-bars',
+        coverage: '',
+        application: 'fa-code',
+        sciencePaper: 'fa-file-text-o',
+        userGuide: 'fa-book',
+        dataDictionary: 'fa-book',
+        website: 'fa-link',
+        publication: 'fa-book',
+        report: 'fa-file-text-o',
+        awardInfo: 'fa-trophy',
+        collectionSite: '',
+        project: 'fa-product-hunt',
+        factSheet: 'fa-file-o',
+        tabularDataset: 'fa-table',
+        map: 'fa-map-o',
+        drawing: 'fa-pencil',
+        photographicImage: 'fa-picture-o',
+        presentation: 'fa-file-powerpoint-o',
+
+        /* invalid ones in the catalog
+        'geographicDataset': 'fa-globe',
+        'Journal': 'fa-file-text-o',
+        'journal': 'fa-file-text-o',
+        */
     };
+
 
     readonly UNKNOWN_FONT_ICON = 'fa-question-circle';
 }
