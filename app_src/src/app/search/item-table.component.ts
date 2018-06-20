@@ -4,10 +4,10 @@ import { MatSort, Sort } from '@angular/material';
 
 import { SearchService } from './search.service';
 
-export const TABLE_COLUMNS = [{
+export const TABLE_COLUMNS = [/*{
     property: 'simplified.dates.sort',
     label: 'Date'
-},{
+},*/{
     property: 'simplified.combinedResourceType',
     label: 'Resource type'
 },{

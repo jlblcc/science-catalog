@@ -15,7 +15,7 @@ import * as pako from 'pako';
 
 export const DEFAULT_PAGE_SIZE = 10;
 export const DEFAULT_SORT_DIRECTION = 'desc';
-export const DEFAULT_ACTIVE_SORT = 'simplified.dates.sort';
+export const DEFAULT_ACTIVE_SORT = 'simplified.funding.fiscalYears';
 
 const BASE_QUERY_ARGS = {
     $select: 'scType simplified lccnet'

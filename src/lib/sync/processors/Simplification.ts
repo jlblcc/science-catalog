@@ -430,6 +430,11 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                                             combinedRt.push(rt);
                                         }
                                     });
+                                    // duplicate fiscalYears of parent project onto child products for search/sort of product by fiscalYear
+                                    if(item.simplified.funding && item.simplified.funding.fiscalYears && item.simplified.funding.fiscalYears.length) {
+                                        i.simplified.funding = i.simplified.funding||{}; // shouldn't exist.
+                                        i.simplified.funding.fiscalYears = item.simplified.funding.fiscalYears;
+                                    }
                                 });
                                 item.simplified.combinedResourceType = combinedRt;
                                 Promise

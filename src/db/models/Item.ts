@@ -150,16 +150,21 @@ const fundingAllocationsSchema = new Schema({
  * Simplified/processed information about funding (built from `metadata.funding[]`).
  * https://mdtools.adiwg.org/#viewer-page?v=2-6
  * (Note: mongoose adds empty arrays for optional arrays)
+ * 
+ * Originally amount and matching were required BUT the LCC team wants to duplicate
+ * a project's fiscalYears onto its child products.  Products don't otherwise have
+ * any associated funding information and shouldn't have any.  For this reason everything
+ * in this interface (and corresponding Mongoose model) is now optional.
  */
 export interface SimplifiedFunding {
     /** The total funding (USD) */
-    amount: number;
+    amount?: number;
     /** The list of fiscal years reported via funding (built from `funding[].timePeriod`) */
     fiscalYears?: number[];
     /** Any `sourceAllocationId` found (built from `funding[].allocation[].sourceAllocationId`) */
     awardIds?: string[];
     /** Whether any allocation has matching set to try */
-    matching: boolean;
+    matching?: boolean;
     /** Funding source contacts */
     sources?: SimplifiedContact[];
     /** Funding recipient contacts */
@@ -168,10 +173,10 @@ export interface SimplifiedFunding {
     allocations?: SimplifiedFundingAllocations;
 }
 const fundingSchema = new Schema({
-    amount: {type: Number, required: true},
+    amount: {type: Number, required: false},
     fiscalYears: [{type: Number, required: false}],
     awardIds: [{type: String, required: false}],
-    matching: {type: Boolean, required: true},
+    matching: {type: Boolean, required: false},
     sources: [{type: contactSchema, required: false}],
     recipients: [{type: contactSchema, required: false}],
     allocations: {type: fundingAllocationsSchema, required: false},
