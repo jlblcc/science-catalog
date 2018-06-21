@@ -239,6 +239,15 @@ interface NormalizedLccInput {
 }
 
 /**
+ * These are keyword types explicitly asked to ignore and not expose
+ * via the catalog.
+ */
+const EXCLUDED_KEYWORD_TYPES = [
+    'community',
+    'organization'
+];
+
+/**
  * @todo `simplification.dates.sort`
  */
 export default class Simplification extends SyncPipelineProcessor<SimplificationConfig,SimplificationOutput> {
@@ -350,15 +359,17 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                             .toLowerCase()
                             .replace(/[\.-]/g,'')
                             .replace(/\s+/g,'_');
-                    // look through types to see if this one has been put in there yet
-                    if(!map.types.filter(kt => kt.type === typeKey).length) {
-                        map.types.push({
-                            type: typeKey,
-                            label: typeLabel
-                        });
+                    if(EXCLUDED_KEYWORD_TYPES.indexOf(typeKey) === -1) {
+                        // look through types to see if this one has been put in there yet
+                        if(!map.types.filter(kt => kt.type === typeKey).length) {
+                            map.types.push({
+                                type: typeKey,
+                                label: typeLabel
+                            });
+                        }
+                        map.keywords[typeKey] = map.keywords[typeKey]||[];
+                        k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
                     }
-                    map.keywords[typeKey] = map.keywords[typeKey]||[];
-                    k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
                 }
                 return map;
             },{
