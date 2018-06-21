@@ -251,6 +251,8 @@ export interface SimplifiedIfc {
     title: string;
     /** The title of the owning LCC */
     lcc: string;
+    /** The titles of collaborating LCCs (owner first, like `_lcc` property) */
+    lccs: string[];
     /** Dates of interest */
     dates?: SimplifiedDates;
     /** The item abstract (`metadata.resourceInfo.abstract`) */
@@ -293,6 +295,13 @@ export interface ItemIfc {
     _id: any;
     /** Reference to the corresponding Lcc */
     _lcc: any;
+    /**
+     * Reference to any collaborating LCCs.
+     * This list should always start with the `_lcc` reference and optionally include any others
+     * that were found as contacts (`isOrganization && contactType === 'lcc'`).
+     * The list will only be available after simplification.
+     */
+    _lccs: any[];
     /** The type of item */
     scType: ScType;
     /** The item's title */
@@ -323,6 +332,7 @@ export interface ItemDoc extends ItemIfc, Document {}
 const simplifiedSchema = new Schema({
     title: {type: String, required: true},
     lcc: {type: String, required: true},
+    lccs: [{type: String, required: true}],
     dates: {type: datesSchema, required: false},
     abstract: {type: String, required: true },
     status: [{type:String, required: true}],
@@ -344,6 +354,7 @@ const simplifiedSchema = new Schema({
 
 const schema = new Schema({
         _lcc: {type: Schema.Types.ObjectId, ref: 'Lcc', required: true},
+        _lccs: [{type: Schema.Types.ObjectId, ref: 'Lcc', required: false}],
         scType: {type: String, required: true, enum:['project','product']},
         title: {type: String, required: true},
         hash: {type: String, required: true},

@@ -48,7 +48,7 @@ export const TABLE_COLUMNS = [/*{
 
         <ng-container matColumnDef="simplified.lcc">
             <mat-header-cell *matHeaderCellDef mat-sort-header  disableClear="true" class="item-lcc"> LCC </mat-header-cell>
-            <mat-cell *matCellDef="let item" class="item-lcc">{{item.simplified.lcc | lccTitle}}</mat-cell>
+            <mat-cell *matCellDef="let item" class="item-lcc"><lcc-list [item]="item"></lcc-list></mat-cell>
         </ng-container>
 
         <ng-container matColumnDef="simplified.responsibleParty.principalInvestigator.name">
@@ -91,6 +91,7 @@ export const TABLE_COLUMNS = [/*{
         .item-lcc {
             padding-left: 2px;
             padding-right: 4px;
+            white-space: pre-wrap;
         }
         mat-row {
             align-items: stretch;

@@ -30,6 +30,7 @@ import { ItemMap } from './item-map.component';
 
 import { HighlightText, HighlightPipe } from './highlight-text.component';
 import { LccTitlePipe } from './lcc-title.pipe';
+import { LccList } from './lcc-list.component';
 import { ResourceTypePipe } from './resource-type.pipe';
 import { CollaboratorPipe } from './collaborator.pipe';
 
@@ -59,6 +60,7 @@ import { SearchService } from './search.service';
         ItemList, ItemTable, ItemMap,
         HighlightText, HighlightPipe,
         ItemSearch,
+        LccList,
 
         LccTitlePipe, ResourceTypePipe, CollaboratorPipe,
     ],

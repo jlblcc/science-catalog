@@ -132,9 +132,9 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                     // before sending the next document
                                     const sbid = item._id.toString(),
                                           lccnetContacts = (item.simplified.contacts||[]).filter(c => !!c.lccnet),
-                                          lccNid = lccMap[item._lcc.toString()];
-                                    if(!lccNid) {
-                                        return this.log.warn(`Unable to find lccnet lcc with id ${item._lcc}`,{...logAdditions,
+                                          lccNids = item._lccs.map(id => lccMap[id.toString()]).filter(nid => !!nid);
+                                    if(!lccNids.length) {
+                                        return this.log.warn(`Unable to find lccnet lcc/s with ids ${item._lccs}`,{...logAdditions,
                                                 code: ItemsToLccnetLogCodes.LCCNET_MISSING_LCC
                                             });
                                     }
@@ -144,7 +144,7 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                                             body: item.simplified.abstract,
                                             people: lccnetContacts.filter(c => !c.isOrganization).map(c => c.lccnet.id),
                                             cooperators: lccnetContacts.filter(c => c.isOrganization).map(c => c.lccnet.id),
-                                            lccs:[lccNid]
+                                            lccs:lccNids
                                         },
                                         sbidIndex = sbids.indexOf(sbid),
                                         lccnetItem = sbidToItem[sbid];

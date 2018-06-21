@@ -3,6 +3,7 @@ import { Item,
          ItemDoc,
          ScType,
          LccIfc,
+         Lcc,
          SimplifiedKeywords,
          SimplifiedContact,
          SimplifiedContactsMap,
@@ -10,14 +11,14 @@ import { Item,
          SimplifiedFundingAllocations, SimplifiedFundingAllocation,
          SimplifiedDates,
          SimplifiedExtent,
-         Contact,
-         ContactDoc } from '../../../db/models';
+         Contact } from '../../../db/models';
 import FromScienceBase from './FromScienceBase';
 import { LogAdditions } from '../../log';
 import Contacts from './Contacts';
 import { QueryCursor } from 'mongoose';
 import * as moment from 'moment-timezone';
 import * as geojsonExtent from '@mapbox/geojson-extent';
+import { ObjectId } from 'bson';
 
 /**
  * The output of the simplification processor.
@@ -226,6 +227,17 @@ function collectedFeatures(mdJson) {
     } : undefined;
 }
 
+interface NormalizedTitleToLccId {
+    [normalizedTitle:string]: string; // id
+}
+interface LccIdToTitle {
+    [id:string] : string; // original title
+}
+interface NormalizedLccInput {
+    originals: LccIdToTitle;
+    normalized: NormalizedTitleToLccId;
+}
+
 /**
  * @todo `simplification.dates.sort`
  */
@@ -236,6 +248,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
     private warnedContactIds:string[] = [];
     private orgsMap:any;
     private nonOrgsMap:any;
+    private lccsPromise:Promise<NormalizedLccInput>;
 
     run():Promise<SyncPipelineProcessorResults<SimplificationOutput>> {
         return new Promise((_resolve,reject) => {
@@ -304,7 +317,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             lcc = item._lcc as LccIfc,
             logAdditions:LogAdditions = {
                 _item: item._id,
-                _lcc: item._lcc.id
+                _lcc: item._lcc._id
             };
         // keyword isn't required but...
         if(!mdJson.metadata.resourceInfo.keyword) {
@@ -356,6 +369,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         item.simplified = {
             title: mdJson.metadata.resourceInfo.citation.title,
             lcc: lcc.title,
+            lccs: [lcc.title], // will be updated later
             abstract: mdJson.metadata.resourceInfo.abstract,
             status: mdJson.metadata.resourceInfo.status.map(s => statusCamelToTitleCase(s)),
             keywords: keywords,
@@ -395,6 +409,18 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         // pick a date that the UI can sort on.
         item.simplified.dates.sort = item.simplified.dates.start||item.simplified.dates.publication;//||item.simplified.dates.creation;
 
+        return new Promise((resolve,reject) =>
+            this.populateCollaboratingLccs(item)
+                .then(() =>
+                    this.updateAssociationsAndSave(item).then(resolve).catch(reject)
+                ));
+    }
+
+    private updateAssociationsAndSave(item:ItemDoc):Promise<ItemDoc> {
+        const logAdditions:LogAdditions = {
+            _item: item._id,
+            _lcc: item._lcc._id
+        };
         // if simplifying a project go and relate it to any child products
         if(item.scType === ScType.PROJECT) {
             const productIds = FromScienceBase.findProductIds(item.mdJson);
@@ -454,6 +480,51 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         return item.save();
     }
 
+    private populateCollaboratingLccs(item:ItemDoc):Promise<void> {
+        return new Promise((resolve) => {
+            if(!this.lccsPromise) {
+                // map of normalized LCC name to id (names are unique so should be fine)
+                this.lccsPromise = new Promise((rs,rj) => Lcc.find({}).then(lccs => {
+                    const input:NormalizedLccInput = {
+                        originals: lccs.reduce((map,lcc) => {
+                                map[lcc._id.toString()] = lcc.title;
+                                return map;
+                            },{}),
+                        normalized: lccs.reduce((map,lcc) => {
+                                const idStr = lcc._id.toString();
+                                Contacts.normalize(lcc.title).forEach(normal => map[normal] = idStr);
+                                return map;
+                            },{})
+                    }
+                    rs(input);
+                }).catch(rj));
+            }
+            const collaborators = item.simplified.responsibleParty.collaborator ?
+                item.simplified.responsibleParty.collaborator.filter(c => c.isOrganization && c.contactType === 'lcc' && !!c.name).map(c => Contacts.normalize(c.name)) :
+                [];
+            if(collaborators.length) {
+                this.lccsPromise.then((input:NormalizedLccInput) => {
+                    const normalizedMap = input.normalized;
+                    // setup the list of collaborating LCC ids
+                    const ids:string[] = [item._lcc._id.toString()];
+                    collaborators.forEach(normalizedNames => {
+                        normalizedNames.forEach(normalizedName => {
+                            if(normalizedMap[normalizedName] && ids.indexOf(normalizedMap[normalizedName]) === -1) {
+                                ids.push(normalizedMap[normalizedName]);
+                            }
+                        });
+                    });
+                    item._lccs = ids.map(id => new ObjectId(id));
+                    item.simplified.lccs = ids.map(id => input.originals[id]);
+                    resolve();
+                });
+            } else {
+                item._lccs = [item._lcc._id];
+                resolve();
+            }
+        });
+    }
+
     private simplifyResponsibleParty(item:ItemDoc,responsibleParty:any[]):SimplifiedContactsMap {
         return responsibleParty.reduce((map,poc) => {
                 map[poc.role] = map[poc.role] || [];
@@ -468,7 +539,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             timePeriod = mdJson.metadata.resourceInfo.timePeriod,
             logAdditions:LogAdditions = {
                 _item: item._id,
-                _lcc: item._lcc.id
+                _lcc: item._lcc._id
             },
             dates:SimplifiedDates = {},
             dh = moment.deprecationHandler; // this deprecationHandler code is not documented by momentjs
@@ -516,7 +587,7 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         let lcc = item._lcc as LccIfc,
             logAdditions:LogAdditions = {
                 _item: item._id,
-                _lcc: item._lcc.id
+                _lcc: item._lcc._id
             },
             allAllocations:any[] = funding.reduce((arr,f) => { // returning wrapper of { matching: boolean: allocation: SimplifiedFundingAllocation }
                     let fYears:number[];

@@ -238,7 +238,7 @@ export class SearchService {
         }
         if(criteria.lcc && criteria.lcc.length) {
             let ids = criteria.lcc.map(id => `'${id}'`);
-            $filter += ` and in(_lcc,${ids.join(',')})`;
+            $filter += ` and in(_lccs,${ids.join(',')})`;
         }
 
         if(criteria.general) {
