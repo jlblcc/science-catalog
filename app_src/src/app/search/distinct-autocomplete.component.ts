@@ -45,7 +45,7 @@ export class DistinctAutocomplete extends MonitorsDestroy implements SearchContr
 
     reset() {
         this.control.setValue(null,{emitEvent:false});
-        this.typeAhead.setValue(null,{emitEvent:false});
+        this.typeAhead.setValue(null); // let this event fire so an initial open query happens
     }
 
     ngOnInit() {
