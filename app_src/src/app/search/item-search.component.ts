@@ -67,9 +67,9 @@ const BASE_QUERY_ARGS = {
             <mat-button-toggle value="table" matTooltip="Display results in a table" matTooltipPosition="left">
                 <mat-icon fontIcon="fa-table"></mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle value="map" matTooltip="Display results on a map" matTooltipPosition="left">
+            <!--mat-button-toggle value="map" matTooltip="Display results on a map" matTooltipPosition="left">
                 <mat-icon fontIcon="fa-map"></mat-icon>
-            </mat-button-toggle>
+            </mat-button-toggle-->
         </mat-button-toggle-group>
         <item-list *ngIf="resultsListType.value === 'list'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-list>
         <item-table *ngIf="resultsListType.value === 'table'" [dataSource]="dataSource" [highlight]="$text.highlight"></item-table>
