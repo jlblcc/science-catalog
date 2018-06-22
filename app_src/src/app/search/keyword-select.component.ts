@@ -1,7 +1,7 @@
 import { Component, ViewChild } from '@angular/core';
 import { FormControl } from '@angular/forms';
 
-import { MatChipList, MatChipEvent } from '@angular/material';
+import { MatChipList } from '@angular/material';
 
 import { Observable ,  merge as mergeObservables ,  of as observableOf } from 'rxjs';
 import { startWith, switchMap, map, tap, takeUntil } from 'rxjs/operators';
@@ -48,7 +48,7 @@ function selectionFound(keywords:KeywordCriteria[],keyword:KeywordCriteria) {
 
     <mat-chip-list>
         <mat-chip *ngFor="let keyword of control.value.criteria; index as i" (removed)="removeKeyword(i)">
-            <span *ngIf="keyword.typeLabel && keyword.typeKey">{{keyword.typeLabel}} : </span>{{keyword.value}}
+            <span *ngIf="keyword.typeLabel && keyword.typeKey">{{keyword.typeLabel}}&nbsp;:&nbsp;</span>{{keyword.value}}
             <mat-icon matChipRemove fontIcon="fa-times"></mat-icon>
         </mat-chip>
     </mat-chip-list>
@@ -132,7 +132,10 @@ export class KeywordSelect extends MonitorsDestroy implements SearchControl {
                     return types;
                 })
             );
-        this.keywordValues = this.keywordTypesControl.valueChanges
+        this.keywordValues =     mergeObservables(
+                this.keywordTypesControl.valueChanges,
+                this.logicalOperatorControl.valueChanges
+            )
             .pipe(
                 startWith(null),
                 switchMap(() => {
@@ -142,8 +145,12 @@ export class KeywordSelect extends MonitorsDestroy implements SearchControl {
                     if(!keywordType) {
                         return observableOf([]);
                     }
-                    return this.search.liveDistinct<string>(`simplified.keywords.keywords.${keywordType.type}`,null,null,true)
-                        .pipe(
+                    const observable =  (this.logicalOperatorControl.value === 'or') ?
+                        // when "or" need to always return the full set of possible values
+                        this.search.distinct<string>(`simplified.keywords.keywords.${keywordType.type}`,null,null,true /*unfiltered*/) :
+                        // when "and" return only those that match the current critiera
+                        this.search.liveDistinct<string>(`simplified.keywords.keywords.${keywordType.type}`,null,null,true);
+                    return observable.pipe(
                             tap((arr:any[]) => arr.length ? this.keywordValuesControl.enable({emitEvent:false}) : this.keywordValuesControl.disable({emitEvent:false})),
                         );
                 })
