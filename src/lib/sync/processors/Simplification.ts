@@ -72,7 +72,7 @@ export function simplificationReport(output:SimplificationOutput) {
  * The `timePeriod` as used by `mdJson.metadata.funding[]`
  */
 export interface FiscalTimePeriod {
-    startDateTime: string;
+    startDateTime?: string;
     endDateTime?: string;
 }
 
@@ -118,6 +118,10 @@ function _fiscalYears(period:FiscalTimePeriod) {
         while(startYear <= endYear) {
             years.push(startYear++);
         }
+    } else if (end) {
+        // end with no start, schema says neither are required but
+        // mdEditor requires end and not start
+        years.push(fiscalYear(end,true));
     }
     return years;
 }

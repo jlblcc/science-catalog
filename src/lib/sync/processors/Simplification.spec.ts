@@ -79,4 +79,12 @@ describe('Simplification',() => {
             // ignore, should happen
         }
     });
+
+    it('fiscalYears (end only)',() => {
+        let years = fiscalYears({
+            endDateTime: '2014-02-01'
+        });
+        expect(years).to.be.instanceof(Array).with.length(1);
+        expect(years[0]).to.equal(2014);
+    });
 });
