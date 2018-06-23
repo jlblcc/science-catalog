@@ -84,6 +84,14 @@ export interface FiscalTimePeriod {
  */
 export function fiscalYear(d:string,end?:boolean):number {
     if(d) {
+        // NOTE: Similar code exist down in Simplification.simplifyDates
+        // but it attempts to catch any other potential deprecation warnings
+        // and log them.
+        if(/^\d{4}$/.test(d)) {
+            // technically just a year is a valid ISO 8601 date but
+            // moment will complain with a deprecation warning
+            d = `${d}-01-01`;
+        }
         let m = moment(d).tz('UTC');
         // the following two checks are due to the variety of timezones data
         // is being entered in vs where its being interpreted.  Either we
