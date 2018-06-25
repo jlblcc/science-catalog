@@ -146,6 +146,13 @@ export class SearchService {
         this.initialCriteria.$control.$sortDirection = this.initialCriteria.$control.$sortDirection||DEFAULT_SORT_DIRECTION;
         this.initialCriteria.$control.$sortActive = this.initialCriteria.$control.$sortActive||DEFAULT_ACTIVE_SORT;
         console.log('initialCriteria',this.initialCriteria);
+        // the "share" functionality was implemented to initialize the control state based on persisted criteria
+        // it was not implemented to dynamically re-initialize that state. while that would be possible to implement
+        // there are some chicken/egg issues in doing so since there is a mixture of programmiatic passing of "initial values"
+        // and angular data binding.  So the easiest thing to do is to watch for changes in the URL and simply reload the page
+        // this way if say a menu of saved "share" links is built then a visitor can navigate between them without having
+        // to leave the app first (otherwise nothing happens)
+        window.addEventListener('popstate', () => window.location.reload());
     }
 
     register(control:SearchControl):void {
