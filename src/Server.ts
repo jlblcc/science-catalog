@@ -9,7 +9,7 @@ import * as truncateHtml from 'truncate-html';
 import { Request, Response } from 'express';
 import { DocumentQuery } from 'mongoose';
 
-import { ObjectId } from 'mongodb';
+import AppConfiguration from './config';
 
 import { Item, ItemDoc, SimplifiedIfc,
          Lcc,
@@ -105,6 +105,7 @@ class ItemResource extends Resource<ItemDoc> {
  */
 export class Server {
     public express;
+    public config:any;
 
     constructor() {
         let app = this.express = express();
@@ -129,6 +130,23 @@ export class Server {
             });
 
         });
+        if(AppConfiguration.cors && AppConfiguration.cors['Access-Control-Allow-Origin']) {
+            const allowedOrigins =
+                AppConfiguration.cors['Access-Control-Allow-Origin'].split(/\s+/)
+                    .map(o => o.toLowerCase());
+            app.get(`${BASE_API_URI}/*`,(req,res,next) => {
+                console.log(`origin: ${req.headers.origin}`);
+                const origin = req.headers.origin ?
+                    req.headers.origin.toLowerCase() : null;
+                if(origin && allowedOrigins.indexOf(origin) !== -1) {
+                    res.set({
+                        ...AppConfiguration.cors,
+                        'Access-Control-Allow-Origin': req.headers.origin
+                    })
+                }
+                next();
+            });
+        }
         this.init();
     }
 
