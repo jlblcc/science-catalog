@@ -135,7 +135,6 @@ export class Server {
                 AppConfiguration.cors['Access-Control-Allow-Origin'].split(/\s+/)
                     .map(o => o.toLowerCase());
             app.get(`${BASE_API_URI}/*`,(req,res,next) => {
-                console.log(`origin: ${req.headers.origin}`);
                 const origin = req.headers.origin ?
                     req.headers.origin.toLowerCase() : null;
                 if(origin && allowedOrigins.indexOf(origin) !== -1) {
