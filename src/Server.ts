@@ -607,6 +607,146 @@ export class Server {
             .catch(err => Resource.sendError(res,500,'summaryStatistics',err));
         });
 
+        item.staticLink('fwsFunding', function(req,res) {
+            const FWS_FUNDING_SOURCES = [
+                'Aleutian Bering Sea Islands LCC',
+                'Arctic Landscape Conservation Cooperative',
+                'California Landscape Conservation Cooperative',
+                'Fisheries and Ecological Services',
+                'Great Northern Landscape Conservation Cooperative',
+                'Gulf Coastal Plains and Ozarks Landscape Conservation Cooperative',
+                'Kodiak National Wildlife Refuge',
+                'Landscape Conservation Cooperative Network',
+                'Landscape Conservation Cooperative Network, National Office',
+                'Mary Mahaffy',
+                'Migratory Bird Management',
+                'Migratory Birds Program',
+                'National Wildlife Refuge System',
+                'North Atlantic Landscape Conservation Cooperative',
+                'North Pacific LCC',
+                'Northwest Boreal Landscape Conservation Cooperative',
+                'NWRS Division of Realty and Natural Resources',
+                'Office of Science Applications',
+                'Pacific Islands Landscape Conservation Cooperative',
+                'Peninsular Florida Landscape Conservation Cooperative',
+                'Science Applications - Region 4',
+                'Selawik National Wildlife Refuge',
+                'Togiak National Wildlife Refuge',
+                'U.S. Fish and Wildlife Service',
+                'US Fish & Wildife Service',
+                'US Fish and Wildlife Service (Reg 7)',
+                'Western Alaska Landscape Conservation Cooperative',
+                'Yukon Delta National Wildlife Refuge',
+            ];
+            const model = this.getModel();
+            model.mapReduce({
+                query: model.find({'simplified.funding.sources.name': {$in:FWS_FUNDING_SOURCES}}),
+                map: function() {
+                    // this has to be copied into the map/reduce logic because it's executed in Mongo
+                    const sources = [
+                        'Aleutian Bering Sea Islands LCC',
+                        'Arctic Landscape Conservation Cooperative',
+                        'California Landscape Conservation Cooperative',
+                        'Fisheries and Ecological Services',
+                        'Great Northern Landscape Conservation Cooperative',
+                        'Gulf Coastal Plains and Ozarks Landscape Conservation Cooperative',
+                        'Kodiak National Wildlife Refuge',
+                        'Landscape Conservation Cooperative Network',
+                        'Landscape Conservation Cooperative Network, National Office',
+                        'Mary Mahaffy',
+                        'Migratory Bird Management',
+                        'Migratory Birds Program',
+                        'National Wildlife Refuge System',
+                        'North Atlantic Landscape Conservation Cooperative',
+                        'North Pacific LCC',
+                        'Northwest Boreal Landscape Conservation Cooperative',
+                        'NWRS Division of Realty and Natural Resources',
+                        'Office of Science Applications',
+                        'Pacific Islands Landscape Conservation Cooperative',
+                        'Peninsular Florida Landscape Conservation Cooperative',
+                        'Science Applications - Region 4',
+                        'Selawik National Wildlife Refuge',
+                        'Togiak National Wildlife Refuge',
+                        'U.S. Fish and Wildlife Service',
+                        'US Fish & Wildife Service',
+                        'US Fish and Wildlife Service (Reg 7)',
+                        'Western Alaska Landscape Conservation Cooperative',
+                        'Yukon Delta National Wildlife Refuge',
+                    ];
+                    const doc = this;// as ItemDoc;
+                    const allocations = []
+                        .concat(doc.simplified.funding.allocations.nonMatching||[])
+                        .concat(doc.simplified.funding.allocations.matching||[]);
+                    const emits = {};
+                   allocations.forEach(a => {
+                       if(a.amount && a.source && a.source.name && sources.indexOf(a.source.name) !== -1) {
+                           emits[a.source.name] = emits[a.source.name]||{
+                            projects: 1,
+                            allocations: 0,
+                            total: 0
+                           };
+                           emits[a.source.name].allocations += 1;
+                           emits[a.source.name].total += a.amount;
+                       }
+                    });
+                   Object.keys(emits).forEach(key => emit(key,emits[key]));
+                },
+                reduce: function(key,values:any[]) {
+                    return values.reduce((sum,last) => {
+                        sum.projects += last.projects;
+                        sum.allocations += last.allocations;
+                        sum.total += last.total;
+                        return sum;
+                    },{
+                        projects: 0,
+                        allocations: 0,
+                        total: 0
+                    });
+                }
+            })
+            .then(results => {
+                //console.log('results',results);
+                //res.send(results);
+                let html = '<h1>FWS Funding Allocation Sources</h1>';
+                const formatCommas = x => x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                const formatDollars = x => `$${formatCommas(x.toFixed(2))}`;
+                const row = (label,allocations,projects,amount) => {
+                    html += '<div class="lcc-row">';
+                    html += `<div class="lcc-label">${label} [${formatCommas(allocations)} allocations/${formatCommas(projects)} projects]</div>`;
+                    html += '<div class="ellipsis"></div>';
+                    html += `<div class="lcc-total">${formatDollars(amount)}</div>`
+                    html += '</div>';
+                };
+                html += `
+                <style>
+                .lcc-row {
+                    display: flex;
+                    align-items: baseline;
+                }
+                .ellipsis {
+                    flex-grow: 1;
+                    border-bottom: 2px dotted #aaa;
+                    margin: 0px 10px;
+                }
+                .separator {
+                    border-bottom: 1px solid #aaa;
+                    margin: 5px 0px;
+                }
+                </style>
+                `;
+                results.results.forEach(r => row(r._id,r.value.allocations,r.value.projects,r.value.total));
+                html += '<div class="separator"></div>';
+                row(
+                    'Total',
+                    results.results.reduce((sum,r) => sum+r.value.allocations,0),
+                    results.results.reduce((sum,r) => sum+r.value.projects,0),
+                    results.results.reduce((sum,r) => sum+r.value.total,0),
+                );
+                res.send(html)
+            })
+            .catch(err => Resource.sendError(res,500,'fwsFunding',err));
+        });
+
         let lcc = new Resource({...READONLY,...{
             rel: `${BASE_API_URI}/lcc`,
             model: Lcc,
