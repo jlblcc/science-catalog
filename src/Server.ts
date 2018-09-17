@@ -206,6 +206,16 @@ export class Server {
                     'aggregate','product','collection','coverage','application','sciencePaper','userGuide',
                     'dataDictionary','website','publication','report','awardInfo','collectionSite','project',
                     'factSheet','tabularDataset','map','drawing','photographicImage','presentation'];
+                    const FWS_FUNDING_SOURCES = ['Aleutian Bering Sea Islands LCC','Arctic Landscape Conservation Cooperative',
+                    'California Landscape Conservation Cooperative','Fisheries and Ecological Services','Great Northern Landscape Conservation Cooperative',
+                    'Gulf Coastal Plains and Ozarks Landscape Conservation Cooperative','Kodiak National Wildlife Refuge','Landscape Conservation Cooperative Network',
+                    'Landscape Conservation Cooperative Network, National Office','Mary Mahaffy','Migratory Bird Management','Migratory Birds Program','National Wildlife Refuge System',
+                    'North Atlantic Landscape Conservation Cooperative','North Pacific LCC','Northwest Boreal Landscape Conservation Cooperative',
+                    'NWRS Division of Realty and Natural Resources','Office of Science Applications','Pacific Islands Landscape Conservation Cooperative',
+                    'Peninsular Florida Landscape Conservation Cooperative','Science Applications - Region 4','Selawik National Wildlife Refuge',
+                    'Togiak National Wildlife Refuge','US Fish & Wildife Service','US Fish and Wildlife Service (Reg 7)','Western Alaska Landscape Conservation Cooperative',
+                    'Yukon Delta National Wildlife Refuge',/* 'U.S. Fish and Wildlife Service', this the right one */
+                    ];
 
                     let doc = this as ItemDoc,
                         simplified = doc.simplified,
@@ -216,6 +226,7 @@ export class Server {
                             allocUnspecifiedSourceType: [],
                             allocMissingFiscalYear: [],
                             allocMultipleFiscalYears: [],
+                            allocUsFws: [],
                             duplicateContactName: [],
                             responsiblePartyInvalidRole: [],
                             resourceTypeInvalid: []
@@ -229,6 +240,9 @@ export class Server {
                                 issues.allocUnspecifiedSource = [doc._id];
                             } else if (!a.source.contactType) {
                                 issues.allocUnspecifiedSourceType = [doc._id];
+                            }
+                            if (a.source && a.source.name && FWS_FUNDING_SOURCES.indexOf(a.source.name) !== -1) {
+                                issues.allocUsFws = [doc._id];
                             }
                             if(!a.recipient) {
                                 issues.allocUnspecifiedRecipient = [doc._id];
@@ -286,6 +300,7 @@ export class Server {
                         allocUnspecifiedSourceType: [],
                         allocMissingFiscalYear: [],
                         allocMultipleFiscalYears: [],
+                        allocUsFws: [],
                         duplicateContactName: [],
                         responsiblePartyInvalidRole: [],
                         resourceTypeInvalid: []
@@ -319,6 +334,9 @@ export class Server {
                             },{
                                 key: 'allocMultipleFiscalYears',
                                 title: 'Allocation has a timePeriod spanning multiple fiscal years'
+                            },{
+                                key: 'allocUsFws',
+                                title: 'Funding source should be "U.S. Fish and Wildlife Service"'
                             },{
                                 key: 'duplicateContactName',
                                 title: 'Duplicate contact name'
