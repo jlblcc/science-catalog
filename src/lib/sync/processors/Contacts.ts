@@ -1,14 +1,6 @@
 import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
 
-import { Item, ItemDoc, Contact, ContactDoc } from '../../../db/models';
-
-import { LogAdditions } from '../../log';
-import { QueryCursor } from 'mongoose';
-
-const UPSERT_OPTIONS = {
-    upsert: true,
-    new: true
-};
+import { Item, ItemDoc, Contact } from '../../../db/models';
 
 /**
  * The output of the contacts processor.
@@ -70,116 +62,99 @@ const REPLACEMENTS:Replacement[] = [
 ];
 
 /**
+ * For all items in the `Item` collection process the `mdJson.contact` and build/update
+ * the contents of the `Contact` collection aligning contacts based on email/organization
+ * if possible and name/organization otherwise.
+ * 
  * @todo This relies on 'name' always being available for a contact.  It's not technically required for a contact but for the data set is always there.
  */
 export default class Contacts extends SyncPipelineProcessor<ContactsConfig,ContactsOutput> {
+    /**
+     * Execute the processor.
+     */
     run():Promise<SyncPipelineProcessorResults<ContactsOutput>> {
-        return new Promise((resolve,reject) => {
-            let go = () => {
-                this.results.results = new ContactsOutput();
-                let cursor:QueryCursor<ItemDoc> = Item.find({}).cursor(),
-                    next = () => {
-                        cursor.next()
-                            .then((item:ItemDoc) => {
-                                if(!item) {
-                                    return Contact.count({})
-                                        .then((n:number) => {
-                                            this.results.results.consolidated = n;
-                                            resolve(this.results);
-                                        })
-                                        .catch(reject);
-                                }
-                                this.processContacts(item)
-                                    .then(next)
-                                    .catch(reject);
-                            })
-                            .catch(reject);
-                    };
-                next();
-            };
-            if(this.config.force) {
-                Contact.remove({})
-                    .exec()
-                    .then(go)
-                    .catch(reject);
-            } else {
-                go();
-            }
-        });
+        const go = ():Promise<SyncPipelineProcessorResults<ContactsOutput>> => {
+            this.results.results = new ContactsOutput();
+            return Item.find({}).cursor()
+                .eachAsync((item:ItemDoc) => this.processContacts(item))
+                .then(() => Contact.count({})
+                        .then((n:number) => {
+                            this.results.results.consolidated = n;
+                            return this.results;
+                        }));
+        };
+        return this.config.force
+            ? Contact.remove({}).exec().then(go)
+            : go();
     }
 
-    private processContacts(item:ItemDoc):Promise<any> {
-        // need to process contacts serially since a given Item can
-        // have hte same contact listed multiple times with different
-        // contactIds (playing different roles I guess)
-        // {'mdJson.contact.name':'Mary Oakley'}
-        return new Promise((resolve,reject) => {
-            let contacts = (item.mdJson.contact||[]).slice(0),
-                next = () => {
-                    if(!contacts.length) {
-                        return resolve();
-                    }
-                    this.processContact(contacts.pop(),item)
-                        .then(next)
-                        .catch(reject);
-                };
-            next();
-            /*
-            Promise.all((item.mdJson.contact||[]).map(c => this.processContact(c)))
-                .then(resolve)
-                .catch(reject);*/
-        });
+    /**
+     * Process all contacts for a single item.  This function processes the
+     * item's contacts serially since a given item can have the same contact listed
+     * multiple times with different contactIds (perhaps playing different roles).
+     * (E.g. `{'mdJson.contact.name':'Mary Oakley'}`)
+     * 
+     * @param item The item.
+     */
+    private processContacts(item:ItemDoc):Promise<void> {
+        return (item.mdJson.contact||[])
+            .map(c => () => this.processContact(c,item))
+            .reduce((p,f) => p.then(f), Promise.resolve());
     }
 
+    /**
+     * Process a single contact, merging/updating an existing contact
+     * document or creating a new one if necessary.
+     * 
+     * @param c The contact.
+     * @param item The item.
+     */
     private processContact(c:any,item:ItemDoc):Promise<any> {
-            this.results.results.total++;
-            let { name, positionName, isOrganization, electronicMailAddress } = c,
-                normalized = Contacts.normalize(name),
-                emails = (electronicMailAddress||[]).map(addr => addr.trim().toLowerCase()),
-                nameLower = name.trim().toLowerCase();
+        this.results.results.total++;
+        const { name, positionName, isOrganization, electronicMailAddress } = c,
+            normalized = Contacts.normalize(name),
+            emails = (electronicMailAddress||[]).map(addr => addr.trim().toLowerCase());
 
-            const onFound = (contact) => {
-                return contact ?
-                    contact.update({
-                        $addToSet: {
-                            aliases: { $each: normalized },
-                            electronicMailAddress: { $each: emails },
-                            _lcc: item._lcc,
-                            _item: item._id
-                        }
-                    }) :
-                    (new Contact({
-                        name: name,
-                        positionName: positionName,
-                        isOrganization: isOrganization,
-                        aliases: normalized,
-                        electronicMailAddress: emails,
-                        _lcc: [item._lcc],
-                        _item: [item._id],
-                    })).save();
-            },
-            byName = () => {
-                return Contact.findOne({
-                    aliases: {$in : normalized},
-                    isOrganization: isOrganization
-                })
-                .then(onFound);
-            };
-            return emails.length ?
-                // if there is an e-mail address then try to match on that and isOrganization
-                // otherwise strictly consolidate by name
-                Contact.findOne({
-                    electronicMailAddress: {$in :emails},
-                    isOrganization: isOrganization
-                }).then(contact => {
-                    if(contact) {
-                        return onFound(contact);
-                    }
-                    return byName();
-                }) :
-                byName();
+        const onFound = (contact) => contact
+            ? contact.update({
+                $addToSet: {
+                    aliases: { $each: normalized },
+                    electronicMailAddress: { $each: emails },
+                    _lcc: item._lcc,
+                    _item: item._id
+                }
+            })
+            : (new Contact({
+                name: name,
+                positionName: positionName,
+                isOrganization: isOrganization,
+                aliases: normalized,
+                electronicMailAddress: emails,
+                _lcc: [item._lcc],
+                _item: [item._id],
+            })).save();
+        const byName = () => Contact.findOne({
+                aliases: {$in : normalized},
+                isOrganization: isOrganization
+            })
+            .then(onFound);
+
+        // if there is an e-mail address then try to match on that and isOrganization
+        // otherwise strictly consolidate by name
+        return emails.length
+            ? Contact.findOne({
+                electronicMailAddress: {$in :emails},
+                isOrganization: isOrganization
+            }).then(contact => contact ? onFound(contact) : byName())
+            : byName();
     }
 
+    /**
+     * Given a contact name generate a list of "aliases" that can be used for
+     * cross referencing contacts.
+     * 
+     * @param name The contact name.
+     */
     public static normalize(name:string):string[] {
         let arr = [name.toLowerCase()
                     .replace(/[\.,'’:;]/g,'') // punctuation
