@@ -260,7 +260,12 @@ const EXCLUDED_KEYWORD_TYPES = [
 ];
 
 /**
- * @todo `simplification.dates.sort`
+ * Processor that performs simplification of mdJson documents stored in `Item.mdJson`.
+ * This processor always unconditionally updates all Items.  It must always re-simplify all
+ * items because while it may know which items have actually changed it cannot know how
+ * other items may have affected the contact database or how project/product relationships
+ * may have changed.  The processor simplifies all items of type product followed by all
+ * items of type project due to how relationships between the two types of items are determined.
  */
 export default class Simplification extends SyncPipelineProcessor<SimplificationConfig,SimplificationOutput> {
     // used to capture which contactIds for a given item have had warnings issued to avoid
@@ -271,47 +276,45 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
     private nonOrgsMap:any;
     private lccsPromise:Promise<NormalizedLccInput>;
 
+    /**
+     * Execute the processor.
+     */
     run():Promise<SyncPipelineProcessorResults<SimplificationOutput>> {
-        return new Promise((_resolve,reject) => {
-            let resolve = () => {
-                delete this.orgsMap;
-                delete this.nonOrgsMap;
-                _resolve(this.results);
-            };
-            this.loadContacts()
-                .then(() => {
-                    this.results.results = new SimplificationOutput();
-                    const itemSimplifyComplete = (i:ItemDoc) => {
-                                    this.log.info(`[${SimplificationCodes.SIMPLIFIED}][${i._id}] "${i.title}"`,{
-                                        _lcc: i._lcc,
-                                        _item: i._id,
-                                        code: SimplificationCodes.SIMPLIFIED
-                                    });
-                                    this.results.results.total++;
-                                    return Promise.resolve();
-                            },
-                            simplify = (i:ItemDoc) => {
-                                return this.simplify(i).then(itemSimplifyComplete);
-                            };
-                    // simplify products and then projects because there is a dependency (via combinedResourceType)
-                    // in that direction.  always simplify the entire catalog since there are interdependencies
-                    // between items and we cannot be certain what might have changed in related entities
-                    let productCursor:QueryCursor<ItemDoc> = Item.find({scType:ScType.PRODUCT}).populate(['_lcc']).cursor(),
-                        projectCursor:QueryCursor<ItemDoc> = Item.find({scType:ScType.PROJECT}).populate(['_lcc']).cursor();
-                    productCursor.eachAsync(simplify)
-                        .then(() => projectCursor.eachAsync(simplify).then(resolve))
-                        .catch(reject);
-                })
-                .catch(reject);
-        });
+        return this.loadContacts()
+            .then(() => {
+                this.results.results = new SimplificationOutput();
+                const simplify = (i:ItemDoc) => this.simplify(i)
+                        .then((i:ItemDoc) => {
+                            this.log.info(`[${SimplificationCodes.SIMPLIFIED}][${i._id}] "${i.title}"`,{
+                                _lcc: i._lcc,
+                                _item: i._id,
+                                code: SimplificationCodes.SIMPLIFIED
+                            });
+                            this.results.results.total++;
+                        });
+                // simplify products and then projects because there is a dependency (via combinedResourceType)
+                // in that direction.  always simplify the entire catalog since there are interdependencies
+                // between items and we cannot be certain what might have changed in related entities
+                return Item.find({scType:ScType.PRODUCT}).populate(['_lcc']).cursor().eachAsync(simplify)
+                    .then(() => Item.find({scType:ScType.PROJECT}).populate(['_lcc']).cursor().eachAsync(simplify).then(() => {
+                        delete this.orgsMap;
+                        delete this.nonOrgsMap;
+                        return this.results;
+                    }));
+            });
     }
 
-    private loadContacts():Promise<any> {
+    /**
+     * Load the entire `Contacts` collection into memory and build maps
+     * of organizations, non-organizations where the keys are all possible aliases
+     * to each `Contact` entry.  This way all contacts in all items can be normalized
+     * and linked together based on common aliases so all `Item`s will be as consistent
+     * as possible in their use of contacts.
+     */
+    private loadContacts():Promise<void> {
         this.orgsMap = {};
         this.nonOrgsMap = {};
-        return new Promise((resolve,reject) => {
-            Contact.find({})
-                .exec()
+        return Contact.find({}).exec()
                 .then(contacts => {
                     // put all the contacts in a big map by their aliases
                     contacts.forEach(c => c.aliases.forEach((a:any) => {
@@ -323,122 +326,132 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                         map[a] = c
                     }));
                     //console.log(`found ${contacts.length} contacts with ${Object.keys(this.orgsMap).length + Object.keys(this.nonOrgsMap).length} unique aliases`);
-                    resolve();
-                })
+                });
+    }
+
+    /**
+     * Translate the `Item.mdJson` into `Item.simplified` and save the document.
+     * 
+     * @param item The item to simplify.
+     */
+    private simplify(item:ItemDoc):Promise<ItemDoc> {
+        // seems it shouldn't be necessary but perhaps because of how eachAsync works need to wrap contents in a
+        // Promise so that RTEs are properly handled and logged by the pipeline manager
+        return new Promise((resolve,reject) => {
+            // reset warnedContactIds for each document
+            this.warnedContactIds = [];
+            let mdJson = item.mdJson,
+                lcc = item._lcc as LccIfc,
+                logAdditions:LogAdditions = {
+                    _item: item._id,
+                    _lcc: item._lcc._id
+                };
+            // keyword isn't required but...
+            if(!mdJson.metadata.resourceInfo.keyword) {
+                this.log.warn(`[${SimplificationCodes.MISSING_KEYWORDS}][${item._id}]`,{...logAdditions,
+                        code: SimplificationCodes.MISSING_KEYWORDS
+                    });
+            }
+
+            const contacts = this.simplifyContacts(mdJson.contact.map(c => c.contactId),item);
+            const responsibleParty = this.simplifyResponsibleParty(item,(mdJson.metadata.resourceInfo.citation.responsibleParty||[]));
+            // collapse the coPrincipalInvestigator role into the principalInvestigator role
+            // data managers use these inconsistently anyway.  Some times they will define a PI
+            // some times multiple PIs (which would imply CO-PI) at any rate it appears they
+            // just want PI and equate CO-PI to PI anyway so throw it away.
+            if(responsibleParty.coPrincipalInvestigator) {
+                responsibleParty.principalInvestigator = responsibleParty.principalInvestigator||[];
+                const alreadyAPi = (contact) => responsibleParty.principalInvestigator.reduce((found,c) => found||(contact.contactId === c.contactId ? true : false),false);
+                responsibleParty.coPrincipalInvestigator.forEach((cpi) => {
+                    if(!alreadyAPi(cpi)) {
+                        responsibleParty.principalInvestigator.push(cpi);
+                    }
+                });
+                delete responsibleParty.coPrincipalInvestigator;
+            }
+            const keywords = (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
+                    if(k.keywordType) {
+                        let typeLabel = k.keywordType,
+                            typeKey = typeLabel
+                                .trim()
+                                .toLowerCase()
+                                .replace(/[\.-]/g,'')
+                                .replace(/\s+/g,'_');
+                        if(EXCLUDED_KEYWORD_TYPES.indexOf(typeKey) === -1) {
+                            // look through types to see if this one has been put in there yet
+                            if(!map.types.filter(kt => kt.type === typeKey).length) {
+                                map.types.push({
+                                    type: typeKey,
+                                    label: typeLabel
+                                });
+                            }
+                            map.keywords[typeKey] = map.keywords[typeKey]||[];
+                            k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
+                        }
+                    }
+                    return map;
+                },{
+                    types: [],
+                    keywords: {},
+                });
+
+            item.simplified = {
+                title: mdJson.metadata.resourceInfo.citation.title,
+                lcc: lcc.title,
+                lccs: [lcc.title], // will be updated later
+                abstract: mdJson.metadata.resourceInfo.abstract,
+                status: mdJson.metadata.resourceInfo.status.map(s => statusCamelToTitleCase(s)),
+                keywords: keywords,
+                contacts: contacts,
+                leadOrgNames: (responsibleParty.principalInvestigator||[]).reduce((names,pi) => {
+                        (pi.memberOfOrganization||[]).forEach(org => {
+                            if(names.indexOf(org.name) === -1) {
+                                names.push(org.name);
+                            }
+                        });
+                        return names;
+                    },[]),
+                assocOrgNames: contacts.filter(c => c.isOrganization).map(o => o.name),
+                responsibleParty: responsibleParty,
+                resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
+                combinedResourceType: mdJson.metadata.resourceInfo.resourceType, // if project will be filled out with product resourceTypes later
+                contactNames: contacts.map(c => c.name),
+                allKeywords: Object.keys(keywords.keywords).reduce((all,keyType) => {
+                        keywords.keywords[keyType].forEach(kw => {
+                            if(all.indexOf(kw) === -1) {
+                                all.push(kw);
+                            }
+                        });
+                        return all;
+                    },[]),
+                onlineResources: mdJson.metadata.resourceInfo.citation.onlineResource,
+                extent: this.simplifyExtent(item),
+                lccnet: item.simplified ? item.simplified.lccnet : undefined, // keep if set previously
+            };
+            if(item.scType === ScType.PROJECT) {
+                // there is one product that has funding but the requirements say
+                // funding is project specific so assume that one product is an
+                // unwanted anomaly
+                item.simplified.funding = this.simplifyFunding(item);
+            }
+            item.simplified.dates = this.simplifyDates(item);
+            // pick a date that the UI can sort on.
+            item.simplified.dates.sort = item.simplified.dates.start||item.simplified.dates.publication;//||item.simplified.dates.creation;
+
+            return this.populateCollaboratingLccs(item)
+                .then(() => this.updateAssociationsAndSave(item).then(resolve))
                 .catch(reject);
         });
     }
 
-    private simplify(item:ItemDoc):Promise<ItemDoc> {
-        // RTE's in here are not caught in the promise chain...
-        // reset warnedContactIds for each document
-        this.warnedContactIds = [];
-
-        let mdJson = item.mdJson,
-            lcc = item._lcc as LccIfc,
-            logAdditions:LogAdditions = {
-                _item: item._id,
-                _lcc: item._lcc._id
-            };
-        // keyword isn't required but...
-        if(!mdJson.metadata.resourceInfo.keyword) {
-            this.log.warn(`[${SimplificationCodes.MISSING_KEYWORDS}][${item._id}]`,{...logAdditions,
-                    code: SimplificationCodes.MISSING_KEYWORDS
-                });
-        }
-
-        const contacts = this.simplifyContacts(mdJson.contact.map(c => c.contactId),item);
-        const responsibleParty = this.simplifyResponsibleParty(item,(mdJson.metadata.resourceInfo.citation.responsibleParty||[]));
-        // collapse the coPrincipalInvestigator role into the principalInvestigator role
-        // data managers use these inconsistently anyway.  Some times they will define a PI
-        // some times multiple PIs (which would imply CO-PI) at any rate it appears they
-        // just want PI and equate CO-PI to PI anyway so throw it away.
-        if(responsibleParty.coPrincipalInvestigator) {
-            responsibleParty.principalInvestigator = responsibleParty.principalInvestigator||[];
-            const alreadyAPi = (contact) => responsibleParty.principalInvestigator.reduce((found,c) => found||(contact.contactId === c.contactId ? true : false),false);
-            responsibleParty.coPrincipalInvestigator.forEach((cpi) => {
-                if(!alreadyAPi(cpi)) {
-                    responsibleParty.principalInvestigator.push(cpi);
-                }
-            });
-            delete responsibleParty.coPrincipalInvestigator;
-        }
-        const keywords = (mdJson.metadata.resourceInfo.keyword||[]).reduce((map:SimplifiedKeywords,k):SimplifiedKeywords => {
-                if(k.keywordType) {
-                    let typeLabel = k.keywordType,
-                        typeKey = typeLabel
-                            .trim()
-                            .toLowerCase()
-                            .replace(/[\.-]/g,'')
-                            .replace(/\s+/g,'_');
-                    if(EXCLUDED_KEYWORD_TYPES.indexOf(typeKey) === -1) {
-                        // look through types to see if this one has been put in there yet
-                        if(!map.types.filter(kt => kt.type === typeKey).length) {
-                            map.types.push({
-                                type: typeKey,
-                                label: typeLabel
-                            });
-                        }
-                        map.keywords[typeKey] = map.keywords[typeKey]||[];
-                        k.keyword.forEach(kw => map.keywords[typeKey].push(kw.keyword.trim()));
-                    }
-                }
-                return map;
-            },{
-                types: [],
-                keywords: {},
-            });
-
-        item.simplified = {
-            title: mdJson.metadata.resourceInfo.citation.title,
-            lcc: lcc.title,
-            lccs: [lcc.title], // will be updated later
-            abstract: mdJson.metadata.resourceInfo.abstract,
-            status: mdJson.metadata.resourceInfo.status.map(s => statusCamelToTitleCase(s)),
-            keywords: keywords,
-            contacts: contacts,
-            leadOrgNames: (responsibleParty.principalInvestigator||[]).reduce((names,pi) => {
-                    (pi.memberOfOrganization||[]).forEach(org => {
-                        if(names.indexOf(org.name) === -1) {
-                            names.push(org.name);
-                        }
-                    });
-                    return names;
-                },[]),
-            assocOrgNames: contacts.filter(c => c.isOrganization).map(o => o.name),
-            responsibleParty: responsibleParty,
-            resourceType: mdJson.metadata.resourceInfo.resourceType, // just copy over as is
-            combinedResourceType: mdJson.metadata.resourceInfo.resourceType, // if project will be filled out with product resourceTypes later
-            contactNames: contacts.map(c => c.name),
-            allKeywords: Object.keys(keywords.keywords).reduce((all,keyType) => {
-                    keywords.keywords[keyType].forEach(kw => {
-                        if(all.indexOf(kw) === -1) {
-                            all.push(kw);
-                        }
-                    });
-                    return all;
-                },[]),
-            onlineResources: mdJson.metadata.resourceInfo.citation.onlineResource,
-            extent: this.simplifyExtent(item),
-            lccnet: item.simplified ? item.simplified.lccnet : undefined, // keep if set previously
-        };
-        if(item.scType === ScType.PROJECT) {
-            // there is one product that has funding but the requirements say
-            // funding is project specific so assume that one product is an
-            // unwanted anomaly
-            item.simplified.funding = this.simplifyFunding(item);
-        }
-        item.simplified.dates = this.simplifyDates(item);
-        // pick a date that the UI can sort on.
-        item.simplified.dates.sort = item.simplified.dates.start||item.simplified.dates.publication;//||item.simplified.dates.creation;
-
-        return new Promise((resolve,reject) =>
-            this.populateCollaboratingLccs(item)
-                .then(() =>
-                    this.updateAssociationsAndSave(item).then(resolve).catch(reject)
-                ));
-    }
-
+    /**
+     * Builds associations between an item and other items.  Products are just saved.
+     * Projects are mined for related products and then those products are searched for.
+     * If a project has products bi-directional relationships between the two are set and
+     * all updated documents are saved.
+     * 
+     * @param item The item to save.
+     */
     private updateAssociationsAndSave(item:ItemDoc):Promise<ItemDoc> {
         const logAdditions:LogAdditions = {
             _item: item._id,
@@ -448,88 +461,95 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         if(item.scType === ScType.PROJECT) {
             const productIds = FromScienceBase.findProductIds(item.mdJson);
             if(productIds.length) {
-                return new Promise((resolve,reject) => {
-                    Item.find({_id:{$in:productIds}})
-                        .exec()
-                        .then(items => {
-                            // some projects appear to point to themselves as products, make sure no projects were found in the list
-                            items = items.filter(i => {
-                                    if(i.scType === ScType.PROJECT) {
-                                        this.log.warn(`[${SimplificationCodes.PROJECT_AS_PRODUCT}][${item._id}] "${i._id}"`,{...logAdditions,
-                                                code: SimplificationCodes.PROJECT_AS_PRODUCT
-                                            });
-                                        return false;
-                                    }
-                                    return true;
-                                });
-                            if(items.length) {
-                                items.forEach(i => i._project = item._id);
-                                item._products = items.map(i => i._id);
-                                // build a combined list of resource types for the project that
-                                // includes those of its children.
-                                const combinedRt = item.simplified.combinedResourceType,
-                                      hasRt = (rt) => {
-                                          return combinedRt.reduce((has,t) =>
-                                            has||(t.type === rt.type && t.name === rt.name ? true : false),
-                                            false);
-                                      };
-                                items.forEach(i => {
-                                    i.simplified.combinedResourceType.forEach(rt => {
-                                        if(!hasRt(rt)) {
-                                            combinedRt.push(rt);
-                                        }
-                                    });
-                                    // duplicate fiscalYears of parent project onto child products for search/sort of product by fiscalYear
-                                    if(item.simplified.funding && item.simplified.funding.fiscalYears && item.simplified.funding.fiscalYears.length) {
-                                        i.simplified.funding = i.simplified.funding||{}; // shouldn't exist.
-                                        i.simplified.funding.fiscalYears = item.simplified.funding.fiscalYears;
+                return Item.find({_id:{$in:productIds}}).exec()
+                    .then(items => {
+                        // some projects appear to point to themselves as products, make sure no projects were found in the list
+                        items = items.filter(i => {
+                                if(i.scType === ScType.PROJECT) {
+                                    this.log.warn(`[${SimplificationCodes.PROJECT_AS_PRODUCT}][${item._id}] "${i._id}"`,{...logAdditions,
+                                            code: SimplificationCodes.PROJECT_AS_PRODUCT
+                                        });
+                                    return false;
+                                }
+                                return true;
+                            });
+                        if(items.length) {
+                            items.forEach(i => i._project = item._id);
+                            item._products = items.map(i => i._id);
+                            // build a combined list of resource types for the project that
+                            // includes those of its children.
+                            const combinedRt = item.simplified.combinedResourceType,
+                                    hasRt = (rt) => {
+                                        return combinedRt.reduce((has,t) =>
+                                        has||(t.type === rt.type && t.name === rt.name ? true : false),
+                                        false);
+                                    };
+                            items.forEach(i => {
+                                i.simplified.combinedResourceType.forEach(rt => {
+                                    if(!hasRt(rt)) {
+                                        combinedRt.push(rt);
                                     }
                                 });
-                                item.simplified.combinedResourceType = combinedRt;
-                                Promise
-                                    .all(items.map(i => i.save()))
-                                    .then(() => {
-                                        item.save().then(resolve).catch(reject);
-                                    })
-                                    .catch(reject);
-                            } else {
-                                item.save().then(resolve).catch(reject);
-                            }
-                        })
-                        .catch(reject);
+                                // duplicate fiscalYears of parent project onto child products for search/sort of product by fiscalYear
+                                if(item.simplified.funding && item.simplified.funding.fiscalYears && item.simplified.funding.fiscalYears.length) {
+                                    i.simplified.funding = i.simplified.funding||{}; // shouldn't exist.
+                                    i.simplified.funding.fiscalYears = item.simplified.funding.fiscalYears;
+                                }
+                            });
+                            item.simplified.combinedResourceType = combinedRt;
+                            return Promise
+                                .all(items.map(i => i.save()))
+                                .then(() => item.save())
+                        } else {
+                            return item.save();
+                        }
                     });
             }
         }
         return item.save();
     }
 
+    /**
+     * Generates a set of maps of all LCCs in the database.
+     * `originals` is a map of `_id` to stored LCC title.
+     * `normalized` is a map of normalized LCC names to `_id`
+     */
+    private lccMap():Promise<NormalizedLccInput> {
+        return this.lccsPromise
+            ? this.lccsPromise
+            : (this.lccsPromise = Lcc.find({})
+            .then(lccs => {
+                const input:NormalizedLccInput = {
+                    originals: lccs.reduce((map,lcc) => {
+                            map[lcc._id.toString()] = lcc.title;
+                            return map;
+                        },{}),
+                    normalized: lccs.reduce((map,lcc) => {
+                            const idStr = lcc._id.toString();
+                            Contacts.normalize(lcc.title).forEach(normal => map[normal] = idStr);
+                            return map;
+                        },{})
+                }
+                return input;
+            }));
+    }
+
+    /**
+     * Populates the `_lccs` property value with the `_id`s of LCCs that are found to be
+     * "collaborators" on a given item.  The first value in `_lccs` is the `_id` of the 
+     * owning LCC any other collaborators
+     * @param item The item to set collaborating LCCs on.
+     */
     private populateCollaboratingLccs(item:ItemDoc):Promise<void> {
-        return new Promise((resolve) => {
-            if(!this.lccsPromise) {
-                // map of normalized LCC name to id (names are unique so should be fine)
-                this.lccsPromise = new Promise((rs,rj) => Lcc.find({}).then(lccs => {
-                    const input:NormalizedLccInput = {
-                        originals: lccs.reduce((map,lcc) => {
-                                map[lcc._id.toString()] = lcc.title;
-                                return map;
-                            },{}),
-                        normalized: lccs.reduce((map,lcc) => {
-                                const idStr = lcc._id.toString();
-                                Contacts.normalize(lcc.title).forEach(normal => map[normal] = idStr);
-                                return map;
-                            },{})
-                    }
-                    rs(input);
-                }).catch(rj));
-            }
-            const collaborators = item.simplified.responsibleParty.collaborator ?
-                item.simplified.responsibleParty.collaborator.filter(c => c.isOrganization && c.contactType === 'lcc' && !!c.name).map(c => Contacts.normalize(c.name)) :
-                [];
-            if(collaborators.length) {
-                this.lccsPromise.then((input:NormalizedLccInput) => {
+        return this.lccMap()
+            .then((input:NormalizedLccInput) => {
+                const collaborators = item.simplified.responsibleParty.collaborator
+                    ? item.simplified.responsibleParty.collaborator.filter(c => c.isOrganization && c.contactType === 'lcc' && !!c.name).map(c => Contacts.normalize(c.name))
+                    : [];
+                const ids:string[] = [item._lcc._id.toString()];
+                if(collaborators.length) {
                     const normalizedMap = input.normalized;
                     // setup the list of collaborating LCC ids
-                    const ids:string[] = [item._lcc._id.toString()];
                     collaborators.forEach(normalizedNames => {
                         normalizedNames.forEach(normalizedName => {
                             if(normalizedMap[normalizedName] && ids.indexOf(normalizedMap[normalizedName]) === -1) {
@@ -537,17 +557,20 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
                             }
                         });
                     });
-                    item._lccs = ids.map(id => new ObjectId(id));
-                    item.simplified.lccs = ids.map(id => input.originals[id]);
-                    resolve();
-                });
-            } else {
-                item._lccs = [item._lcc._id];
-                resolve();
-            }
-        });
+                }
+                item._lccs = ids.map(id => new ObjectId(id));
+                item.simplified.lccs = ids.map(id => input.originals[id]);
+            });
     }
 
+    /**
+     * Builds a "responsible party" map given an array.  These types of maps are found
+     * in a few places within `mdJson`.  Map keys are roles and values are arrays of
+     * contacts.
+     * 
+     * @param item The item.
+     * @param responsibleParty The responsible party array.
+     */
     private simplifyResponsibleParty(item:ItemDoc,responsibleParty:any[]):SimplifiedContactsMap {
         return responsibleParty.reduce((map,poc) => {
                 map[poc.role] = map[poc.role] || [];
@@ -557,6 +580,11 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
             },{});
     }
 
+    /**
+     * Builds `simplified.dates`
+     * 
+     * @param item The item.
+     */
     private simplifyDates(item:ItemDoc):SimplifiedDates {
         const mdJson = item.mdJson,
             timePeriod = mdJson.metadata.resourceInfo.timePeriod,
@@ -600,6 +628,11 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         return dates;
     }
 
+    /**
+     * Builds the value for `simplified.funding`
+     * 
+     * @param item The item.
+     */
     private simplifyFunding(item:ItemDoc):SimplifiedFunding {
         let mdJson = item.mdJson,
             funding = mdJson.metadata.funding;
@@ -706,6 +739,11 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         return simplified;
     }
 
+    /**
+     * Builds `simplified.extent`
+     * 
+     * @param item The item.
+     */
     private simplifyExtent(item:ItemDoc):SimplifiedExtent {
         try {
             const featureCollection = collectedFeatures(item.mdJson);
@@ -739,12 +777,26 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         return undefined;
     }
 
+    /**
+     * Translates a list of internal contact ids into simplified contact objects.
+     * 
+     * @param contactIds The list of ids (internal to `item.mdJson`)
+     * @param item  The item.
+     * @param context The optional context of contact simplification (for logging issues).
+     */
     private simplifyContacts(contactIds:string[],item:ItemDoc,context?:any) {
         return contactIds
             .map(id => this.simplifyContact(id,item,context))
             .filter(c => !!c); // missing contacts happen
     }
 
+    /**
+     * Translates an internal contact id into a contact object.
+     * 
+     * @param contactId The internal contact id.
+     * @param item The item.
+     * @param context The optional context of contact simplification (for logging issues).
+     */
     private simplifyContact(contactId:string,item:ItemDoc,context?:any):SimplifiedContact {
         if(context && context.contactId === contactId) {
             this.log.warn(`[${SimplificationCodes.MISSING_CONTACT}][${item._id}] "${contactId}"`,{
@@ -803,6 +855,12 @@ export default class Simplification extends SyncPipelineProcessor<Simplification
         return contact;
     }
 
+    /**
+     * Tests for very basic equality between two contacts.
+     * 
+     * @param c1 The first contact.
+     * @param c2 The second contact.
+     */
     private equalContacts(c1:SimplifiedContact, c2:SimplifiedContact) {
         return c1.name === c2.name &&
             c1.positionName === c2.positionName &&
