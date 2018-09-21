@@ -155,56 +155,54 @@ export class LccnetSession {
      * @return {Promise} Resolves with this session object.
      */
     login():Promise<this> {
-        return new Promise((resolve,reject) => {
-            const baseUrl_s = this.baseUrl.toString();
-            const loginUrl = this.qualify('/user/login');
-            return request(loginUrl)
-                .then(response => {
-                    const $ = this.parse(response),
-                          params:any = {};
-                    $('form#user-login input[type="hidden"]')
-                        .each(function(i) {
-                            let t = $(this);
-                            params[t.attr('name')] = t.attr('value');
-                        });
-                    params.name = this.username;
-                    params.pass = this.password;
-                    params.op = 'Log in';
-                    return request({
-                        method: 'POST',
-                        uri: loginUrl,
-                        headers: {
-                            Host: this.baseUrl.host,
-                            Origin: baseUrl_s,
-                            Referer: loginUrl
-                        },
-                        form: params,
-                        resolveWithFullResponse: true,
-                        followAllRedirects: false,
-                        simple: false // so 302 doesn't trigger catch
-                    })
-                    .then(response => {
-                        if(response.statusCode !== 302) {
-                            throw new Error(`Unexpected response code on login ${response.statusCode}`);
-                        }
-                        let headers = response.headers;
-                        if(!headers['set-cookie']) {
-                            throw new Error('No set-cookie after login');
-                        }
-                        this.cookieJar = new cookies.CookieJar();
-                        // feels like a workaround but seems only way for it not to complain
-                        // about the cookies lccnet/d7 produce
-                        this.cookieJar._jar.rejectPublicSuffixes = false;
-                        headers['set-cookie'].forEach(c => this.cookieJar.add(c,baseUrl_s));
-                        // go get a CSRF token to can make updates
-                        return this.get('/api/session/token')
-                            .then(tokenResponse => {
-                                this.tokenResponse = JSON.parse(tokenResponse);
-                                resolve(this);
-                            });
+        const baseUrl_s = this.baseUrl.toString();
+        const loginUrl = this.qualify('/user/login');
+        return request(loginUrl)
+            .then(response => {
+                const $ = this.parse(response),
+                        params:any = {};
+                $('form#user-login input[type="hidden"]')
+                    .each(function(i) {
+                        let t = $(this);
+                        params[t.attr('name')] = t.attr('value');
                     });
-                })
-                .catch(reject);
-        });
+                params.name = this.username;
+                params.pass = this.password;
+                params.op = 'Log in';
+                return params;
+            })
+            .then(params => request({
+                method: 'POST',
+                uri: loginUrl,
+                headers: {
+                    Host: this.baseUrl.host,
+                    Origin: baseUrl_s,
+                    Referer: loginUrl
+                },
+                form: params,
+                resolveWithFullResponse: true,
+                followAllRedirects: false,
+                simple: false // so 302 doesn't trigger catch
+            })
+            .then(response => {
+                if(response.statusCode !== 302) {
+                    throw new Error(`Unexpected response code on login ${response.statusCode}`);
+                }
+                let headers = response.headers;
+                if(!headers['set-cookie']) {
+                    throw new Error('No set-cookie after login');
+                }
+                this.cookieJar = new cookies.CookieJar();
+                // feels like a workaround but seems only way for it not to complain
+                // about the cookies lccnet/d7 produce
+                this.cookieJar._jar.rejectPublicSuffixes = false;
+                headers['set-cookie'].forEach(c => this.cookieJar.add(c,baseUrl_s));
+                // go get a CSRF token to can make updates
+                return this.get('/api/session/token')
+                    .then(tokenResponse => {
+                        this.tokenResponse = JSON.parse(tokenResponse);
+                        return this;
+                    });
+            }));
     }
 }

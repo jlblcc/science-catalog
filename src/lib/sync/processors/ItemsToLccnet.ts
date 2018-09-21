@@ -1,7 +1,7 @@
 import { SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
 import { LccnetWriteProcessorConfig, LccnetWriteProcessor } from './LccnetWriteProcessor';
 
-import { Item, ScType, LccnetRef } from '../../../db/models';
+import { Item, ScType } from '../../../db/models';
 import { LogAdditions } from '../../log';
 /**
  * Configuration for the ItemsToLccnetConfig processor.
@@ -67,150 +67,138 @@ Products deleted: ${output.productsDeleted}
 `;
 }
 
+/**
+ * For all items in the `Item` collection update the parallel nodes in the lccnetwork Drupal instance.
+ * Loads all projects/products with sbids set in lccnetwork prior to the sync to know which need
+ * creating/updating.  As existing items are updated their ids are moved from the list and when complete
+ * any left over sbids are then deleted from lccnetwork because they no longer exist in the catalog.
+ * 
+ * @todo This processor could be faster by batching requests it does all work serially, though going this route
+ * puts less pressure on the lccnetwork site.
+ */
 export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetConfig,ItemsToLccnetOutput> {
+    /**
+     * Execute the processor.
+     */
     run():Promise<SyncPipelineProcessorResults<ItemsToLccnetOutput>> {
         this.results.results = new ItemsToLccnetOutput();
-        return new Promise((resolve,reject) => {
-            return this.cronHack()
-                .then(() => {
-                    return this.startSession()
-                               .then(session => {
-                                   return this.crawlLccnet('/api/v1/lcc?$select=id,sbid&$top=100')
-                                    .then(lccs => {
-                                        const lccMap = lccs.reduce((map,lcc) => {
-                                                map[lcc.sbid] = lcc.id;
-                                                return map;
-                                            },{});
-                                        return this.syncType(ScType.PROJECT,lccMap)
-                                                   .then(() => {
-                                                       return this.syncType(ScType.PRODUCT,lccMap)
-                                                                 .then(() => {
-                                                                     resolve(this.results);
-                                                                 });
-                                                   });
-                                    });
-                        });
-                })
-                .catch(err => {
-                    console.error(err);
-                    reject(err);
-                });
-        });
+        return this.cronHack()
+            .then(() => this.startSession())
+            .then(session => this.crawlLccnet('/api/v1/lcc?$select=id,sbid&$top=100'))
+            .then(lccs => {
+                const lccMap = lccs.reduce((map,lcc) => {
+                        map[lcc.sbid] = lcc.id;
+                        return map;
+                    },{});
+                return this.syncType(ScType.PROJECT,lccMap)
+                    .then(() => this.syncType(ScType.PRODUCT,lccMap))
+                    .then(() => this.results);
+            });
     }
 
+    /**
+     * Syncs all project or product items.
+     * 
+     * @param scType The type of of items to sync.
+     * @param lccMap Map of sbid to lcc entry from lccnetwork.
+     */
     private syncType(scType:ScType,lccMap:any):Promise<void> {
-        return new Promise((resolve,reject) => {
-            this.log.info(`${scType === ScType.PROJECT ? 'Project' : 'Product'} sync started`,{
-                code: scType === ScType.PROJECT ?
-                    ItemsToLccnetLogCodes.PROJECT_SYNC_STARTED :
-                    ItemsToLccnetLogCodes.PRODUCT_SYNC_STARTED
-                });
-            const lccnetType = scType === ScType.PROJECT ? 'project' : 'resource',
-                  crawlUrl = `/api/v1/${lccnetType}?$select=id,sbid,archived,_links,lccs,cooperators,people&$include_archived&$filter=sbid ne 'NULL'&$top=500`;
-            return this.crawlLccnet(crawlUrl)
-                        .then(items => {
-                            this.log.debug(`Found ${items.length} ${scType} items in ${this.config.lccnetwork}`);
-                            const sbidToItem = items.reduce((map,i) => {
-                                      map[i.sbid] = i;
-                                      return map;
-                                  },{}),
-                                  sbids = Object.keys(sbidToItem);
-                            // dealing with items serially to avoid overloading lccnet
-                            Item.find({scType:scType})
-                                .cursor()
-                                .eachAsync(item => {
-                                    const logAdditions:LogAdditions = {
-                                        _lcc: item._lcc,
-                                        _item: item._id
-                                    };
-                                    if(!item.simplified) {
-                                        return this.log.warn(`Item has not been simplified`,{...logAdditions,
-                                                code: ItemsToLccnetLogCodes.ITEM_NOT_SIMPLIFIED
-                                            });
-                                    }
-                                    // returning a promise will result in the cursor waiting for that to complete
-                                    // before sending the next document
-                                    const sbid = item._id.toString(),
-                                          lccnetContacts = (item.simplified.contacts||[]).filter(c => !!c.lccnet),
-                                          lccNids = item._lccs.map(id => lccMap[id.toString()]).filter(nid => !!nid);
-                                    if(!lccNids.length) {
-                                        return this.log.warn(`Unable to find lccnet lcc/s with ids ${item._lccs}`,{...logAdditions,
-                                                code: ItemsToLccnetLogCodes.LCCNET_MISSING_LCC
-                                            });
-                                    }
-                                    const lccnetUpdate:any = {
-                                            sbid: sbid,
-                                            title: item.simplified.title,
-                                            body: item.simplified.abstract,
-                                            people: lccnetContacts.filter(c => !c.isOrganization).map(c => c.lccnet.id),
-                                            cooperators: lccnetContacts.filter(c => c.isOrganization).map(c => c.lccnet.id),
-                                            lccs:lccNids
-                                        },
-                                        sbidIndex = sbids.indexOf(sbid),
-                                        lccnetItem = sbidToItem[sbid];
-                                    return ((sbidIndex !== -1) ?
-                                                this.session.update(lccnetItem._links.self,lccnetUpdate) :
-                                                this.session.create(`/api/v1/${lccnetType}`,lccnetUpdate))
-                                            .then((updated:any) => {
-                                                if(sbidIndex !== -1) {
-                                                    // drop the sbid from the array so the object does not get deleted
-                                                    sbids.splice(sbidIndex,1);
-                                                }
-                                                const whatHappened = sbidIndex === -1 ? 'Created' : 'Updated';
-                                                this.results.results[`${scType === ScType.PROJECT ? 'projects' : 'products'}${whatHappened}`]++;
-                                                this.log.info(`${whatHappened} item with lccnet id ${sbid}/${updated.id}`,{
-                                                    ...logAdditions,
-                                                    code: scType === ScType.PROJECT ?
-                                                        (sbidIndex === -1 ? ItemsToLccnetLogCodes.PROJECT_CREATED : ItemsToLccnetLogCodes.PROJECT_UPDATED) :
-                                                        (sbidIndex === -1 ? ItemsToLccnetLogCodes.PRODUCT_CREATED : ItemsToLccnetLogCodes.PRODUCT_UPDATED)
-                                                });
-                                                item.simplified.lccnet = {
-                                                    id: updated.id,
-                                                    url: this.pathFromUrl(updated._links.drupal_self)
-                                                };
-                                                return item.save();
-                                            }).catch(error => {
-                                                if(error.statusCode) { // lccnet responded with a non 200 status code
-                                                    this.log.error(`Received non 200 status ${error.statusCode}`,{
-                                                        ...logAdditions,
-                                                        code: ItemsToLccnetLogCodes.LCCNET_NON200_RC,
-                                                        data: {
-                                                            item: lccnetItem,
-                                                            updates: lccnetUpdate
-                                                        }
-                                                    }).then(() => {
-                                                        reject(new Error(`Lccnet error ${error.statusCode}`));
-                                                    });
-                                                } else {
-                                                    reject(error);
-                                                }
-                                            });
-                                })
-                                .then(() => {
-                                    // whatever is left in the sbids list need to then be deleted
-                                    // because it doesn't exist in the catalog
-                                    const next = () => {
-                                                if(!sbids.length) {
-                                                    resolve();
-                                                } else {
-                                                    const sbid = sbids.pop(),
-                                                          lccnetId = sbidToItem[sbid].id;
-                                                    this.session.delete(`/api/v1/${lccnetType}/${lccnetId}`)
-                                                        .then(() => {
-                                                            this.results.results[`${scType === ScType.PROJECT ? 'projects' : 'products'}Deleted`]++;
-                                                            this.log.info(`Deleted item with lccnet id ${lccnetId}`,{
-                                                                code: scType === ScType.PROJECT ?
-                                                                    ItemsToLccnetLogCodes.PROJECT_DELETED :
-                                                                    ItemsToLccnetLogCodes.PRODUCT_DELETED
-                                                            });
-                                                            setTimeout(next);
-                                                        }).catch(reject);
-                                                }
-                                            };
-                                    next();
-                                })
-                                .catch(reject);
-                        });
+        const lccnetType = scType === ScType.PROJECT ? 'project' : 'resource',
+        crawlUrl = `/api/v1/${lccnetType}?$select=id,sbid,archived,_links,lccs,cooperators,people&$include_archived&$filter=sbid ne 'NULL'&$top=500`;
+        return this.log.info(`${scType === ScType.PROJECT ? 'Project' : 'Product'} sync started`,{
+            code: scType === ScType.PROJECT ?
+                ItemsToLccnetLogCodes.PROJECT_SYNC_STARTED :
+                ItemsToLccnetLogCodes.PRODUCT_SYNC_STARTED
+            })
+            .then(() => this.crawlLccnet(crawlUrl))
+            .then(items => {
+                this.log.debug(`Found ${items.length} ${scType} items in ${this.config.lccnetwork}`);
+                const sbidToItem = items.reduce((map,i) => {
+                            map[i.sbid] = i;
+                            return map;
+                        },{}),
+                        sbids = Object.keys(sbidToItem);
+                // dealing with items serially to avoid overloading lccnet
+                return Item.find({scType:scType}).cursor()
+                    .eachAsync(item => {
+                        const logAdditions:LogAdditions = {
+                            _lcc: item._lcc,
+                            _item: item._id
+                        };
+                        if(!item.simplified) {
+                            return this.log.warn(`Item has not been simplified`,{...logAdditions,
+                                    code: ItemsToLccnetLogCodes.ITEM_NOT_SIMPLIFIED
+                                });
+                        }
+                        const sbid = item._id.toString(),
+                                lccnetContacts = (item.simplified.contacts||[]).filter(c => !!c.lccnet),
+                                lccNids = item._lccs.map(id => lccMap[id.toString()]).filter(nid => !!nid);
+                        if(!lccNids.length) {
+                            return this.log.warn(`Unable to find lccnet lcc/s with ids ${item._lccs}`,{...logAdditions,
+                                    code: ItemsToLccnetLogCodes.LCCNET_MISSING_LCC
+                                });
+                        }
+                        const lccnetUpdate:any = {
+                                sbid: sbid,
+                                title: item.simplified.title,
+                                body: item.simplified.abstract,
+                                people: lccnetContacts.filter(c => !c.isOrganization).map(c => c.lccnet.id),
+                                cooperators: lccnetContacts.filter(c => c.isOrganization).map(c => c.lccnet.id),
+                                lccs:lccNids
+                            },
+                            sbidIndex = sbids.indexOf(sbid),
+                            lccnetItem = sbidToItem[sbid];
+                        return ((sbidIndex !== -1)
+                            ? this.session.update(lccnetItem._links.self,lccnetUpdate)
+                            : this.session.create(`/api/v1/${lccnetType}`,lccnetUpdate))
+                            .then((updated:any) => {
+                                if(sbidIndex !== -1) {
+                                    // drop the sbid from the array so the object does not get deleted
+                                    sbids.splice(sbidIndex,1);
+                                }
+                                const whatHappened = sbidIndex === -1 ? 'Created' : 'Updated';
+                                this.results.results[`${scType === ScType.PROJECT ? 'projects' : 'products'}${whatHappened}`]++;
+                                this.log.info(`${whatHappened} item with lccnet id ${sbid}/${updated.id}`,{
+                                    ...logAdditions,
+                                    code: scType === ScType.PROJECT ?
+                                        (sbidIndex === -1 ? ItemsToLccnetLogCodes.PROJECT_CREATED : ItemsToLccnetLogCodes.PROJECT_UPDATED) :
+                                        (sbidIndex === -1 ? ItemsToLccnetLogCodes.PRODUCT_CREATED : ItemsToLccnetLogCodes.PRODUCT_UPDATED)
+                                });
+                                item.simplified.lccnet = {
+                                    id: updated.id,
+                                    url: this.pathFromUrl(updated._links.drupal_self)
+                                };
+                                return item.save();
+                            }).catch(error => {
+                                if(error.statusCode) { // lccnet responded with a non 200 status code
+                                    return this.log.error(`Received non 200 status ${error.statusCode}`,{
+                                        ...logAdditions,
+                                        code: ItemsToLccnetLogCodes.LCCNET_NON200_RC,
+                                        data: {
+                                            item: lccnetItem,
+                                            updates: lccnetUpdate
+                                        }
+                                    })
+                                    .then(() => {throw new Error(`Lccnet error ${error.statusCode}`)});
+                                }
+                                throw new Error(`Unexpected error`);// if say a mongo error may be recursive ${JSON.stringify(error)}`);
+                            });
+                    })
+                    .then(() => {
+                        // whatever is left in the sbids list need to then be deleted
+                        // because it doesn't exist in the catalog, do sequentially
+                        return sbids.map(sbid => () => {
+                                const lccnetId = sbidToItem[sbid].id;
+                                return this.session.delete(`/api/v1/${lccnetType}/${lccnetId}`)
+                                    .then(() => this.results.results[`${scType === ScType.PROJECT ? 'projects' : 'products'}Deleted`]++)
+                                    .then(() => this.log.info(`Deleted item with lccnet id ${sbid}/${lccnetId}`,{
+                                            code: scType === ScType.PROJECT ?
+                                                ItemsToLccnetLogCodes.PROJECT_DELETED :
+                                                ItemsToLccnetLogCodes.PRODUCT_DELETED
+                                        }));
+                            })
+                            .reduce((p,f) => p.then(f), Promise.resolve());
+            });
         });
     }
 }

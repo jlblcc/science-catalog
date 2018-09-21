@@ -38,9 +38,7 @@ export abstract class LccnetReadProcessor<C extends LccnetReadProcessorConfig,R>
             request(`${this.config.lccnetwork}`)
                 .then(() => {})
                 .catch(() => {});
-            setTimeout(() => {
-                resolve()
-            },500);
+            setTimeout(resolve,500);
         });
     }
 
@@ -53,8 +51,8 @@ export abstract class LccnetReadProcessor<C extends LccnetReadProcessorConfig,R>
      */
     protected crawlLccnet(path:string):Promise<any[]> {
         return new Promise((resolve,reject) => {
-            let results = [],
-                next = (url:string) => {
+            let results = [];
+            const next = (url:string) => {
                     request(url)
                         .then((response:any) => {
                             response = JSON.parse(response);
