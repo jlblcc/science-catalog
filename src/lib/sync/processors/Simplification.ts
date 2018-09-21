@@ -15,7 +15,6 @@ import { Item,
 import FromScienceBase from './FromScienceBase';
 import { LogAdditions } from '../../log';
 import Contacts from './Contacts';
-import { QueryCursor } from 'mongoose';
 import * as moment from 'moment-timezone';
 import * as geojsonExtent from '@mapbox/geojson-extent';
 import { ObjectId } from 'bson';

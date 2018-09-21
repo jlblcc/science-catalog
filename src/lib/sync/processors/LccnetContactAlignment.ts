@@ -4,11 +4,6 @@ import { LccnetReadProcessor, LccnetReadProcessorConfig } from './LccnetReadProc
 import { Contact, ContactDoc } from '../../../db/models';
 import Contacts from './Contacts';
 
-import { LogAdditions } from '../../log';
-import { QueryCursor } from 'mongoose';
-
-import * as request from 'request-promise-native';
-
 /**
  * The output of the LccnetContactAlignment processor.
  */
@@ -24,6 +19,18 @@ export class LccnetContactAlignmentOutput {
  * Configuration for the LccnetContactAlignment procesor.
  */
 export interface LccnetContactAlignmentConfig extends LccnetReadProcessorConfig {
+}
+
+/**
+ * Logging codes for the LccnetContactAlignment SyncPipelineProcessor
+ */
+export enum LccnetContactAlignmentCodes {
+    /** Begin loading people from lccnetwork. */
+    LOADING_PEOPLE = 'loading_people',
+    /** Begin loading organizations from lccnetwork. */
+    LOADING_ORGS = 'loading_orgs',
+    /** Begin processing local contacts. */
+    PROCESSING_CONTACTS = 'processing_contacts'
 }
 
 /**
@@ -45,8 +52,6 @@ Mapped People: ${output.mappedPeople}
 /**
  * This processor attempts to align existing people/organization with the Contact
  * collection (i.e. populate the `lccnet` property if possible).
- *
- * @todo add Logging
  */
 export default class LccnetContactAlignment extends LccnetReadProcessor<LccnetContactAlignmentConfig,LccnetContactAlignmentOutput> {
     private lccnetPeople:any[];
@@ -55,92 +60,69 @@ export default class LccnetContactAlignment extends LccnetReadProcessor<LccnetCo
     private lccnetOrgsMap: any;
 
     run():Promise<SyncPipelineProcessorResults<LccnetContactAlignmentOutput>> {
-        this.cronHack();
-        return new Promise((resolve,reject) => {
-            this.cronHack()
-                .then(() => {
-                    this.results.results = new LccnetContactAlignmentOutput();
-                    this.crawlLccnet('/api/v1/person?$select=id,email,_links,lccs,orgs,archived&$include_archived&$top=500')
-                        .then(people => {
-                            this.lccnetPeople = people;
-                            this.results.results.totalLccnetPeople = people.length;
-                            this.lccnetPeopleMap = people.reduce((map,p) => {
-                                    if(p.email) {
-                                        map[p.email.toLowerCase()] = p;
-                                    }
-                                    return map;
-                                },{});
-                            return this.crawlLccnet('/api/v1/organization?$select=id,name,aliases,email_domains,_links&$top=500')
-                        })
-                        .then(orgs => {
-                            this.results.results.totalLccnetOrganizations = orgs.length;
-                            orgs.forEach(o => {
-                                o.aliases = o.aliases||[];
-                                o.aliases.push(o.name);
-                                o.aliases = o.aliases.reduce((arr,a) => {
-                                    arr = arr.concat(Contacts.normalize(a));
-                                    return arr;
-                                },[]);
-                            });
-                            this.lccnetOrgs = orgs;
-                            this.lccnetOrgsMap = orgs.reduce((map,o) => {
-                                    o.aliases.forEach(a => map[a] = o);
-                                    return map;
-                                },{});
-                            Contact.find({})
-                                .exec()
-                                .then(contacts => {
-                                    const next = () => {
-                                        if(!contacts.length) {
-                                            return resolve(this.results);
-                                        }
-                                        this.results.results.total++;
-                                        let c:ContactDoc = contacts.pop(),
-                                            promise = c.isOrganization ?
-                                                this.processOrganization(c) :
-                                                this.processPerson(c);
-                                            promise.then(next).catch(reject);
-                                    };
-                                    next();
-                                })
-                                .catch(reject);
-                        });
+        this.results.results = new LccnetContactAlignmentOutput();
+        this.cronHack(); // not sure why there were two, but leaving since it can't really hurt
+        return this.cronHack()
+            .then(() => this.log.info(`[${LccnetContactAlignmentCodes.LOADING_PEOPLE}]`,{code: LccnetContactAlignmentCodes.LOADING_PEOPLE}))
+            .then(() => this.crawlLccnet('/api/v1/person?$select=id,email,_links,lccs,orgs,archived&$include_archived&$top=500'))                
+            .then(people => {
+                this.lccnetPeople = people;
+                this.results.results.totalLccnetPeople = people.length;
+                this.lccnetPeopleMap = people.reduce((map,p) => {
+                        if(p.email) {
+                            map[p.email.toLowerCase()] = p;
+                        }
+                        return map;
+                    },{});
+                return this.log.info(`[${LccnetContactAlignmentCodes.LOADING_ORGS}]`,{code: LccnetContactAlignmentCodes.LOADING_ORGS});
+            })
+            .then(() => this.crawlLccnet('/api/v1/organization?$select=id,name,aliases,email_domains,_links&$top=500'))
+            .then(orgs => {
+                this.results.results.totalLccnetOrganizations = orgs.length;
+                orgs.forEach(o => {
+                    o.aliases = o.aliases||[];
+                    o.aliases.push(o.name);
+                    o.aliases = o.aliases.reduce((arr,a) => {
+                        arr = arr.concat(Contacts.normalize(a));
+                        return arr;
+                    },[]);
                 });
-        });
+                this.lccnetOrgs = orgs;
+                this.lccnetOrgsMap = orgs.reduce((map,o) => {
+                        o.aliases.forEach(a => map[a] = o);
+                        return map;
+                    },{});
+                return this.log.info(`[${LccnetContactAlignmentCodes.PROCESSING_CONTACTS}]`,{code: LccnetContactAlignmentCodes.PROCESSING_CONTACTS});
+            })
+            .then(() => Contact.find({}).cursor()
+                .eachAsync(contact => {
+                    this.results.results.total++;
+                    return contact.isOrganization
+                        ? this.processOrganization(contact)
+                        : this.processPerson(contact);
+                })
+                .then(() => {
+                    const {total,totalLccnetOrganizations,totalLccnetPeople,mappedOrganizations,mappedPeople} = this.results.results;
+                    return this.log.debug(`(catalog/lccnet) total: ${total}/${totalLccnetPeople+totalLccnetOrganizations} mapped orgs:${mappedOrganizations}/${totalLccnetOrganizations} mapped people:${mappedPeople}/${totalLccnetPeople}`);
+                })
+                .then(() => this.results));
     }
 
     private processOrganization(contact:ContactDoc):Promise<void> {
-        return new Promise((resolve,reject) => {
-            let lccnetOrg = contact.aliases
-                .reduce((found,a) => found||(this.lccnetOrgsMap[a] ? this.lccnetOrgsMap[a] : undefined),undefined);
-            if(lccnetOrg) {
-                contact.lccnet = lccnetOrg.lccnet;
-                contact.save()
-                    .then(() => {
-                        this.results.results.mappedOrganizations++;
-                        resolve();
-                    }).catch(reject);
-            } else {
-                resolve();
-            }
-        });
+        const lccnetOrg = contact.aliases.reduce((found,a) => found||(this.lccnetOrgsMap[a] ? this.lccnetOrgsMap[a] : undefined),undefined);
+        if(lccnetOrg) {
+            contact.lccnet = lccnetOrg.lccnet;
+            return contact.save().then(() => { this.results.results.mappedOrganizations++; });
+        }
+        return Promise.resolve();
     }
 
     private processPerson(contact:ContactDoc):Promise<void> {
-        return new Promise((resolve,reject) => {
-            let lccnetPerson = contact.electronicMailAddress
-                .reduce((found,email) => found||(this.lccnetPeopleMap[email] ? this.lccnetPeopleMap[email] : undefined),undefined);
-            if(lccnetPerson) {
-                contact.lccnet = lccnetPerson.lccnet;
-                contact.save()
-                    .then(() => {
-                        this.results.results.mappedPeople++;
-                        resolve();
-                    }).catch(reject);
-            } else {
-                resolve();
-            }
-
-        });
+        const lccnetPerson = contact.electronicMailAddress.reduce((found,email) => found||(this.lccnetPeopleMap[email] ? this.lccnetPeopleMap[email] : undefined),undefined);
+        if(lccnetPerson) {
+            contact.lccnet = lccnetPerson.lccnet;
+            return contact.save().then(() => { this.results.results.mappedPeople++; });
+        }
+        return Promise.resolve();
     }
 }
