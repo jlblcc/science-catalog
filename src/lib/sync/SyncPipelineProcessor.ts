@@ -1,7 +1,6 @@
 import { EventEmitter } from 'events';
 import { Logger } from '../log';
 import { SyncPipelineProcessorEntry,
-         SyncPipelineProcessorEntryIfc,
          SyncPipelineProcessorEntryDoc,
          simplifySyncPipelineEntryDocument,
          LogError } from '../../db/models';
@@ -28,6 +27,19 @@ export interface SyncPipelineProcessorResults<R> {
  * configuration options (if it has any).
  */
 export interface SyncPipelineProcessorConfig {}
+
+/**
+ * Generic codes for lifecycle log events for every processor.
+ */
+export enum SyncPipelineProcessorCodes {
+    /** The processor is starting. */
+    STARTING = 'starting',
+    /** The processor has completed successfully. */
+    COMPLETED = 'completed',
+    /** The processor has completed with an error. */
+    ERROR = 'error',
+
+}
 
 /**
  * The base class for a SyncPipelineProcessor implementation.
@@ -67,6 +79,7 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
      * and will emit `complete` with an instance of `SyncPipelineProcessorEntryIfc`.
      */
     start():void {
+        this.log.info(`[${SyncPipelineProcessorCodes.STARTING}]`,{code: SyncPipelineProcessorCodes.STARTING});
         SyncPipelineProcessorEntry.findOneAndUpdate({
             processorId: this.processorId
         },{
@@ -84,8 +97,10 @@ export abstract class SyncPipelineProcessor<C extends SyncPipelineProcessorConfi
                 }
                 let simple = simplifySyncPipelineEntryDocument(o);
                 if(o.error) {
+                    this.log.info(`[${SyncPipelineProcessorCodes.ERROR}]`,{code: SyncPipelineProcessorCodes.ERROR,data:o.error});
                     this.emit('error',simple);
                 } else {
+                    this.log.info(`[${SyncPipelineProcessorCodes.COMPLETED}]`,{code: SyncPipelineProcessorCodes.COMPLETED});
                     this.emit('complete',simple);
                 }
             };
