@@ -231,53 +231,69 @@ export class Server {
                             responsiblePartyInvalidRole: [],
                             resourceTypeInvalid: []
                         };
-                    if(simplified && simplified.funding && simplified.funding.allocations) {
-                        const matching = simplified.funding.allocations.matching||[],
-                              nonMatching = simplified.funding.allocations.nonMatching||[],
-                              allAllocations = matching.concat(nonMatching);
-                        allAllocations.forEach(a => {
-                            if(!a.source) {
-                                issues.allocUnspecifiedSource = [doc._id];
-                            } else if (!a.source.contactType) {
-                                issues.allocUnspecifiedSourceType = [doc._id];
+                    const newIssue = ():any[] => [{_id:doc._id,lccnet:simplified ? simplified.lccnet : null}];
+                    const addInfoToIssue = (issue:any[],info:any):any[] => {
+                        issue[0].info = issue[0].info||[];
+                        if(issue[0].info.indexOf(info) === -1) {
+                            issue[0].info.push(info);
+                        }
+                        return issue;
+                    };
+                    const docHasIssue:any[] = newIssue();
+                    if(simplified) {
+                        if(simplified.funding && simplified.funding.allocations) {
+                            const matching = simplified.funding.allocations.matching||[],
+                                nonMatching = simplified.funding.allocations.nonMatching||[],
+                                allAllocations = matching.concat(nonMatching);
+                            
+                            const allocUsFwsIssue:any[] = newIssue();
+                            allAllocations.forEach(a => {
+                                if(!a.source) {
+                                    issues.allocUnspecifiedSource = docHasIssue;
+                                } else if (!a.source.contactType) {
+                                    issues.allocUnspecifiedSourceType = docHasIssue;
+                                }
+                                if (a.source && a.source.name && FWS_FUNDING_SOURCES.indexOf(a.source.name) !== -1) {
+                                    issues.allocUsFws = addInfoToIssue(allocUsFwsIssue,a.source.name);
+                                }
+                                if(!a.recipient) {
+                                    issues.allocUnspecifiedRecipient = docHasIssue;
+                                } else if (!a.recipient.contactType) {
+                                    issues.allocUnspecifiedRecipientType = docHasIssue;
+                                }
+                                if(!a.fiscalYears || a.fiscalYears.length === 0) {
+                                    issues.allocMissingFiscalYear = docHasIssue;
+                                } else if(a.fiscalYears && a.fiscalYears.length > 1) {
+                                    issues.allocMultipleFiscalYears = docHasIssue;
+                                }
+                            });
+                        }
+                        if(simplified.contacts) {
+                            const names = [];
+                            const namesIssue:any[] = newIssue();
+                            simplified.contacts.forEach(c => {
+                                if(names.indexOf(c.name) === -1) {
+                                    names.push(c.name);
+                                } else {
+                                    
+                                    issues.duplicateContactName = addInfoToIssue(namesIssue,c.name);
+                                }
+                            });
+                        }
+                        const responsiblePartyIssue:any[] = newIssue();
+                        Object.keys(simplified.responsibleParty||{}).forEach(key => {
+                            if(RESPONSIBLE_PARTY_VALID_ROLES.indexOf(key) === -1) {
+                                
+                                issues.responsiblePartyInvalidRole = addInfoToIssue(responsiblePartyIssue,key);
                             }
-                            if (a.source && a.source.name && FWS_FUNDING_SOURCES.indexOf(a.source.name) !== -1) {
-                                issues.allocUsFws = [doc._id];
-                            }
-                            if(!a.recipient) {
-                                issues.allocUnspecifiedRecipient = [doc._id];
-                            } else if (!a.recipient.contactType) {
-                                issues.allocUnspecifiedRecipientType = [doc._id];
-                            }
-                            if(!a.fiscalYears || a.fiscalYears.length === 0) {
-                                issues.allocMissingFiscalYear = [doc._id];
-                            } else if(a.fiscalYears && a.fiscalYears.length > 1) {
-                                issues.allocMultipleFiscalYears = [doc._id];
+                        });
+                        const resourceTypeIssue:any[] = newIssue();
+                        (simplified.resourceType||[]).forEach(rt => {
+                            if(VALID_RESOURCE_TYPES.indexOf(rt.type) === -1) {
+                                issues.resourceTypeInvalid = addInfoToIssue(resourceTypeIssue,rt.type);
                             }
                         });
                     }
-                    if(simplified && simplified.contacts) {
-                        const names = [];
-                        simplified.contacts.forEach(c => {
-                            if(names.indexOf(c.name) === -1) {
-                                names.push(c.name);
-                            } else {
-                                issues.duplicateContactName = [doc._id];
-                            }
-                        });
-                    }
-                    Object.keys(simplified.responsibleParty||{}).forEach(key => {
-                        if(RESPONSIBLE_PARTY_VALID_ROLES.indexOf(key) === -1) {
-                            issues.responsiblePartyInvalidRole = [doc._id];
-                        }
-                    });
-                    (simplified.resourceType||[]).forEach(rt => {
-                        if(VALID_RESOURCE_TYPES.indexOf(rt.type) === -1) {
-                            issues.resourceTypeInvalid = [doc._id];
-                        }
-                    });
-
-
                     if(Object.keys(issues).reduce((hasIssue,key) => {
                             return hasIssue||(issues[key].length ? true : false);
                         },false)) {
@@ -355,11 +371,22 @@ export class Server {
                                 const issues = result.value;
                                 html += `<h2 id="${result._id}">${lccMap[result._id]}</h2>`;
                                 issuesInfo.forEach(info => {
-                                    const ids = issues[info.key];
-                                    if(ids.length) {
+                                    const issueInfo = issues[info.key];
+                                    if(issueInfo.length) {
                                         html += `<h3>${info.title}</h3>`;
                                         html += `<ul>`;
-                                        html += ids.map(id => `<li><a target="_blank" href="https://www.sciencebase.gov/catalog/item/${id}">${id}</a></li>`).join('');
+                                        html += issueInfo.map(ii => {
+                                                let info = '<li>';
+                                                info += `<a target="_blank" href="https://www.sciencebase.gov/catalog/item/${ii._id}">${ii._id}</a>`;
+                                                if(ii.lccnet) { // this assumes being accessed through lccnetwork site.
+                                                    info += `  (<a target="_blank" href="${ii.lccnet.url}">catalog item</a>)`;
+                                                }
+                                                if(ii.info && ii.info.length) {
+                                                    info += ` [${ii.info.map(s => `"${s}"`).join(', ')}]`;
+                                                }
+                                                info += '</li>';
+                                                return info;
+                                            }).join('');
                                         html += `</ul>`;
                                     }
                                 });
