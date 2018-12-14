@@ -117,6 +117,8 @@ export enum FromScienceBaseLogCodes {
     ITEM_ERROR = 'item_error',
     /** mdJson is associated with an item but sciencebase returned a 404 not found for its contents */
     ITEM_MDJSON_404 = 'item_mdjson_404',
+    /** mdJson cannot be parsed */
+    ITEM_MDJSON_PARSE = 'item_json_parse',
     /** An lcc's project sync has started */
     PROJECT_SYNC_STARTED = 'project_sync_started',
     /** An lcc's project sync has completed */
@@ -439,6 +441,7 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         break;
                     case FromScienceBaseLogCodes.ITEM_IGNORED:
                     case FromScienceBaseLogCodes.ITEM_MDJSON_404:
+                    case FromScienceBaseLogCodes.ITEM_MDJSON_PARSE:
                         counts.ignored++;
                         break;
                     default:
@@ -483,7 +486,16 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                         }
                     }
                     let sha1 = crypto.createHash('sha1'),
+                        mdJson;
+                    try {
                         mdJson = JSON.parse(json);
+                    } catch(parseE) {
+                        this.log.error(`[${item.id}] "${item.title}"`,{...logAdditions,
+                            code: FromScienceBaseLogCodes.ITEM_MDJSON_PARSE,
+                            data: this.constructErrorForStorage(parseE)
+                        });
+                        return resolve(null,FromScienceBaseLogCodes.ITEM_MDJSON_PARSE);
+                    }
                     sha1.update(json);
                     let catalog_item = {
                         _id: new ObjectId(item.id),
