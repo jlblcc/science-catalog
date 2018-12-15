@@ -1,5 +1,5 @@
 import { SyncPipelineProcessor, SyncPipelineProcessorConfig, SyncPipelineProcessorResults } from '../SyncPipelineProcessor';
-import { Lcc, LccDoc, Item, ItemDoc, ScType } from '../../../db/models';
+import { Lcc, LccDoc, Item, ScType } from '../../../db/models';
 import { Logger, LogAdditions } from '../../log';
 import { QueryCursor } from 'mongoose';
 import { ObjectId } from 'mongodb';
@@ -150,6 +150,9 @@ export function fromScienceBaseReport(results:ItemCounts[]):string {
         return report+lccSync+"\n\n";
     },'');
 }
+
+/** Regular expression that makes minimal effort to see if a string appears to be a valid ObjectId */
+const SBID_REGEX = /^[a-zA-Z,0-9]+$/;
 
 /**
  * Handles synchronization of sciencebase items for LCCs.
@@ -554,11 +557,19 @@ export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBa
                     },undefined)
                 }
                 if(sbid) {
-                    if(/^[a-zA-Z,0-9]+$/.test(sbid)) {
-                        if(productIds.indexOf(sbid) === -1) { // duplicates apparently happen
-                            productIds.push(sbid);
+                    let invalidSbid = true;
+                    if(SBID_REGEX.test(sbid)) {
+                        try {
+                            new ObjectId(sbid);
+                            invalidSbid = false;
+                            if(productIds.indexOf(sbid) === -1) { // duplicates apparently happen
+                                productIds.push(sbid);
+                            }
+                        } catch(obidErr) {
+                            // invalidSbid remains true
                         }
-                    } else if (log) {
+                    }
+                    if (invalidSbid && log) {
                         log.warn(`[${FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID}][${item.id}] "${productAssociation.resourceCitation.title}" "${sbid}"`,{
                             ...logAdditions,
                             code: FromScienceBaseLogCodes.ASSOC_PRODUCT_INVALID_SBID,
