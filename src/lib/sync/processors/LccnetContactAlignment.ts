@@ -50,8 +50,9 @@ Mapped People: ${output.mappedPeople}
 }
 
 /**
- * This processor attempts to align existing people/organization with the Contact
- * collection (i.e. populate the `lccnet` property if possible).
+ * This processor loads up the contact database of people and organizations from lccnetwork.org and cross-references
+ * those contacts with the documents in the `Contact` collection.  When a contact is found to align the `lccnet` property
+ * is set on the document in the `Contact` collection to make note of the id within lccnetwork and the URL of that contact.
  */
 export default class LccnetContactAlignment extends LccnetReadProcessor<LccnetContactAlignmentConfig,LccnetContactAlignmentOutput> {
     private lccnetPeople:any[];

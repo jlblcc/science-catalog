@@ -6,10 +6,15 @@ import { LccnetRef, lccnetRefSchema } from './LccNetRef';
  * Exposes the Contact schema
  */
 export interface ContactIfc {
+    /** Contact name (used for display) */
     name?: string;
+    /** Contact position name, if any. */
     positionName?: string;
+    /** Organization flag (false is person) */
     isOrganization: boolean;
+    /** List of email addresses. */
     electronicMailAddress?: string[];
+    /** List of aliases generated during contact consolidation. */
     aliases?: string[];
     /** The list of LCC ids this contact is associated with */
     _lcc: any[];

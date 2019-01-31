@@ -66,7 +66,19 @@ const REPLACEMENTS:Replacement[] = [
  * the contents of the `Contact` collection aligning contacts based on email/organization
  * if possible and name/organization otherwise.
  * 
- * @todo This relies on 'name' always being available for a contact.  It's not technically required for a contact but for the data set is always there.
+ * Each contact's name is "normalized" into an list of lower-case variants of that name.  The
+ * normalization process deals with things like titles (E.g. 'Dr.', 'PHD'), initials, nicknames,
+ * common abbreviations (E.g. 'Dept', 'NOAA'), etc.  The resulting list can then be used to match
+ * contacts across items where email is not available.  If a contact is not found a new one is created
+ * and the `name` that will be displayed throughout the application will be based on the first
+ * instance of a given contact discovered.
+ * 
+ * The `Contacts` collection (by default) is not rebuilt.  This would allow an administrator to
+ * update the `name` property if the first encountered weren't the best selection.  Any such modifications
+ * however would be lost if the collection ever were to be rebuilt.
+ * 
+ * _Note:_ This relies on `name` always being available for a contact.  It's not technically required for a
+ * per `mdJson`'s schema contact but for the data set is always there.
  */
 export default class Contacts extends SyncPipelineProcessor<ContactsConfig,ContactsOutput> {
     /**

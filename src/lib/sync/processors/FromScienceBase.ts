@@ -64,9 +64,9 @@ export class ItemCounts {
 };
 
 const DEFAULT_ITEM_PAGE_SIZE = 20;
-const DEFAULT_PAUSE_BETWEEN_LCC = 30000;
+const DEFAULT_PAUSE_BETWEEN_LCC = 120000;
 const DEFAULT_REQUEST_LIMIT = 200;
-const DEFAULT_RETRY_AFTER = 120000;
+const DEFAULT_RETRY_AFTER = 180000;
 const DEFAULT_MAX_RETRIES = 5;
 
 /**
@@ -75,13 +75,13 @@ const DEFAULT_MAX_RETRIES = 5;
 export interface FromScienceBaseConfig extends SyncPipelineProcessorConfig {
     /** How many items to fetch from sciencebase at a time when syncing projects/products (default 20) */
     pageSize?:number;
-    /** How long to pause (milliseconds) beween syncing LCCs (default 60000).  This option exists to avoid
+    /** How long to pause (milliseconds) beween syncing LCCs (default 120000).  This option exists to avoid
         putting too much sustained pressure on ScienceBase.  If too many requests arrive too close together
         the ScienceBase API will return a 429 which terminates the sync process. */
     pauseBetweenLcc?:number;
     /** How many sequential requests to run before pausing (`retryAfter`) for a period of time to stay beneath rat limiting (default 200) */
     requestLimit?:number;
-    /** How long to pause after receiving a 429 (Too many requests) or whenever the request limit is hit (unless received a 'retry-after' header) (default 120000) */
+    /** How long to pause after receiving a 429 (Too many requests) or whenever the request limit is hit (unless received a 'retry-after' header) (default 180000) */
     retryAfter?:number;
     /** The maximum number of times to retry a request that meets specific circumstances */
     maxRetries?:number;
@@ -157,10 +157,35 @@ const SBID_REGEX = /^[a-zA-Z,0-9]+$/;
 /**
  * Handles synchronization of sciencebase items for LCCs.
  *
- * This processor looks up LCCs defined in the `Lcc` collection and then sync's
- * ScienceBase items for them.
+ * This processor looks up LCCs defined in the `Lcc` collection and then sync's ScienceBase items for them.
+ * LCCs are processed sequentially.  Each LCC is associated with a folder within the [LC Map](https://www.sciencebase.gov/catalog/item/4f4e476ee4b07f02db47e164).
+ * Each folder is queried for projects and then products.  Items are imported into the catalog [one page](../interfaces/fromsciencebaseconfig.html#pagesize)
+ * at a time.  Each item's `mdJson` is downloaded and an SHA-1 hash generated over the file contents.
+ * This resulting hash is stored with the Item in the `hash` property.  If there is a corresponding
+ * Item that exists already in the science-catalog it is only updated if the `hash` has changed.
+ * 
+ * Originally the `hash` was intended to allow modification stamps to retain the actual last time an Item was
+ * imported from ScienceBase however other steps in the process _always_ udpate every item in the catalog
+ * which then causes the `modified` stamp to be updated.  As it stands the `hash` allows the output of this
+ * processor to accurately indicate how many items actually changed in ScienceBase since the previous sync.
+ * 
+ * _Note:_  ScienceBase rate limits HTTP requests to its API.  It does not however properly return the optional
+ * `Retry-After` HTTP header when the limit has been exceeded and has no documentation about its requirements
+ * of clients with respect to rate limits.  As a result this processor has several configuration options
+ * that slow it down throttling requests to ScienceBase.  Pauses in the process are periodically introduced
+ * to avoid over taxing ScienceBase resulting in errors.  A pause is inserted in between each LCC sync, pauses
+ * are inserted for a configurable number of requests and if a recoverable errors responses=, like 429, are
+ * received then the processor will pause and retry up to a maximum number of attempts.  See the
+ * [FromScienceBaseConfig](interfaces/fromsciencebaseconfig.html) definition for the configuration options.
+ * The default values for configuration options have been tuned to avoid rate limiting issues so generally
+ * external configuration should not be necessary and default pauses should not be decreased.  Due to this rate
+ * limiting this processor can take a significant amount of time to run spending a great deal of time depending
+ * on the number of LCCs it has to sync (generally not an issue since syncing should happen in the middle of the
+ * night).
  *
- * It produces on output `ItemCount[]`.
+ * It produces on output `ItemCount[]` one instance for each LCC sync'ed.
+ * 
+ * @todo This processor in many places constructs `Promises` rather than simply leveraging existing ones and should be reviewed.  Given the complexity of this processor the priority is low.
  */
 export default class FromScienceBase extends SyncPipelineProcessor<FromScienceBaseConfig,ItemCounts[]> {
     requestCount:number = 0;

@@ -259,7 +259,16 @@ const EXCLUDED_KEYWORD_TYPES = [
 ];
 
 /**
- * Processor that performs simplification of mdJson documents stored in `Item.mdJson`.
+ * Processor that performs simplification of `mdJson` documents stored in `Item.mdJson` and
+ * stores the results in the `Item.simplified` property.  At the same time relationships between
+ * items (product/project relationships) and LCCs are populated.
+ * 
+ * See the [SimplifiedIfc](../interfaces/simplifiedifc.html) documentation for more details about
+ * what is saved in the simplified version of mdJson.  The schema of that property is built
+ * based on the needs of the application client.  A simplified document will contain fully expanded
+ * contacts and may include them redundantly, again since this makes the application client's job
+ * easier.
+ * 
  * This processor always unconditionally updates all Items.  It must always re-simplify all
  * items because while it may know which items have actually changed it cannot know how
  * other items may have affected the contact database or how project/product relationships

@@ -7,44 +7,50 @@ const debug = dbg('db');
 (<any>mongoose).Promise = Promise;
 
 /**
- * Database connection details.
+ * Gathers mongo connection details from the environment (if any set).
+ * 
+ * The following environment variables are used:
+ * - `MONGO_HOST` The host where mongo is running (default `localhost`).
+ * - `MONGO_PORT` The port where mongo is listening (default `27017`).
+ * - `MONGO_DB` The database to use (default `science-catalog`).
+ * - `MONGO_USER` The user to use when connecting (default none).
+ * - `MONGO_PASS` The password to use when connecting (default none).
+ * 
+ * Since the data is a read-only copy of data mastered in Science Base
+ * requiring credentials feels like over-kill so by default neither user
+ * or password have defaults.  Even if set their values will not be returned
+ * in the resulting object but they will be built into the resulting url.
+ * The `MONGO_DB` variable is mostly used to support using a separate database
+ * for test purposes.
  */
-export interface DbConfig {
-    /** The host to connect to (default "localhost") */
-    host?:string;
-    /** The port to connect to (default 27017) */
-    port?:number;
-    /** The db to connect to (default "science-catalog") */
-    db?:string;
+function dbEnv() {
+    const {
+        MONGO_HOST,
+        MONGO_PORT,
+        MONGO_DB,
+        MONGO_USER,
+        MONGO_PASS
+    } = process.env;
+    const host = MONGO_HOST||'localhost';
+    const port = parseInt(MONGO_PORT||'27017');
+    const db = MONGO_DB||'science-catalog';
+    const url = MONGO_USER && MONGO_PASS
+        ? `mongodb://${MONGO_USER}:${encodeURIComponent(MONGO_PASS)}@${host}:${port}/${db}`
+        : `mongodb://${host}:${port}/${db}`;
+    debug(`Mongo URL "${url}"`);
+    return {host,port,db,url};
 }
 
 /**
  * Establishes the database connection.
- *
- * _Note_: You cannot pass DbConfiguration into the function because sync
- * pipeline processors are designed to be able to run in their own processes.
- * Allowing configuration per invocation would complicate that relationship.
- * This has the unfortunate side effect of having tests run in the main database
- * so they should clean up after themselves.
- *
- *
- * @todo Expand configurability
- * @todo Get defaults from a configuration file rather than hard coded so db() generates a default connection.
+ * 
+ * @see {@link dbEnv} for connection configuration.
  */
-export function db() {
-    return new Promise((resolve,reject) => {
-        if(mongoose.connection.readyState) {
-             debug('Already connected to MongoDb');
-             return resolve();
-         }
-        let cxConfig:DbConfig = {
-            host: 'localhost',
-            port: 27017,
-            db: 'science-catalog'
-        };
-        debug('cxConfig',cxConfig);
-        mongoose.connect(`mongodb://${cxConfig.host}:${cxConfig.port}/${cxConfig.db}`)
-         .then(resolve)
-         .catch(reject);
-    });
+export function db():Promise<void> {
+    if(mongoose.connection.readyState) {
+            debug('Already connected to MongoDb');
+            return Promise.resolve();
+        }
+    return mongoose.connect(dbEnv().url/*,{useNewUrlParser:true}*/)
+        .then(() =>{}); // to satisfy <void> generic
 };

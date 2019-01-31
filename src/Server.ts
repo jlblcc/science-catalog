@@ -11,7 +11,7 @@ import { DocumentQuery } from 'mongoose';
 
 import AppConfiguration from './config';
 
-import { Item, ItemDoc, SimplifiedIfc,
+import { Item, ItemDoc,
          Lcc,
          SyncPipelineProcessorEntry,
          SyncPipelineProcessorLog } from './db/models';
@@ -45,7 +45,7 @@ class ItemResource extends Resource<ItemDoc> {
         }
         return query;
     }
-    private _distinctQuery(req:Request) {
+    protected _distinctQuery(req:Request) {
         let query = this.getModel().find();
         if(req.query.$filter) {
             ItemResource.parseFilter(query,req.query.$filter);

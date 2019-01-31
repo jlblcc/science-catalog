@@ -1,5 +1,4 @@
 import { Schema, model, Document } from 'mongoose';
-import { ObjectId } from 'mongodb';
 
 import { LccnetRef, lccnetRefSchema } from './LccNetRef';
 
@@ -55,8 +54,6 @@ const keywordsSchema = new Schema({
 /**
  * The basic representation of a simplified contact.  Per the mdJson schema
  * At least one of `name` or `positionName` is required.
- *
- * @todo round this out, may expand for syncing into lccnetwork, etc.
  */
 export interface SimplifiedContact {
     /** The original `contactId` as used in the `mdJson` **/

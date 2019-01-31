@@ -10,7 +10,7 @@
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e",
-    "doc": "typedoc --mode modules --experimentalDecorators --target es5 --module commonjs --out ../dist/public/client_doc src"
+    "doc": "typedoc --mode file --experimentalDecorators --target es5 --module commonjs --out ../dist/public/client_doc src"
   },
   "private": true,
   "dependencies": {

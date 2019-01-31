@@ -40,6 +40,20 @@ const REPORT_GENERATORS = {
 const TIME_FMT = 'HH:mm:ss';
 const FULL_DATE_FMT = `ddd MM.DD.YYYY - ${TIME_FMT}`;
 
+/**
+ * Reads all other documents in the `SyncPipelineProcessorEntry` collection (excluding
+ * any entry for this processor), orders them ascending by last completion and then formats their
+ * results into a text report.  The result is stored as the result of this processor.
+ * 
+ * @todo Today each existing processor has to export a utility function to aid in translating its
+ * results into a string.  This means as new processors are added they also need to write such utility
+ * functions and add them here.  It would be nice if this was more generic and built into a processor's
+ * implemnetation so if/when new processors are written this detail couldn't be accidentally over-looked.
+ * Today if this were to happen a note to the effect of there being no report generator utility for a
+ * given processor will be inserted into the report.  This is low priority since this processor
+ * does not even need to be part of a pipeline, it's just a nicety _and_ the current way this works,
+ * while not ideal, is simple.
+ */
 export default class Report extends SyncPipelineProcessor<ReportConfig,ReportOutput> {
     run():Promise<SyncPipelineProcessorResults<ReportOutput>> {
         return new Promise((resolve,reject) => {

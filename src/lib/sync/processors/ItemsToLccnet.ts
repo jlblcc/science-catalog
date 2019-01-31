@@ -70,11 +70,13 @@ Products deleted: ${output.productsDeleted}
 /**
  * For all items in the `Item` collection update the parallel nodes in the lccnetwork Drupal instance.
  * Loads all projects/products with sbids set in lccnetwork prior to the sync to know which need
- * creating/updating.  As existing items are updated their ids are moved from the list and when complete
- * any left over sbids are then deleted from lccnetwork because they no longer exist in the catalog.
+ * creating/updating.  As existing items are updated their ids are removed from the list and when complete
+ * any left over sbids are then deleted from lccnetwork because they no longer exist in the catalog.  As
+ * nodes are created in lccnetwork.org the `lccnet` property is set on the corresponding document in the `Item`
+ * to allow for linking directly to the lccnetwork.org view for the science-catalog item.
  * 
- * @todo This processor could be faster by batching requests it does all work serially, though going this route
- * puts less pressure on the lccnetwork site.
+ * @todo This processor could be faster by batching requests it does all work serially.  Going the current route
+ * does put less pressure on the lccnetwork site and technically speed is not a big deal.
  */
 export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetConfig,ItemsToLccnetOutput> {
     /**

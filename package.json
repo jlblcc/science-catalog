@@ -9,11 +9,16 @@
     "build-all": "npm run-script build; npm run-script doc; cd app_src; npm run-script build; npm run-script doc; cd ..",
     "server-watch": "tsc --watch & nodemon -w ./dist --ignore 'public/*' --preserve-symlinks dist",
     "doc": "typedoc --mode file --out ./dist/public/server_doc src",
-    "test": "tsc && mocha --timeout 5000 dist/**/*.spec.js",
+    "test": "tsc && MONGO_DB=science-catalog-test mocha --timeout 5000 dist/**/*.spec.js",
     "start": "forever start dist/index.js",
     "stop": "forever stop dist/index.js",
     "restart": "npm run-script stop; npm run-script start",
-    "list": "forever list"
+    "list": "forever list",
+    "mongo-dev-up": "docker-compose -f docker-compose-dev.yml up -d",
+    "mongo-dev-logs": "docker-compose -f docker-compose-dev.yml logs -f",
+    "mongo-dev-start": "docker-compose -f docker-compose-dev.yml start",
+    "mongo-dev-stop": "docker-compose -f docker-compose-dev.yml stop",
+    "mongo-dev-down": "docker-compose -f docker-compose-dev.yml down"
   },
   "author": "paul@djcase.com",
   "license": "MIT",

@@ -9,15 +9,11 @@ let db = require('../dist/db').db,
 
 process.on('uncaughtException', handleError);
 
-db().then(() => {
-    SyncPipelineProcessorEntry.find({processorId: 'Report'})
-        .exec()
-        .then(report => {
-            report = report.length ? report[0] : undefined;
-            if(report && report.results && report.results.report) {
-                console.log(report.results.report);
-            }
-            process.exit(0);
-        })
-        .catch(handleError);
-});
+db().then(() => SyncPipelineProcessorEntry.findOne({processorId: 'Report'}).exec()
+    .then(report => {
+        if(report && report.results && report.results.report) {
+            console.log(report.results.report);
+        }
+        process.exit(0);
+    }))
+    .catch(handleError);
