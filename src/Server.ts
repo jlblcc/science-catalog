@@ -429,13 +429,9 @@ export class Server {
                             matchingFundsByFiscalYear: null,
 
                             uniqueCollaboratorsByOrgType: null,
-                        },
-                        contactMap = simplified.contacts.reduce((map,c) => {
-                                map[c.contactId] = c;
-                                return map;
-                            },{});
+                        };
                     if(simplified.funding) {
-                        stats.totalFunds += simplified.funding.amount;
+                        stats.totalFunds += simplified.funding.amount||0;
                         if(simplified.funding.allocations) {
                             const matching = simplified.funding.allocations.matching||[],
                                   nonMatching = simplified.funding.allocations.nonMatching||[];
