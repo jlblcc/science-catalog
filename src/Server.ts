@@ -450,7 +450,7 @@ export class Server {
                                     },
                                     sumAllocations = (arr) => arr.reduce((sum,a) => sum+(a.amount||0), 0),
                                     sumByFiscalYear = (arr) => arr.reduce((map,a) => {
-                                        const fiscalYear = a.fiscalYears & a.fiscalYears.length ?
+                                        const fiscalYear = a.fiscalYears && a.fiscalYears.length ?
                                             // there should only be one but if there are N then use the first year (last in array
                                             // since they are sorted largest to smallest)
                                             a.fiscalYears[a.fiscalYears.length-1] :
@@ -592,6 +592,7 @@ export class Server {
             })
             .then(results => {
                 console.log(`summaryStatistics:stats`,JSON.stringify(results.stats,null,2));
+                //console.log(`summaryStatistics:results`,JSON.stringify(results.results,null,2));
                 if(!results.results.length) {
                     return res.send({
                         totalFunds: 0,
