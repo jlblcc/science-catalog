@@ -336,7 +336,7 @@ $ docker-compose -f docker-compose-dev.yml exec mongo mongorestore --archive=/ba
 
 ### Watches
 
-The server source code can be found in the `src` directory.  If developing on the server you can execute `npm run server-watch`, at the top of this repository, to start the application server and have it recompile/restart as source code changes.
+The server source code can be found in the `src` directory.  If developing on the server you can execute `npm run build-watch` to begin watching for code changes, and then in a separate window run `npm run server-watch` to start the application server and have it recompile/restart as the compiled source code changes.
 
 If just working on sync-pipeline specific functionality where an application server is not necessary you can choose to instead run `npm run build-watch`.  This will result in the same build artifacts as `server-watch` but simply will not also start the application server.
 
