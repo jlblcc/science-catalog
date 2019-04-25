@@ -5,6 +5,7 @@ import * as BodyParser from 'body-parser';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as truncateHtml from 'truncate-html';
+import * as fastCsv from 'fast-csv';
 
 import { Request, Response } from 'express';
 import { DocumentQuery } from 'mongoose';
@@ -787,6 +788,118 @@ export class Server {
                 res.send(html)
             })
             .catch(err => Resource.sendError(res,500,'fwsFunding',err));
+        });
+
+        item.staticLink('fundedYearsReport', function(req, res) {
+            const years = (req.query.years||'')
+                .split(',')
+                .map(y => parseInt(y))
+                .filter(y => !isNaN(y));
+            if(!years.length) {
+                return Resource.sendError(res, 400, 'fundedYearsReport: Missing required parameter years');
+            }
+            this.getModel()
+                .aggregate([
+                    {
+                        $match: {
+                            $or: [
+                                {
+                                    'simplified.funding.allocations.matching.fiscalYears': {
+                                        $in: years
+                                    }
+                                },
+                                {
+                                    'simplified.funding.allocations.nonMatching.fiscalYears': {
+                                        $in: years
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            'simplified.funding.allocations.matching.matching' : true,
+                            'simplified.funding.allocations.nonMatching.matching' : false,
+                        }
+                    },
+                    {
+                        $project: {
+                            simplified: 1,
+                            allocation: {
+                                $concatArrays: [
+                                    '$simplified.funding.allocations.matching',
+                                    '$simplified.funding.allocations.nonMatching'
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        $unwind: {
+                            path: '$allocation'
+                        }
+                    },
+                    {
+                        $project: {
+                            year: '$allocation.fiscalYears',
+                            matching: '$allocation.matching',
+                            amount: '$allocation.amount',
+                            source: '$allocation.source.name',
+                            recipient: '$allocation.recipient.name',
+                            lcc: {
+                                $arrayElemAt: ['$simplified.lccs', 0]
+                            },
+                            title: '$simplified.title',
+                            abstract:'$simplified.abstract'
+                        }
+                    },
+                    {
+                        $unwind: {
+                            path: '$year',
+                            // each _should_ only have a single year BUT many have more
+                            // when this happens we want >1 to have their amount set to 0
+                            includeArrayIndex: 'yearIndex'
+                        }
+                    },
+                    {
+                        $project: {
+                            year: 1,
+                            matching: 1,
+                            amount:  {
+                                $cond: {
+                                    if : {$eq:['$yearIndex',0]},
+                                    then: '$amount',
+                                    else: 0
+                                }
+                            },
+                            source: 1,
+                            recipient: 1,
+                            lcc: 1,
+                            title: 1,
+                            abstract: 1
+                        }
+                    }
+                ])
+                .then(result => {
+                    const format = (req.query.format||'json').toLowerCase();
+                    if(format === 'csv') {
+                        res.setHeader(
+                            'Content-Disposition',
+                            `attachment; filename=lccFundedByYears_${years.join('_')}.csv`
+                        );
+                        res.writeHead(200, { 'Content-Type': 'text/csv' });
+                        const csvStream = fastCsv.createWriteStream({
+                            headers: true
+                        });
+                        csvStream.pipe(res);
+                        result.forEach(row => csvStream.write(row));
+                        csvStream.end();
+                    } else {
+                        res.send(result); // just JSON
+                    }
+                })
+                .catch(err =>
+                    Resource.sendError(res, 500, 'fundedYearsReport', err)
+                );
         });
 
         let lcc = new Resource({...READONLY,...{
