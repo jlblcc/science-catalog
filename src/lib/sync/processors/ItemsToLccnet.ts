@@ -142,7 +142,9 @@ export default class ItemsToLccnet extends LccnetWriteProcessor<ItemsToLccnetCon
                         }
                         const lccnetUpdate:any = {
                                 sbid: sbid,
-                                title: item.simplified.title,
+                                title: item.simplified.title.length > 255
+                                    ? item.simplified.title.substring(0,252)+'...'
+                                    : item.simplified.title,
                                 body: item.simplified.abstract,
                                 people: lccnetContacts.filter(c => !c.isOrganization).map(c => c.lccnet.id),
                                 cooperators: lccnetContacts.filter(c => c.isOrganization).map(c => c.lccnet.id),
