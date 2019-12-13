@@ -40,7 +40,7 @@
     "moment-timezone": "^0.5.14",
     "mongodb": "^2.2.35",
     "mongoose": "^5.0.10",
-    "npm": "^5.7.1",
+    "npm": "^6.13.4",
     "odata-resource": "^1.2.1",
     "pako": "^1.0.6",
     "request": "^2.85.0",
